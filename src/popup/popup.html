@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>Amazonize Rakuten</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header class="head">
+    <h1>Amazonize Rakuten</h1>
+    <label class="switch">
+      <input type="checkbox" id="enabled">
+      <span>有効</span>
+    </label>
+  </header>
+
+  <section>
+    <h2>表示</h2>
+    <label><input type="checkbox" data-key="simplifyItem"> 商品ページをAmazon風にする</label>
+    <label><input type="checkbox" data-key="simplifySearch"> 検索結果の広告を目立たなくする</label>
+  </section>
+
+  <section>
+    <h2>かご・クーポン</h2>
+    <label><input type="checkbox" data-key="cartTotal"> かごの合計金額を表示</label>
+    <label><input type="checkbox" data-key="couponList"> クーポンを一覧表示</label>
+    <label><input type="checkbox" data-key="couponAutoGrab"> クーポンページで自動取得</label>
+    <label><input type="checkbox" data-key="couponAutoApply"> 購入手続きで最良クーポンを適用</label>
+    <label class="sub"><input type="checkbox" data-key="couponAutoApplyConfirm"> 適用前に確認する</label>
+  </section>
+
+  <section>
+    <h2>キャンペーン</h2>
+    <label><input type="checkbox" data-key="campaignEntry"> エントリーパネルを表示</label>
+    <label><input type="checkbox" data-key="campaignAutoEntry"> 開いたページで自動エントリー</label>
+    <textarea id="campaignUrls" rows="4" spellcheck="false"
+      placeholder="https://event.rakuten.co.jp/campaign/&#10;1行に1URL"></textarea>
+    <button id="batchEntry" class="primary">一括エントリーを実行</button>
+    <p class="status" id="status"></p>
+  </section>
+
+  <footer>
+    <label class="sub"><input type="checkbox" data-key="debug"> デバッグログ</label>
+    <p class="note">設定の変更はページを再読み込みすると反映されます。</p>
+  </footer>
+
+  <script src="popup.js"></script>
+</body>
+</html>

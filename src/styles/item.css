@@ -1,0 +1,140 @@
+/* Amazonize Rakuten - 商品ページ（Amazon風レイアウト） */
+
+/* 再構成が終わるまでのちらつきを防ぐ。boot.js が必ず解除する */
+html.azr-preload body { visibility: hidden !important; }
+
+html.azr-simplified body > *:not(#azr-item-root) { display: none !important; }
+html.azr-simplified body {
+  visibility: visible !important;
+  background: #fff !important;
+  margin: 0;
+}
+
+.azr-item-root {
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, system-ui, sans-serif;
+  color: #0f1111;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 16px 20px 64px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.azr-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 10px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #e7e7e7;
+}
+.azr-brand { font-weight: 700; color: #565959; letter-spacing: .02em; }
+.azr-toggle {
+  appearance: none;
+  border: 1px solid #d5d9d9;
+  background: #fff;
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.azr-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 420px) minmax(0, 1fr) 260px;
+  gap: 24px;
+  align-items: start;
+}
+@media (max-width: 980px) {
+  .azr-grid { grid-template-columns: 1fr; }
+}
+
+/* ギャラリー */
+.azr-gallery-main {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 8px;
+}
+.azr-thumbs { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.azr-thumb {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  cursor: pointer;
+  background: #fff;
+}
+.azr-thumb.is-active { border-color: #e77600; box-shadow: 0 0 0 2px rgba(228, 121, 17, .35); }
+
+/* 商品情報 */
+.azr-title { font-size: 22px; font-weight: 500; line-height: 1.35; margin: 0 0 8px; }
+.azr-shop { color: #007185; text-decoration: none; font-size: 13px; }
+.azr-shop:hover { text-decoration: underline; color: #c7511f; }
+
+.azr-review {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  text-decoration: none;
+  color: #007185;
+}
+.azr-stars { color: #de7921; letter-spacing: 1px; }
+.azr-score { color: #0f1111; }
+
+.azr-price-block {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #e7e7e7;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.azr-price { font-size: 28px; color: #b12704; font-weight: 500; }
+.azr-points { color: #bf0000; font-size: 13px; }
+
+.azr-item-coupons { margin-top: 14px; }
+.azr-item-coupons ul { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px; }
+.azr-item-coupons li {
+  background: #fff5e6;
+  border: 1px solid #f0d3a0;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+/* 購入ボックス */
+.azr-buybox {
+  border: 1px solid #d5d9d9;
+  border-radius: 10px;
+  padding: 14px;
+  position: sticky;
+  top: 16px;
+  background: #fff;
+}
+.azr-buybox-price { font-size: 22px; color: #b12704; }
+.azr-buybox-points { color: #bf0000; font-size: 12px; margin-top: 2px; }
+.azr-buybox-slot { margin-top: 12px; }
+/* 移設した楽天のカートフォームを枠に収める */
+.azr-buybox-slot img { max-width: 100%; height: auto; }
+.azr-buybox-slot table { width: 100%; }
+
+.azr-fallback-cart {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #d5d9d9;
+  border-radius: 8px;
+  background: #f7f8f8;
+  cursor: pointer;
+}
+
+/* 商品説明 */
+.azr-detail { margin-top: 36px; border-top: 1px solid #e7e7e7; padding-top: 20px; }
+.azr-h2 { font-size: 18px; margin: 0 0 12px; }
+.azr-detail-body { max-width: 900px; overflow-x: auto; }
+.azr-detail-body img { max-width: 100%; height: auto; }

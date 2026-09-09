@@ -1,0 +1,18 @@
+/* Amazonize Rakuten - かご / 検索結果の調整 */
+
+.azr-cart-panel { width: 340px; }
+.azr-cart-panel .azr-total-row.is-main strong { font-size: 15px; }
+.azr-shop-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 190px;
+}
+.azr-shop-amount { white-space: nowrap; }
+
+/* 検索結果の広告枠を薄くする（消さずに見分けやすくする） */
+html.azr-search .azr-ad-item {
+  opacity: .45;
+  filter: grayscale(.5);
+}
+html.azr-search .azr-ad-item:hover { opacity: 1; filter: none; }

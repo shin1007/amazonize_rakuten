@@ -1,0 +1,46 @@
+/* Amazonize Rakuten - settings store (content-script global) */
+(() => {
+  const DEFAULTS = {
+    enabled: true,
+    simplifyItem: true,       // 商品ページをAmazon風に再構成
+    simplifySearch: true,     // 検索結果を整理
+    cartTotal: true,          // カゴの合計金額パネル
+    couponList: true,         // クーポン一覧パネル
+    couponAutoGrab: false,    // クーポン自動取得（既定OFF: 明示操作を要求）
+    couponAutoApply: true,    // 購入手続きで最良クーポンを自動適用
+    couponAutoApplyConfirm: true, // 自動適用の前に確認する
+    campaignEntry: true,          // キャンペーンページにエントリーパネルを出す
+    campaignAutoEntry: false,     // 開いただけで自動エントリー（既定OFF）
+    campaignUrls: [               // ポップアップの一括エントリー対象（編集可）
+      'https://event.rakuten.co.jp/campaign/'
+    ],
+    debug: false
+  };
+
+  const AZR = (window.AZR = window.AZR || {});
+  AZR.DEFAULTS = DEFAULTS;
+  AZR.settings = { ...DEFAULTS };
+
+  AZR.loadSettings = async function loadSettings() {
+    try {
+      const stored = await chrome.storage.sync.get(DEFAULTS);
+      AZR.settings = { ...DEFAULTS, ...stored };
+    } catch {
+      AZR.settings = { ...DEFAULTS };
+    }
+    return AZR.settings;
+  };
+
+  AZR.onSettingsChanged = function onSettingsChanged(cb) {
+    try {
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area !== 'sync') return;
+        for (const [k, v] of Object.entries(changes)) AZR.settings[k] = v.newValue;
+        cb(AZR.settings, changes);
+      });
+    } catch { /* extension context invalidated */ }
+  };
+
+  AZR.log = (...args) => { if (AZR.settings.debug) console.log('%c[AZR]', 'color:#f60', ...args); };
+  AZR.warn = (...args) => console.warn('[AZR]', ...args);
+})();

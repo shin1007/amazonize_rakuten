@@ -1,0 +1,49 @@
+{
+  "manifest_version": 3,
+  "name": "Amazonize Rakuten",
+  "version": "0.1.0",
+  "description": "楽天市場をAmazon風のシンプルなUIに。クーポン一括取得・かご合計・最適クーポン自動適用・キャンペーン自動エントリー。",
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://*.rakuten.co.jp/*"
+  ],
+  "background": {
+    "service_worker": "src/background/service_worker.js"
+  },
+  "action": {
+    "default_popup": "src/popup/popup.html",
+    "default_title": "Amazonize Rakuten"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://item.rakuten.co.jp/*",
+        "https://search.rakuten.co.jp/*",
+        "https://basket.step.rakuten.co.jp/*",
+        "https://step.item.rakuten.co.jp/*",
+        "https://order.step.rakuten.co.jp/*",
+        "https://coupon.rakuten.co.jp/*",
+        "https://event.rakuten.co.jp/*"
+      ],
+      "js": [
+        "src/lib/settings.js",
+        "src/lib/dom.js",
+        "src/lib/coupon-model.js",
+        "src/content/boot.js",
+        "src/content/item.js",
+        "src/content/search.js",
+        "src/content/cart.js",
+        "src/content/coupon.js",
+        "src/content/checkout.js",
+        "src/content/campaign.js"
+      ],
+      "css": [
+        "src/styles/common.css",
+        "src/styles/item.css",
+        "src/styles/cart.css"
+      ],
+      "run_at": "document_start",
+      "all_frames": false
+    }
+  ]
+}

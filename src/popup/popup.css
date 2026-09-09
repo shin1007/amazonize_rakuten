@@ -1,0 +1,62 @@
+:root { color-scheme: light; }
+
+body {
+  width: 300px;
+  margin: 0;
+  padding: 12px 14px 14px;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #0f1111;
+  background: #fff;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid #eaeded;
+  padding-bottom: 8px;
+}
+h1 { font-size: 14px; margin: 0; }
+h2 { font-size: 12px; color: #565959; margin: 14px 0 6px; }
+
+label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+  cursor: pointer;
+}
+label.sub { padding-left: 20px; color: #565959; }
+.switch { font-weight: 700; }
+
+textarea {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 6px;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 11px;
+  border: 1px solid #d5d9d9;
+  border-radius: 6px;
+  padding: 6px;
+  resize: vertical;
+}
+
+button.primary {
+  width: 100%;
+  margin-top: 8px;
+  appearance: none;
+  border: 1px solid #d5901d;
+  border-radius: 8px;
+  background: linear-gradient(#f7dfa5, #f0c14b);
+  font-weight: 700;
+  padding: 7px;
+  cursor: pointer;
+}
+
+.status { min-height: 1.6em; margin: 6px 0 0; color: #565959; font-size: 12px; }
+
+footer { border-top: 1px solid #eaeded; margin-top: 12px; padding-top: 8px; }
+.note { color: #565959; font-size: 11px; margin: 4px 0 0; }
