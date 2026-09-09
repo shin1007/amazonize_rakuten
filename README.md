@@ -1,0 +1,1 @@
+# amazonize_rakuten
