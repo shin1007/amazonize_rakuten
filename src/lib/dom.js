@@ -66,8 +66,18 @@
     });
   }
 
-  /** 要素生成: h('div.foo', {attrs}, children) */
-  function h(tagSpec, attrs = {}, ...children) {
+  /** 属性オブジェクトか、それとも子要素か。Node や配列や文字列は子とみなす。 */
+  function isAttrs(v) {
+    return v !== null && typeof v === 'object' && !(v instanceof Node) && !Array.isArray(v);
+  }
+
+  /** 要素生成: h('div.foo', {attrs}, ...children) / h('div.foo', ...children) */
+  function h(tagSpec, attrs, ...children) {
+    if (!isAttrs(attrs)) {
+      // 属性を省略した呼び出し。第2引数は最初の子。
+      if (attrs !== undefined) children.unshift(attrs);
+      attrs = {};
+    }
     const [tag, ...classes] = String(tagSpec).split('.');
     const el = document.createElement(tag || 'div');
     if (classes.length) el.className = classes.join(' ');

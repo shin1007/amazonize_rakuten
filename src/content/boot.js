@@ -20,7 +20,7 @@
   };
   if (kind === 'item') {
     root.classList.add('azr-preload');
-    setTimeout(unhide, 3000); // フェイルセーフ
+    setTimeout(unhide, 10000); // フェイルセーフ
   }
   AZR.unhide = unhide;
 

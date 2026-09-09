@@ -97,8 +97,17 @@
       batch = (await chrome.storage.session.get('azrBatchEntry')).azrBatchEntry;
     } catch { /* session storage 不可 */ }
 
+    // エントリーボタンを押すとページが再読み込みされることがある。
+    // 何度も押し続けないよう、このURLで一度実行したことを記録しておく。
+    const doneKey = 'azrEntered:' + location.href.split('?')[0];
+    let alreadyRun = false;
+    try {
+      alreadyRun = Boolean((await chrome.storage.session.get(doneKey))[doneKey]);
+    } catch { /* session storage 不可 */ }
+
     const autoRun = AZR.settings.campaignAutoEntry || (batch && batch.until > Date.now());
-    if (autoRun && buttons.length) {
+    if (autoRun && buttons.length && !alreadyRun) {
+      try { await chrome.storage.session.set({ [doneKey]: Date.now() }); } catch { /* noop */ }
       AZR.log(`自動エントリー: ${buttons.length}件`);
       await entryAll(buttons);
     }

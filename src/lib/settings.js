@@ -12,7 +12,9 @@
     campaignEntry: true,          // キャンペーンページにエントリーパネルを出す
     campaignAutoEntry: false,     // 開いただけで自動エントリー（既定OFF）
     campaignUrls: [               // ポップアップの一括エントリー対象（編集可）
-      'https://event.rakuten.co.jp/campaign/'
+      'https://event.rakuten.co.jp/card/pointday/',
+      'https://event.rakuten.co.jp/campaign/sports/',
+      'https://event.rakuten.co.jp/campaign/point-up/everyday/point/'
     ],
     debug: false
   };

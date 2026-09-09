@@ -11,7 +11,11 @@ const DEFAULTS = {
   couponAutoApplyConfirm: true,
   campaignEntry: true,
   campaignAutoEntry: false,
-  campaignUrls: ['https://event.rakuten.co.jp/campaign/'],
+  campaignUrls: [
+    'https://event.rakuten.co.jp/card/pointday/',
+    'https://event.rakuten.co.jp/campaign/sports/',
+    'https://event.rakuten.co.jp/campaign/point-up/everyday/point/'
+  ],
   debug: false
 };
 

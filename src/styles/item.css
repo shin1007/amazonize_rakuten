@@ -18,7 +18,12 @@ html.azr-simplified body {
   padding: 16px 20px 64px;
   font-size: 14px;
   line-height: 1.6;
+  /* 店舗CSSの中央寄せなどを持ち込ませない */
+  text-align: left;
 }
+
+/* 店舗CSSの中央寄せは自前の領域だけ打ち消す。移設した購入エリアには触らない。 */
+.azr-info, .azr-info *, .azr-detail > .azr-h2 { text-align: left; }
 
 .azr-topbar {
   display: flex;
@@ -41,11 +46,11 @@ html.azr-simplified body {
 
 .azr-grid {
   display: grid;
-  grid-template-columns: minmax(280px, 420px) minmax(0, 1fr) 260px;
+  grid-template-columns: minmax(260px, 380px) minmax(0, 1fr) 430px;
   gap: 24px;
   align-items: start;
 }
-@media (max-width: 980px) {
+@media (max-width: 1100px) {
   .azr-grid { grid-template-columns: 1fr; }
 }
 
@@ -111,6 +116,7 @@ html.azr-simplified body {
 /* 購入ボックス */
 .azr-buybox {
   border: 1px solid #d5d9d9;
+  min-width: 0;
   border-radius: 10px;
   padding: 14px;
   position: sticky;
@@ -119,7 +125,7 @@ html.azr-simplified body {
 }
 .azr-buybox-price { font-size: 22px; color: #b12704; }
 .azr-buybox-points { color: #bf0000; font-size: 12px; margin-top: 2px; }
-.azr-buybox-slot { margin-top: 12px; }
+.azr-buybox-slot { margin-top: 12px; overflow-x: auto; }
 /* 移設した楽天のカートフォームを枠に収める */
 .azr-buybox-slot img { max-width: 100%; height: auto; }
 .azr-buybox-slot table { width: 100%; }
@@ -138,3 +144,13 @@ html.azr-simplified body {
 .azr-h2 { font-size: 18px; margin: 0 0 12px; }
 .azr-detail-body { max-width: 900px; overflow-x: auto; }
 .azr-detail-body img { max-width: 100%; height: auto; }
+
+.azr-topbar-links { display: flex; align-items: center; gap: 14px; }
+.azr-topbar-links a { color: #007185; text-decoration: none; font-size: 12px; }
+.azr-topbar-links a:hover { text-decoration: underline; color: #c7511f; }
+
+.azr-variants {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #565959;
+}
