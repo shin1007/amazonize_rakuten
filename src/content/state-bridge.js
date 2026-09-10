@@ -105,6 +105,10 @@
 
   let lastJson = '';
   function publish(force) {
+    // document_start ではまだ __INITIAL_STATE__ が無い。ここで空の状態を流すと、
+    // 受け手はそれを最初の状態として受け取り「かごが空」と判断してしまう（実機で踏んだ）。
+    // 中身が来るまでは何も流さない。
+    if (!window.__INITIAL_STATE__ && !Object.keys(overlay).length) return;
     let data = null;
     try {
       data = slim({ ...(window.__INITIAL_STATE__ || {}), ...overlay });
@@ -156,10 +160,17 @@
 
   // 画面遷移（/cart → /order-confirmation）では __INITIAL_STATE__ が入れ替わる。
   // 取りこぼしを避けるため、短い間隔でも読んで差分があるときだけ流す。
-  let lastPath = location.pathname;
+  //
+  // 重ねた応答を捨てるのは、画面そのもの（パスの先頭）が変わったときだけ。
+  // クーポンを選ぶモーダルは /order-confirmation/coupon-usage という子の経路で、
+  // 閉じると /order-confirmation に戻る。ここで捨てると、適用した直後の金額が消えて
+  // 古い __INITIAL_STATE__（クーポン無し）に戻ってしまう（実機で踏んだ）。
+  const screenOf = (path) => path.split('/')[1] || '';
+  let lastScreen = screenOf(location.pathname);
   setInterval(() => {
-    if (location.pathname !== lastPath) {
-      lastPath = location.pathname;
+    const screen = screenOf(location.pathname);
+    if (screen !== lastScreen) {
+      lastScreen = screen;
       overlay = {}; // 別の画面の数字を持ち越さない
     }
     publish(false);

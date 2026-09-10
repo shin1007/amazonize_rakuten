@@ -12,6 +12,14 @@
 
 .azr-discount { color: #b12704; }
 
+/* 「お支払い予定」の後ろに付ける、送料が入っていない旨の注記 */
+.azr-fee-note {
+  margin-left: 2px;
+  font-size: 11px;
+  font-weight: normal;
+  color: #565959;
+}
+
 /* ポイント差引後の「実質いくら」。楽天のかごにはどこにも出ない数字なので目立たせる */
 .azr-total-row.is-effective {
   border-top: 1px dashed #eaeded;

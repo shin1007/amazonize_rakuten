@@ -8,7 +8,7 @@ const DEFAULTS = {
   couponList: true,
   couponAutoGrab: false,
   couponAutoApply: true,
-  couponAutoApplyConfirm: true,
+  couponAutoApplyConfirm: false,
   campaignEntry: true,
   campaignAutoEntry: false,
   campaignScanEntry: true,

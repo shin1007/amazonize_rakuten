@@ -67,6 +67,13 @@
       rawEntry?.selected ?? rawEntry?.isSelected ?? rawEntry?.applied ?? rawEntry?.isApplied
     );
     parsed.usable = rawEntry?.usable ?? rawEntry?.canUse ?? rawEntry?.isAvailable ?? true;
+    // 1枚選ぶと、他のクーポンは全部 usable:false になり、alerts に理由が付く。
+    //   ["選択済みのクーポンと併用が出来ません。"]                       ← 選び直せば使える
+    //   ["選択済みのクーポンと併用が出来ません。", "5,000円以上お買い上げの…"] ← 選び直しても使えない
+    // 併用の理由だけで使えないものは、切り替えの候補に残す。
+    const alerts = Array.isArray(rawEntry?.alerts) ? rawEntry.alerts.map(String) : [];
+    parsed.blockedBySelection = parsed.usable === false && alerts.length > 0
+      && alerts.every((a) => /併用/.test(a));
     return parsed;
   }
 
@@ -76,7 +83,7 @@
     for (const [shopId, list] of Object.entries(state?.shopCoupons || {})) {
       const coupons = (Array.isArray(list) ? list : [])
         .map((c) => normalizeCoupon(c, shopId))
-        .filter((c) => c.usable !== false);
+        .filter((c) => c.usable !== false || c.blockedBySelection);
       const t = state.subtotals?.[shopId] || state.subtotals?.SUM || {};
       groups.push({
         shopId,
@@ -156,8 +163,17 @@
   const SWITCH = '[role="checkbox"], [role="radio"], input[type="checkbox"], input[type="radio"]';
   const ROW_MAX_TEXT = 400; // 行に収まる長さ。これを超えるものはページの入れ物。
 
+  /**
+   * クーポン名で行を探す。まず名前全体で探し、見つからなければ先頭18文字で探す。
+   * 先頭だけだと「【楽天スーパーSALE】対象ショップで「1注文合計1,500円…」「…3,000円…」の
+   * ように先頭が同じクーポンを取り違える（実機で5枚が同じ先頭だった）。
+   */
   function findCouponRow(label) {
-    const key = label.replace(/\s+/g, ' ').trim().slice(0, 18);
+    const full = label.replace(/\s+/g, ' ').trim();
+    return findCouponRowBy(full) || findCouponRowBy(full.slice(0, 18));
+  }
+
+  function findCouponRowBy(key) {
     if (!key) return null;
 
     // クーポン名を含み、かつ「行」と呼べる短さの要素を探す。
@@ -213,28 +229,47 @@
    * クーポンの行を選ぶ。
    * 押した結果はReactの再描画を経てから反映されるので、同期で読まずに少し待つ。
    */
-  async function select({ box, row }) {
-    if (isChecked(box)) return true;
+  async function select({ box, row }, want = true) {
+    if (isChecked(box) === want) return true;
     for (const target of [box, row]) {
       if (!target) continue;
       realClick(target);
       for (let i = 0; i < 10; i++) {
         await sleep(200);
-        if (isChecked(box)) return true;
+        if (isChecked(box) === want) return true;
       }
     }
-    return isChecked(box);
+    return isChecked(box) === want;
   }
 
-  /** クーポンを1枚適用する。「変更」→行を選ぶ→「変更する」の順に押す。 */
-  async function applyCoupon(coupon) {
+  const sameCoupon = (a, b) => (a.id && b.id ? a.id === b.id : a.label === b.label);
+
+  /**
+   * クーポンを1枚適用する。「変更」→行を選ぶ→「変更する」の順に押す。
+   * current は今選ばれているクーポン。併用できないので、先に外さないと新しい方を選べない。
+   */
+  async function applyCoupon(coupon, current = []) {
     const card = document.querySelector(COUPON_CARD);
     const open = card && findClickable(card, OPEN_TEXT);
     if (!open) return { ok: false, reason: 'クーポン欄の「変更」が見つからない' };
     realClick(open);
 
-    const found = await waitFor(() => findCouponRow(coupon.label), { timeout: 8000 });
+    let found = await waitFor(() => findCouponRow(coupon.label), { timeout: 8000 });
     if (!found) return { ok: false, reason: 'モーダルにそのクーポンの行が出てこない' };
+
+    for (const c of current) {
+      if (sameCoupon(c, coupon)) continue;
+      const row = findCouponRow(c.label);
+      if (row && isChecked(row.box) && !(await select(row, false))) {
+        return { ok: false, reason: '今のクーポンの選択を外せなかった' };
+      }
+    }
+    if (current.length) {
+      // 外したあとは行が描き直されるので、選ぶ行を探し直す
+      await sleep(400);
+      found = findCouponRow(coupon.label);
+      if (!found) return { ok: false, reason: '選択を外したあと、そのクーポンの行が見つからない' };
+    }
 
     const rect = (el) => { const r = el.getBoundingClientRect(); return `${Math.round(r.x)},${Math.round(r.y)} ${Math.round(r.width)}x${Math.round(r.height)}`; };
     AZR.log('coupon row', { box: found.box.tagName, role: found.box.getAttribute('role'), boxRect: rect(found.box), rowRect: rect(found.row), checked: isChecked(found.box) });
@@ -248,7 +283,8 @@
     realClick(commit);
 
     // 押しただけで成功と言わない。クーポン欄の表示が変わるのを確かめる。
-    const key = coupon.label.replace(/\s+/g, ' ').trim().slice(0, 18);
+    // 先頭の数文字だけだと、先頭が同じ別のクーポン（切り替える前のもの）でも一致してしまう。
+    const key = coupon.label.replace(/\s+/g, ' ').trim();
     const done = await waitFor(() => {
       const text = (document.querySelector(COUPON_CARD)?.textContent || '').replace(/\s+/g, ' ');
       return text.includes(key) && !/利用なし/.test(text) ? true : null;
@@ -278,9 +314,10 @@
         ) : '',
         !found ? h('div.azr-empty', { text: 'この注文に使えるクーポンはありません' }) : '',
         note ? h('div.azr-coupon-status', { text: note }) : '',
-        best && !applied ? h('button.azr-btn-primary', {
+        // best は「今より得なもの」だけが来る。楽天が先に選んだものがあれば「切り替え」と言う。
+        best ? h('button.azr-btn-primary', {
           type: 'button',
-          text: `最良クーポンを適用（-${yen(best.discount)}）`,
+          text: `${applied ? '最良クーポンに切り替え' : '最良クーポンを適用'}（-${yen(best.discount)}）`,
           onclick: async (e) => {
             const button = e.currentTarget;
             button.disabled = true;
@@ -330,12 +367,13 @@
     // 押そうとした瞬間にボタンが差し替わってクリックが消える（実機で踏んだ）。
     let lastSignature = '';
     let busy = false;
+    let selectedNow = []; // 今選ばれているクーポン（切り替えるときに先に外す）
 
     // 適用の最中は描き直さない。押している最中にボタンごと差し替わってしまう。
     const runApply = async (coupon) => {
       busy = true;
       try {
-        const r = await applyCoupon(coupon);
+        const r = await applyCoupon(coupon, selectedNow);
         if (!r.ok) AZR.warn('クーポンを適用できなかった:', r.reason);
         else lastSignature = ''; // 結果を反映するため、次の状態で描き直す
         return r;
@@ -351,36 +389,47 @@
     const paint = async (current) => {
       if (busy) return;
       const groups = collect(current);
-      const applied = groups.some((g) => g.applied > 0);
+      const appliedTotal = groups.reduce((s, g) => s + g.applied, 0);
 
       // 店舗ごとの最良を見て、いちばん得なものを1件だけ勧める。
-      // 楽天のクーポンは店舗ごとに1枚しか選べないため、まとめて適用はしない。
+      // 楽天のクーポンは店舗ごとに1枚しか選べないため、まとめて適用はしない
+      // （そもそも注文確認は1回の手続きで1ショップ分しか出ない）。
+      // 「得」は割引率ではなく実際に引かれる金額で比べる。10%OFFでも小計が小さければ200円OFFに負ける。
       let best = null;
       for (const g of groups) {
         const b = AZR.coupons.pickBest(g.coupons, g.subtotal, g.shipping);
         if (b && (!best || b.discount > best.discount)) best = { ...b, shopId: g.shopId };
       }
 
-      const note = applied
-        ? 'すでにクーポンが適用されています'
-        : (best ? null : (groups.some((g) => g.coupons.length) ? '条件を満たすクーポンがありません' : null));
+      // 楽天はクーポンを1枚先に選んでおくことがある。それが最良とは限らない。
+      // 今の割引額より多く引けるものがあるときだけ切り替える。
+      selectedNow = groups.flatMap((g) => g.coupons.filter((c) => c.selected));
+      const bestSelected = Boolean(best && selectedNow.some((c) => sameCoupon(c, best.coupon)));
+      const better = best && !bestSelected && best.discount > appliedTotal ? best : null;
+
+      const note = better
+        ? (appliedTotal ? `今のクーポン（-${yen(appliedTotal)}）より得なクーポンがあります` : null)
+        : appliedTotal
+          ? '最良のクーポンが適用されています'
+          : (groups.some((g) => g.coupons.length) ? '条件を満たすクーポンがありません' : null);
 
       const signature = JSON.stringify([
-        applied,
-        groups.map((g) => [g.shopId, g.applied, g.subtotal, g.coupons.length]),
-        best ? [best.coupon.id || best.coupon.label, best.discount] : null
+        appliedTotal,
+        groups.map((g) => [g.shopId, g.applied, g.subtotal, g.coupons.length, g.coupons.filter((c) => c.selected).map((c) => c.id || c.label)]),
+        better ? [better.coupon.id || better.coupon.label, better.discount] : null
       ]);
       if (signature === lastSignature && document.getElementById(PANEL_ID)) return;
       lastSignature = signature;
 
       document.getElementById(PANEL_ID)?.remove();
-      document.body.append(render(groups, applied ? null : best, applied, note, runApply));
-      AZR.log('checkout coupons', { groups, best, applied });
+      document.body.append(render(groups, better, appliedTotal > 0, note, runApply));
+      AZR.log('checkout coupons', { groups, best, better, appliedTotal });
 
-      // 確認なしの設定なら、いちばん得なものを1回だけ自分で適用する
-      if (best && !applied && !autoApplied && !AZR.settings.couponAutoApplyConfirm) {
+      // 確認なしの設定なら、いちばん得なものに1回だけ自分で切り替える
+      // （失敗しても押し直しはしない。表示のボタンから本人がやり直せる）
+      if (better && !autoApplied && !AZR.settings.couponAutoApplyConfirm) {
         autoApplied = true;
-        const r = await runApply(best.coupon);
+        const r = await runApply(better.coupon);
         AZR.log('auto apply', r);
       }
     };
