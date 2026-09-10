@@ -79,15 +79,6 @@
 .azr-empty { color: #565959; }
 
 .azr-coupon-status { color: #565959; }
-.azr-coupon-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.azr-coupon-item {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  border-top: 1px dotted #d5d9d9;
-  padding-top: 6px;
-}
-.azr-coupon-cond { color: #565959; white-space: nowrap; }
 
 .azr-applied ul { list-style: none; margin: 4px 0; padding: 0; display: grid; gap: 4px; }
 .azr-applied li { display: flex; justify-content: space-between; gap: 10px; }

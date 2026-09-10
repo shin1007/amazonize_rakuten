@@ -10,6 +10,8 @@
 
   const kind = AZR.pageKind();
   const root = document.documentElement;
+  // 設定の読み込みは待たずに始めておく（ページの読み込みと並行させる）
+  const settingsLoaded = AZR.loadSettings();
 
   // ちらつき防止: 再構成するページは一旦隠す。失敗しても必ず表示に戻す。
   let unhidden = false;
@@ -38,7 +40,7 @@
   }
 
   async function main() {
-    await AZR.loadSettings();
+    await settingsLoaded;
     root.dataset.azrPage = kind;
     if (!AZR.settings.enabled) return unhide();
     if (kind === 'item' && !AZR.settings.simplifyItem) unhide();
@@ -62,13 +64,35 @@
     }
   }
 
+  /**
+   * 商品ページは DOMContentLoaded を待たない。
+   * 商品データのJSON（#item-page-app-data）は body の末尾近くにあり、その直後に
+   * 楽天のReactのバンドルが3本、同期スクリプトとして続く。DOMContentLoaded は
+   * これらの取得と実行が終わるまで来ない（保存したページでも0.3〜0.4秒、実際の通信ではもっと）。
+   * JSONが読み終わった時点で、再構成に要るものはそろっている。
+   * 購入エリアの枠もその前にHTMLで届いており、中身はバンドルが後から描き込む。
+   */
+  function itemDataReady() {
+    const done = () => {
+      const el = document.getElementById('item-page-app-data');
+      // 次の節点が来ていれば、パーサーはJSONを読み終えている
+      return (el && el.nextSibling) || document.readyState !== 'loading';
+    };
+    if (done()) return Promise.resolve();
+    return new Promise((resolve) => {
+      const obs = new MutationObserver(() => {
+        if (!done()) return;
+        obs.disconnect();
+        resolve();
+      });
+      obs.observe(document, { childList: true, subtree: true });
+      AZR.domReady.then(() => { obs.disconnect(); resolve(); });
+    });
+  }
+
   // 全モジュールの register が済んでから実行する
   const start = () => queueMicrotask(() => main().catch((e) => { AZR.warn(e); unhide(); }));
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', start, { once: true });
-  } else {
-    start();
-  }
+  (kind === 'item' ? itemDataReady() : AZR.domReady).then(start);
 
   AZR.onSettingsChanged?.(() => {
     // 設定変更は再読み込みで反映（部分的な巻き戻しは行わない）

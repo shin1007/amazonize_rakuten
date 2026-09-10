@@ -69,6 +69,166 @@ async function couponDetails(key) {
   };
 }
 
+/* 商品ページのフローティングクーポン -------------------------------------------
+ * 元の商品ページで右下に出る「100円OFF … クーポンを獲得する」の枠。
+ * 商品ページのバンドル（item-pc の pc.bundle.js、fetchFloatingCoupon / acquireFloatingCoupon）が
+ * 呼んでいるのと同じAPIを、同じ引数で呼ぶ。どちらもJSONP。
+ *   GET api.coupon.rakuten.co.jp/search?items=["itemId=…&price=…&shopId=…"]&locId=101&options=["incAcqCond=true"]
+ *     → { code, items: [{ coupons: [{ getKey, couponName, discountType, discountFactor, otherConds, acquired, … }] }] }
+ *     未ログインだと { code: 2 } だけが返り、クーポンは出ない。
+ *   GET api.coupon.rakuten.co.jp/acquireCoupon/json?getKey=…&key=<商品ページ用のキー>
+ *     → { code, alreadyAcquired }  code: 1 成功 / 2 未ログイン / 3 期限切れ / 4 配布終了 / 0 失敗 / 9 メンテナンス
+ * 商品ページのオリジンから呼ぶと Cookie の扱いがページ次第になるので、service worker から呼ぶ。
+ *
+ * **このAPIは Referer が商品ページでないと、ログインしていても {"code":2}（未ログイン）を返す。**
+ * Cookie は届いていても駄目だった（実機で Referer の有無だけを変えて確認）。拡張からの fetch には
+ * Referer が付かず、fetch の referrer 指定も別オリジンは効かないので、ヘッダーの書き換え規則で付ける。
+ * 対象はタブに属さない通信（= この service worker からの通信）だけにし、ページの通信には触らない。
+ */
+const REFERER_RULE_ID = 1;
+async function installCouponRefererRule() {
+  try {
+    await chrome.declarativeNetRequest.updateSessionRules({
+      removeRuleIds: [REFERER_RULE_ID],
+      addRules: [{
+        id: REFERER_RULE_ID,
+        priority: 1,
+        action: {
+          type: 'modifyHeaders',
+          requestHeaders: [{ header: 'referer', operation: 'set', value: 'https://item.rakuten.co.jp/' }]
+        },
+        condition: {
+          urlFilter: '||api.coupon.rakuten.co.jp/',
+          tabIds: [chrome.tabs.TAB_ID_NONE],
+          resourceTypes: ['xmlhttprequest']
+        }
+      }]
+    });
+  } catch (e) {
+    console.warn('[AZR] Referer の規則を入れられない:', e);
+  }
+}
+// 規則はブラウザを閉じると消えるので、service worker が起きるたびに入れ直す
+const refererRuleReady = installCouponRefererRule();
+
+const FLOATING_SEARCH = 'https://api.coupon.rakuten.co.jp/search';
+const FLOATING_ACQUIRE = 'https://api.coupon.rakuten.co.jp/acquireCoupon/json';
+const FLOATING_ITEM_PAGE_KEY = 'wIIcsUeYctybYOMyuJn8V040KBPNF5ee'; // 商品ページのバンドルに埋め込まれている ITEM_PAGE_KEY
+const FLOATING_LOC_ID = '101'; // 同じく COUPON_LOC_ID（PCの商品ページ）
+
+/** JSONPの応答 cb({...}) から中身を取り出す */
+async function fetchJsonp(url) {
+  await refererRuleReady;
+  const u = new URL(url);
+  u.searchParams.set('callback', 'azr');
+  const res = await fetch(u.href, { credentials: 'include', cache: 'no-cache' });
+  if (!res.ok) return null;
+  const text = await res.text();
+  const start = text.indexOf('(');
+  const end = text.lastIndexOf(')');
+  if (start < 0 || end <= start) return null;
+  return JSON.parse(text.slice(start + 1, end));
+}
+
+async function floatingCoupons({ itemId, shopId, price, hasSubscription }) {
+  const u = new URL(FLOATING_SEARCH);
+  u.searchParams.set('items', `["itemId=${itemId}&price=${price}&shopId=${shopId}"]`);
+  u.searchParams.set('locId', FLOATING_LOC_ID);
+  u.searchParams.set('options', '["incAcqCond=true"]');
+  // 定期購入の無い商品では、定期購入専用のクーポンを除く（商品ページと同じ）
+  if (!hasSubscription) {
+    u.searchParams.set('otherCondFilters', '[{"typeCode": "RS002","startValue": "1","isExcluded": true}]');
+  }
+  const data = await fetchJsonp(u.href);
+  if (!data) return null;
+  if (Number(data.code) === 2) return { login: true, coupons: [] };
+  const list = Array.isArray(data.items) && Array.isArray(data.items[0]?.coupons) ? data.items[0].coupons : [];
+  return {
+    login: false,
+    coupons: list.filter((c) => c?.getKey).map((c) => {
+      const conds = Array.isArray(c.otherConds) ? c.otherConds : [];
+      const amount = conds.find((o) => o?.otherCondTypeCd === 'RS003' || o?.otherCondTypeCd === 'RS004');
+      const sales = conds.find((o) => o?.otherCondTypeCd === 'RS002')?.startValue;
+      return {
+        getKey: String(c.getKey),
+        name: String(c.couponName || ''),
+        // 1: 円引き / 2: %引き
+        discount: Number(c.discountType) === 1 ? `${Number(c.discountFactor).toLocaleString('ja-JP')}円OFF` : `${c.discountFactor}%OFF`,
+        minSpend: amount?.otherCondTypeCd === 'RS003' ? Number(amount.startValue) || null : null,
+        minUnits: amount?.otherCondTypeCd === 'RS004' ? Number(amount.startValue) || null : null,
+        salesMethod: sales === '0' ? 'normal' : sales === '1' ? 'subscription' : null,
+        endDate: c.couponEndDate || null,
+        acquired: Boolean(c.acquired)
+      };
+    })
+  };
+}
+
+async function acquireFloatingCoupon(getKey) {
+  const u = new URL(FLOATING_ACQUIRE);
+  u.searchParams.set('getKey', getKey);
+  u.searchParams.set('key', FLOATING_ITEM_PAGE_KEY);
+  const data = await fetchJsonp(u.href);
+  const code = Number(data?.code);
+  if (code === 1) return { ok: true, status: data.alreadyAcquired ? 'already' : 'acquired' };
+  if (code === 2) return { ok: false, status: 'login' };
+  if (code === 3) return { ok: false, status: 'rejected', reason: 'COUPON_VALIDITY_PERIOD_OVER' };
+  if (code === 4) return { ok: false, status: 'rejected', reason: 'COUPON_STATUS_FINISHED' };
+  return { ok: false, status: 'error', reason: Number.isFinite(code) ? `CODE_${code}` : '' };
+}
+
+/* 商品とショップの評価 -------------------------------------------------------
+ * 商品ページのJSONにはレビューの件数しか無く（評価点が入らなくなった）、店舗の評価はどこにも無い。
+ * 商品レビューのページは window.__INITIAL_STATE__ に両方を埋め込んでいるので、そこを読む。
+ *   "itemInfo":{"itemId":…,"reviewRatings":{"average":4.32,"totalCount":78479,…}
+ *   "shopInfo":{"reviewRatings":{"average":4.78,"totalCount":127449,…}
+ * 状態全体はJSONとして解析できない形で書かれているので、必要な所だけ切り出す。
+ * 1ページ300KB余りあるので、商品ごとに覚えておく。評価は日単位でしか動かない。
+ */
+const RATINGS_TTL_MS = 12 * 60 * 60 * 1000;
+
+/** 'itemInfo' / 'shopInfo' の reviewRatings。楽天自身が出さないもの（shouldBeDisplayed:false）は null。 */
+function parseRating(html, section) {
+  // reviewRatings がその節の直下にあるものだけを拾う。ページには空の "itemInfo":{} も先に出てくるので、
+  // 単に次の reviewRatings を探すと、後ろの shopInfo の評価を商品の評価と取り違える。
+  const m = new RegExp(`"${section}":\\{[^{}]*"reviewRatings":\\{`).exec(html);
+  if (!m) return undefined;
+  // 評価の分布（distribution）が続くが、そこには average / totalCount の名前は出てこない
+  const s = html.slice(m.index + m[0].length, m.index + m[0].length + 600);
+  if (/"shouldBeDisplayed":false/.test(s)) return null;
+  const avg = Number(s.match(/"average":([\d.]+)/)?.[1]);
+  const count = Number(s.match(/"totalCount":(\d+)/)?.[1]);
+  if (!Number.isFinite(avg) || avg <= 0) return null;
+  return { score: Math.round(avg * 100) / 100, count: Number.isFinite(count) ? count : null };
+}
+
+/** 商品IDが無ければショップレビューのページで店舗の評価だけ取る */
+async function reviewRatings(shopId, itemId) {
+  const key = itemId ? `${shopId}_${itemId}` : `${shopId}_${shopId}`;
+  const { azrRatings: cache = {} } = await chrome.storage.local.get('azrRatings');
+  const now = Date.now();
+  const hit = cache[key];
+  if (hit && now - hit.at < RATINGS_TTL_MS) return hit.ratings;
+
+  const url = itemId
+    ? `https://review.rakuten.co.jp/item/1/${key}/1.1/`
+    : `https://review.rakuten.co.jp/shop/4/${key}/1.1/`;
+  const res = await fetch(url, { credentials: 'omit' });
+  if (!res.ok) return null;
+  const html = await res.text();
+  const item = itemId ? parseRating(html, 'itemInfo') : null;
+  const shop = parseRating(html, 'shopInfo');
+  // どちらも見つからない = ページの形が変わった。覚えずに次も読みに行く。
+  if (item === undefined && shop === undefined) return null;
+  const ratings = { item: item ?? null, shop: shop ?? null };
+
+  // 期限切れはここで捨てる（見た商品の数だけ溜まり続けないように）
+  for (const [k, v] of Object.entries(cache)) if (now - v.at >= RATINGS_TTL_MS) delete cache[k];
+  cache[key] = { at: now, ratings };
+  await chrome.storage.local.set({ azrRatings: cache });
+  return ratings;
+}
+
 /* APIが使えない場合の保険。
  * 裏のタブで本物の獲得ページを開き、結果を受け取ってから閉じる。 */
 const couponWaiters = new Map(); // tabId -> (result) => void
@@ -120,13 +280,14 @@ function grabByTab(url) {
  */
 async function grabCoupon(url) {
   const key = couponGetKey(url);
-  if (key) {
-    try {
-      const viaApi = await acquireByApi(key);
-      if (viaApi && viaApi.status !== 'login') return viaApi;
-    } catch (e) {
-      console.warn('[AZR] 獲得APIが使えないのでタブで開きます:', e);
-    }
+  // getkey の無いページは獲得ページではない。タブで開くと、クーポンのページを「離れた」ことを
+  // 獲得できた印と読むため、何も獲得していないのに成功と返してしまう。
+  if (!key) return { ok: false, status: 'error' };
+  try {
+    const viaApi = await acquireByApi(key);
+    if (viaApi && viaApi.status !== 'login') return viaApi;
+  } catch (e) {
+    console.warn('[AZR] 獲得APIが使えないのでタブで開きます:', e);
   }
   return grabByTab(url);
 }
@@ -341,6 +502,46 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       return false;
     }
     couponDetails(key).then(sendResponse).catch(() => sendResponse(null));
+    return true; // 非同期応答
+  }
+
+  // 商品ページから: フローティングクーポン（元のページで右下に出る枠）の一覧
+  if (msg?.type === 'azr:floatingCoupons') {
+    const itemId = String(msg.itemId || '');
+    const shopId = String(msg.shopId || '');
+    const price = Number(msg.price);
+    if (!/^\d+$/.test(itemId) || !/^\d+$/.test(shopId) || !(price > 0)) {
+      sendResponse(null);
+      return false;
+    }
+    floatingCoupons({ itemId, shopId, price: Math.round(price), hasSubscription: Boolean(msg.hasSubscription) })
+      .then(sendResponse)
+      .catch((e) => { console.warn('[AZR] フローティングクーポンを取れない:', e); sendResponse(null); });
+    return true; // 非同期応答
+  }
+
+  // 商品ページから: フローティングクーポンの獲得
+  if (msg?.type === 'azr:grabFloatingCoupon') {
+    const getKey = String(msg.getKey || '');
+    if (!/^[A-Za-z0-9_=-]+$/.test(getKey)) {
+      sendResponse({ ok: false, status: 'error' });
+      return false;
+    }
+    acquireFloatingCoupon(getKey)
+      .then(sendResponse)
+      .catch((e) => sendResponse({ ok: false, status: 'error', error: String(e) }));
+    return true; // 非同期応答
+  }
+
+  // 商品ページから: 商品とショップの評価
+  if (msg?.type === 'azr:reviewRatings') {
+    const shopId = String(msg.shopId || '');
+    const itemId = msg.itemId ? String(msg.itemId) : '';
+    if (!/^\d+$/.test(shopId) || (itemId && !/^\d+$/.test(itemId))) {
+      sendResponse(null);
+      return false;
+    }
+    reviewRatings(shopId, itemId).then(sendResponse).catch(() => sendResponse(null));
     return true; // 非同期応答
   }
 

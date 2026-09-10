@@ -6,7 +6,6 @@ const DEFAULTS = {
   simplifySearch: true,
   cartTotal: true,
   couponList: true,
-  couponAutoGrab: false,
   couponAutoApply: true,
   couponAutoApplyConfirm: false,
   campaignEntry: true,

@@ -111,6 +111,12 @@
 
   const yen = (n) => (Number.isFinite(n) ? `${Math.round(n).toLocaleString('ja-JP')}円` : '—');
 
+  /** DOMContentLoaded。ページの同期スクリプトがすべて走り終わった時点。 */
+  const domReady = new Promise((resolve) => {
+    if (document.readyState !== 'loading') resolve();
+    else document.addEventListener('DOMContentLoaded', () => resolve(), { once: true });
+  });
+
   /** 同じidのパネルを重複挿入しない */
   function mountOnce(id, build, parent = document.body) {
     if (!parent) return null;
@@ -198,7 +204,7 @@
   }
 
   Object.assign(AZR, {
-    pick, pickAll, waitFor, waitSettled, h, parseYen, yen, mountOnce, pageKind,
+    pick, pickAll, waitFor, waitSettled, domReady, h, parseYen, yen, mountOnce, pageKind,
     onState, waitForState, onRouteChange
   });
 })();

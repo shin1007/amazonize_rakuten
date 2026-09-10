@@ -3,7 +3,8 @@
 /* 再構成が終わるまでのちらつきを防ぐ。boot.js が必ず解除する */
 html.azr-preload body { visibility: hidden !important; }
 
-html.azr-simplified body > *:not(#azr-item-root) { display: none !important; }
+/* 楽天市場の共通ヘッダー（.azr-header）は残す。item.js の mountHeader を参照 */
+html.azr-simplified body > *:not(#azr-item-root):not(.azr-header) { display: none !important; }
 html.azr-simplified body {
   visibility: visible !important;
   background: #fff !important;
@@ -13,9 +14,9 @@ html.azr-simplified body {
 .azr-item-root {
   font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, system-ui, sans-serif;
   color: #0f1111;
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: 16px 20px 64px;
+  /* Amazon と同じく画面幅いっぱいに使う（左右に大きな余白を残さない） */
+  margin: 0;
+  padding: 16px 24px 64px;
   font-size: 14px;
   line-height: 1.6;
   /* 店舗CSSの中央寄せなどを持ち込ませない */
@@ -35,22 +36,34 @@ html.azr-simplified body {
   margin-bottom: 16px;
   border-bottom: 1px solid #e7e7e7;
 }
-.azr-brand { font-weight: 700; color: #565959; letter-spacing: .02em; }
-.azr-toggle {
+/* 共通ヘッダーの左端に「Amazonized」を並べる */
+.azr-header { display: flex !important; align-items: center; background: #fff; }
+.azr-header > :not(.azr-brand) { flex: 1 1 auto; min-width: 0; }
+.azr-brand {
   appearance: none;
-  border: 1px solid #d5d9d9;
-  background: #fff;
-  border-radius: 8px;
-  padding: 6px 10px;
+  flex: none;
+  margin: 0 0 0 16px;
+  padding: 2px 2px 3px;
+  border: 0;
+  border-bottom: 2px solid #ff9900;
+  background: none;
   cursor: pointer;
-  font-size: 12px;
+  font: 700 15px/1.2 "Amazon Ember", Arial, "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+  color: #565959;
+  letter-spacing: .01em;
+  white-space: nowrap;
 }
+.azr-brand > span { color: #0f1111; }
+.azr-brand:hover { color: #c7511f; }
+/* 元のページを見ているあいだは控えめに */
+html:not(.azr-simplified) .azr-brand { opacity: .55; border-bottom-color: #d5d9d9; }
 
 .azr-grid {
   display: grid;
   /* 右の購入ボックスは絞って、真ん中の商品情報に幅を回す。
-     移設した楽天のカートフォームは .azr-buybox-slot 側で枠に合わせて畳む。 */
-  grid-template-columns: minmax(260px, 380px) minmax(0, 1fr) 320px;
+     移設した楽天のカートフォームは .azr-buybox-slot 側で枠に合わせて畳む。
+     両脇は上限まで先に広がり、残りが真ん中へ回る。狭い画面では真ん中が細りすぎないよう、両脇も幅の割合で縮める。 */
+  grid-template-columns: min(420px, 30%) minmax(0, 1fr) min(340px, 28%);
   gap: 24px;
   align-items: start;
 }
@@ -67,9 +80,15 @@ html.azr-simplified body {
     position: sticky;
     top: 16px;
     align-self: start;
+    /* 商品説明の画像まで並べると40枚を超えるので、画面の高さに収めてサムネイル側をスクロールさせる */
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 32px);
   }
+  .azr-gallery .azr-thumbs { flex: 0 1 auto; min-height: 60px; overflow-y: auto; }
 }
 .azr-gallery-main {
+  display: block;
   width: 100%;
   aspect-ratio: 1 / 1;
   object-fit: contain;
@@ -77,7 +96,18 @@ html.azr-simplified body {
   border: 1px solid #eee;
   border-radius: 8px;
 }
-.azr-thumbs { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+/* 縦長の説明画像は、縮めて細い帯にするより上端から見せる */
+.azr-gallery-main.is-tall { object-fit: cover; object-position: top; }
+.azr-thumbs {
+  position: relative; /* 選んだサムネイルを見える位置へ送るときの基準 */
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 3px; /* 選択中の枠の影が切れないように */
+  flex-wrap: wrap;
+  align-content: flex-start;
+}
+.azr-thumbs[hidden] { display: none; }
 .azr-thumb {
   width: 52px;
   height: 52px;
@@ -87,13 +117,118 @@ html.azr-simplified body {
   cursor: pointer;
   background: #fff;
 }
+.azr-thumb.is-tall { object-fit: cover; object-position: top; }
 .azr-thumb.is-active { border-color: #e77600; box-shadow: 0 0 0 2px rgba(228, 121, 17, .35); }
+/* 動画のサムネイルは静止画に再生マークを重ねる */
+.azr-thumb.is-video { position: relative; display: block; overflow: hidden; background: #000; }
+.azr-thumb.is-video img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.azr-thumb.is-video::after,
+.azr-lb-stage.is-video::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 22px;
+  height: 22px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: rgba(15, 17, 17, .72) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M3.5 2.2v5.6L8 5z' fill='%23fff'/%3E%3C/svg%3E") center / 60% no-repeat;
+  pointer-events: none;
+}
+
+/* 動画の枠。画像の枠と同じ正方形に、楽天のプレーヤーを縦横比のまま横いっぱいで入れる */
+.azr-gallery-video {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  box-sizing: border-box;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.azr-gallery-video[hidden], .azr-gallery-frame[hidden] { display: none; }
+.azr-gallery-video > [class*="item-pc-movie-"] { width: 100%; max-height: 100%; }
+/* プレーヤーは幅と高さを px で持っている（動画スクリプトの w/h の指定） */
+.azr-gallery-video .video-player {
+  width: 100% !important;
+  height: auto !important;
+  max-height: 100% !important;
+  aspect-ratio: var(--azr-video-ratio, 16 / 9);
+}
+.azr-gallery-video-still { width: 100%; height: 100%; object-fit: contain; }
+.azr-gallery-video-status {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(15, 17, 17, .68);
+  color: #fff;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* 右ペイン: ショップ欄の下に購入ボックス */
+.azr-side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+
+/* ショップ欄（右ペインの一番上）: アイコン | ロゴ（読めなければ店舗名）/ 評価 */
+.azr-shop-card {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  column-gap: 12px;
+  row-gap: 6px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid #e7e7e7;
+  border-radius: 8px;
+  background: #fff;
+}
+.azr-shop-card.no-icon { grid-template-columns: minmax(0, 1fr); }
+.azr-shop-card.no-icon .azr-shop-icon-link { display: none; }
+.azr-shop-icon-link { grid-row: span 2; display: block; }
+.azr-shop-icon {
+  display: block;
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  background: #fff;
+}
+.azr-shop-card-main { display: block; min-width: 0; color: #007185; text-decoration: none; }
+.azr-shop-card-main:hover .azr-shop-card-name { text-decoration: underline; color: #c7511f; }
+/* 横長のロゴ（6:1）。枠の幅いっぱいだと大きすぎるので高さで抑える */
+.azr-shop-logo { display: block; max-width: 100%; height: 36px; width: auto; object-fit: contain; object-position: left center; }
+.azr-shop-card-name { display: block; font-size: 13px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.azr-shop-card-name[hidden], .azr-shop-rating[hidden] { display: none; }
+.azr-shop-rating {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 12px;
+  color: #007185;
+  text-decoration: none;
+}
+.azr-shop-rating-label { color: #565959; }.azr-shop-rating .azr-stars { font-size: 13px; }
+.azr-shop-rating:hover .azr-count { text-decoration: underline; color: #c7511f; }
+
+/* ギャラリーへ移すか判定中の説明画像。判定が済むまで場所を取らせない */
+.azr-detail-body img.azr-desc-pending { display: none !important; }
+.azr-detail[hidden] { display: none; }
 
 /* 拡大用のクリック領域。buttonの見た目は消して、中の画像だけ見せる。 */
 .azr-gallery-frame {
   appearance: none;
   display: block;
   position: relative;
+  flex: none;
   width: 100%;
   padding: 0;
   border: 0;
@@ -152,6 +287,16 @@ html.azr-lb-open body { overflow: hidden !important; }
   transition: transform .15s ease;
 }
 .azr-lb-img.is-zoomed { transform: scale(2.2); cursor: zoom-out; }
+/* 縦長の説明画像は幅に合わせて原寸で出し、縦にスクロールして読ませる */
+.azr-lb-stage.is-tall { align-items: flex-start; cursor: default; }
+.azr-lb-img.is-tall { max-height: none; width: min(100%, 800px); cursor: default; }
+/* 動画は静止画に大きな再生マークを重ねる。押すと閉じてギャラリーの動画に戻る */
+.azr-lb-stage.is-video { position: relative; cursor: pointer; }
+.azr-lb-stage.is-video .azr-lb-img { cursor: pointer; }
+.azr-lb-stage.is-video::after { width: 84px; height: 84px; }
+/* 1枚しかないときは前後ボタンと枚数を出さない */
+.azr-lightbox.is-single .azr-lb-nav,
+.azr-lightbox.is-single .azr-lb-counter { display: none; }
 .azr-lb-nav, .azr-lb-close {
   appearance: none;
   border: 0;
@@ -242,8 +387,10 @@ html.azr-lb-open body { overflow: hidden !important; }
 /* クーポン（価格の直下）。店舗のバナーは画像だけのことが多いので、
    文言・現物のバナー・獲得への導線を1行にまとめる。 */
 .azr-item-coupons { margin-top: 12px; }
-.azr-item-coupons ul { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 6px; }
-.azr-item-coupons li { margin: 0; }
+/* 列は minmax(0,1fr) にする。既定の auto だと、1行に詰めた長い文言の分だけ列が広がり、
+   行が中央ペインの外へはみ出す（省略記号が効かない） */
+.azr-item-coupons ul { list-style: none; margin: 6px 0 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
+.azr-item-coupons li { margin: 0; min-width: 0; }
 .azr-coupon-link {
   display: flex;
   align-items: center;
@@ -257,6 +404,8 @@ html.azr-lb-open body { overflow: hidden !important; }
   text-decoration: none;
 }
 a.azr-coupon-link:hover { background: #ffeccd; border-color: #e3b871; }
+/* フローティングクーポンの行はリンク先が無い（href無しの a）。押せることが分かるようにする */
+a.azr-coupon-link[role="button"] { cursor: pointer; }
 .azr-coupon-badge {
   flex: none;
   background: #cc0c39;
@@ -309,18 +458,31 @@ a.azr-coupon-link[data-azr-grab="failed"] .azr-coupon-get { color: #b12704; }
 .azr-buybox-price { font-size: 22px; color: #b12704; }
 .azr-buybox-points { color: #bf0000; font-size: 12px; margin-top: 2px; }
 .azr-buybox-slot { margin-top: 12px; }
+.azr-buybox-loading { color: #565959; font-size: 13px; padding: 8px 0; }
 /* 移設した楽天のカートフォームを枠に収める。
    楽天側は幅を px で固定してくるので、狭い枠に合わせて流動化する。
    はみ出しを横スクロールで逃がすとボタンが枠外に隠れてしまうため、
    スクロールさせるのではなく中身を縮めて折り返す方針にする。 */
 .azr-buybox-slot, .azr-buybox-slot * { box-sizing: border-box; max-width: 100% !important; }
+/* 楽天側は購入エリアの段に下限を付けてくる（.normal-reserve-skuSelectionArea / -optionArea に
+   min-width:400px）。max-width より min-width が勝つので、下限も外さないと枠の外へはみ出す。 */
+.azr-buybox-slot table,
+.azr-buybox-slot tbody,
+.azr-buybox-slot tr,
+.azr-buybox-slot td,
+.azr-buybox-slot [class*="normal-reserve-"] { min-width: 0 !important; }
 .azr-buybox-slot img { height: auto; }
-.azr-buybox-slot table { width: 100%; table-layout: fixed; }
+.azr-buybox-slot table { width: 100% !important; table-layout: fixed; }
+/* 表のセルには max-width が効かない。楽天は td に px 幅（お気に入り欄に width:380px）や
+   nowrap を付けてくるので、幅は表に任せて中身は折り返させる */
+.azr-buybox-slot td, .azr-buybox-slot th { width: auto !important; white-space: normal; }
 /* 数量欄・プルダウンは枠いっぱいに */
 .azr-buybox-slot select,
 .azr-buybox-slot input[type="text"],
 .azr-buybox-slot input[type="number"] { width: 100%; min-width: 0; }
-/* 「買い物かごに入れる」等のボタンは1行に収まらなければ折り返して縦に伸ばす */
+/* ボタンは1行に収まらなければ折り返す。
+   高さには触らない。楽天の部品は高さを px で決めて上下の余白を 0 にしている
+   （.size-m は height:48px; padding:0 17px）ので、height:auto にすると文字の高さまで潰れる。 */
 .azr-buybox-slot button,
 .azr-buybox-slot input[type="submit"],
 .azr-buybox-slot input[type="button"],
@@ -329,10 +491,47 @@ a.azr-coupon-link[data-azr-grab="failed"] .azr-coupon-get { color: #b12704; }
 .azr-buybox-slot [class*="Button"] {
   width: 100% !important;
   min-width: 0 !important;
-  height: auto !important;
   white-space: normal;
   overflow-wrap: anywhere;
 }
+
+/* 購入ボタン（かごに追加・購入手続きへ）。
+   楽天は 200px 幅の枠を横に2つ並べる作りで、狭い枠では潰れて読めなくなる。
+   Amazon と同じく枠いっぱいのボタンを縦に積み、カート＝黄・購入＝橙で塗り分ける。 */
+.azr-buybox-slot #AddToCartPurchaseButtonFixed > div {
+  display: flex !important;
+  flex-direction: column;
+  flex-wrap: nowrap !important;
+  gap: 10px;
+}
+/* 並べる枠は style="width:200px" で固定されているので !important で外す */
+.azr-buybox-slot #AddToCartPurchaseButtonFixed > div > div { width: 100% !important; }
+.azr-buybox-slot #AddToCartPurchaseButtonFixed [class*="padding-right-"] { padding-right: 0 !important; }
+.azr-buybox-slot button[class*="type-primary"] {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  height: auto !important;
+  min-height: 44px;
+  padding: 10px 16px !important;
+  border: 1px solid #fcd200 !important;
+  border-radius: 999px !important;
+  background: #ffd814 !important;
+  color: #0f1111 !important;
+  box-shadow: 0 2px 5px rgba(213, 217, 217, .5);
+  font-size: 15px !important;
+  font-weight: 500;
+  line-height: 1.3 !important;
+  cursor: pointer;
+}
+.azr-buybox-slot button[class*="type-primary"]:hover { background: #f7ca00 !important; border-color: #f2c200 !important; }
+.azr-buybox-slot button[class*="type-primary"][aria-label*="購入"] { background: #ffa41c !important; border-color: #ff8f00 !important; }
+.azr-buybox-slot button[class*="type-primary"][aria-label*="購入"]:hover { background: #fa8900 !important; border-color: #e3931e !important; }
+.azr-buybox-slot button[class*="type-primary"]:disabled,
+.azr-buybox-slot button[class*="type-primary"][aria-disabled="true"] { opacity: .5; cursor: default; }
+/* 白抜きのアイコンは黄・橙の上では見えないので出さない（Amazon のボタンも文字だけ） */
+.azr-buybox-slot button[class*="type-primary"] [class*="icon-container"] { display: none !important; }
+.azr-buybox-slot button[class*="type-primary"] [class*="text--"] { color: inherit !important; font: inherit !important; margin: 0 !important; }
 /* 横並びの行（数量＋ボタンなど）は詰まったら折り返させる */
 .azr-buybox-slot [class*="flex"] { flex-wrap: wrap; }
 .azr-buybox-slot > * { min-width: 0; }
@@ -350,10 +549,13 @@ a.azr-coupon-link[data-azr-grab="failed"] .azr-coupon-get { color: #b12704; }
 .azr-info { min-width: 0; }
 .azr-detail { margin-top: 20px; border-top: 1px solid #e7e7e7; padding-top: 16px; }
 .azr-h2 { font-size: 18px; margin: 0 0 12px; }
-/* 店舗HTMLは固定幅のtable/imgを含むことが多いので、はみ出しは横スクロールで受ける */
-.azr-detail-body { max-width: 100%; overflow-x: auto; }
-.azr-detail-body img { max-width: 100%; height: auto; }
-.azr-detail-body table { max-width: 100%; }
+/* 店舗HTMLは固定幅（style="width:640px" や <table width="500">）で書かれていることが多い。
+   以前は横スクロールで受けていたが、中央ペインにスクロールバーが出てしまう
+   （overflow-x:auto は縦にもスクロール枠を作るので、数pxのはみ出しで縦のバーまで出ていた）。
+   枠の幅へ縮めて収め、それでも残る端数は clip で切る（clip はスクロール枠を作らない）。 */
+.azr-detail-body { max-width: 100%; overflow-x: clip; overflow-wrap: anywhere; }
+.azr-detail-body * { max-width: 100% !important; box-sizing: border-box; }
+.azr-detail-body img { height: auto; }
 
 .azr-topbar-links { display: flex; align-items: center; gap: 14px; }
 .azr-topbar-links a { color: #007185; text-decoration: none; font-size: 12px; }

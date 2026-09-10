@@ -5,8 +5,7 @@
     simplifyItem: true,       // 商品ページをAmazon風に再構成
     simplifySearch: true,     // 検索結果を整理
     cartTotal: true,          // カゴの合計金額パネル
-    couponList: true,         // クーポン一覧パネル
-    couponAutoGrab: false,    // クーポン自動取得（既定OFF: 明示操作を要求）
+    couponList: true,         // 商品ページにクーポンを並べる（その場で獲得できる）
     couponAutoApply: true,    // 購入手続きで最良クーポンを自動適用
     couponAutoApplyConfirm: false, // 自動適用の前に確認する（既定は確認なしで最良に切り替える）
     campaignEntry: true,          // キャンペーンページにエントリーパネルを出す
