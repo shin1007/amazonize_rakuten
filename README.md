@@ -55,7 +55,25 @@ src/content/top.js         トップページからキャンペーンのリン�
 src/content/campaign.js    キャンペーンの判定とエントリー
 src/background/            service worker（タブ操作・session storage）
 src/popup/                 設定UI
+tools/harness.mjs          保存したページで拡張を動かす検証用ハーネス（下記）
 ```
+
+### 保存したページで試す
+
+楽天のページを毎回取りに行くと遅く、中身も日々変わる。`tools/harness.mjs` は実ページを通信ごとHARに保存し、以後はそれを再生して拡張を当てる（ページ側のReactも保存したJSがそのまま動く）。1ページ数秒で回る。
+
+```
+node tools/harness.mjs record https://item.rakuten.co.jp/<店>/<商品>/   # fixtures/ に保存
+node tools/harness.mjs run                                            # 全部に拡張を当てる
+```
+
+`tools/out/` にスクリーンショットと結果のJSONが出る。商品ページでは「ギャラリーへ移した / 重複で消した / 説明に残した（理由つき）」画像が一覧で出る。
+
+- playwright はリポジトリに入れていない。`PLAYWRIGHT_DIR`（既定は `~/.claude/tools/browser`）から読む。
+- `fixtures/` と `tools/out/` は `.gitignore` 済み。画像込みで1ページ30〜45MBある。
+- **ログインした状態では record しない。** HARにはクッキーやページの中身がそのまま入る。かご・注文確認は対象外。
+- Playwright のHARはそのままでは再生できなかったので、保存時に2点直している。途中で打ち切られた通信（status -1）は再生すると応答が来ないまま止まり、DOMContentLoaded に届かない。本文は文字列で保存されて UTF-8 で送り返されるので、EUC-JP のままの charset では全体が文字化けする。
+- 保存に無い通信（拡張が足した画像の縮小版など）は本物へ取りに行く。完全なオフラインではない。
 
 ### 設計方針
 
