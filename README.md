@@ -56,6 +56,8 @@ src/content/campaign.js    キャンペーンの判定とエントリー
 src/background/            service worker（タブ操作・session storage）
 src/popup/                 設定UI
 tools/harness.mjs          保存したページで拡張を動かす検証用ハーネス（下記）
+tools/store-images.mjs     Chrome ウェブストアに載せる画像を作る（store/images/ に出る）
+store/listing.md           Chrome ウェブストアの掲載文・権限の説明・審査で気をつけること
 ```
 
 ### 保存したページで試す
