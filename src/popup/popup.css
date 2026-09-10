@@ -60,3 +60,46 @@ button.primary {
 
 footer { border-top: 1px solid #eaeded; margin-top: 12px; padding-top: 8px; }
 .note { color: #565959; font-size: 11px; margin: 4px 0 0; }
+
+/* キャンペーンの一覧。件数が増えるので、枠内で送れるようにする */
+.campaigns { margin-top: 8px; }
+.campaigns > summary { cursor: pointer; color: #007185; font-size: 12px; }
+
+button:not(.primary) {
+  margin-top: 6px;
+  appearance: none;
+  border: 1px solid #d5d9d9;
+  border-radius: 6px;
+  background: #fff;
+  padding: 5px 8px;
+  cursor: pointer;
+}
+
+.campaign-list {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  max-height: 220px;
+  overflow: auto;
+  font-size: 12px;
+}
+.campaign {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 0;
+  border-top: 1px dotted #eaeded;
+}
+.campaign a {
+  color: #0f1111;
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.campaign a:hover { text-decoration: underline; }
+.campaign-state { white-space: nowrap; color: #565959; }
+.campaign.is-entered .campaign-state { color: #007600; font-weight: 700; }
+.campaign.is-already .campaign-state { color: #007600; }
+.campaign.is-entry .campaign-state { color: #b12704; }
+.campaign .empty, .campaign-list .empty { color: #565959; }

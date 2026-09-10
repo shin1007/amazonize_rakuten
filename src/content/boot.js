@@ -24,6 +24,19 @@
   }
   AZR.unhide = unhide;
 
+  async function runModules(currentKind) {
+    root.dataset.azrPage = currentKind;
+    AZR.log('run', currentKind);
+    for (const m of modules) {
+      if (!m.kinds.includes(currentKind)) continue;
+      try {
+        await m.run();
+      } catch (e) {
+        AZR.warn(`module "${m.name}" failed:`, e);
+      }
+    }
+  }
+
   async function main() {
     await AZR.loadSettings();
     root.dataset.azrPage = kind;
@@ -32,15 +45,21 @@
 
     AZR.log('boot', kind, AZR.settings);
 
-    for (const m of modules) {
-      if (!m.kinds.includes(kind)) continue;
-      try {
-        await m.run();
-      } catch (e) {
-        AZR.warn(`module "${m.name}" failed:`, e);
-      }
-    }
+    await runModules(kind);
     unhide();
+
+    // かご→購入手続きはSPA内の経路変更で、ページは読み込み直されない。
+    // 種別が変わったら自分のパネルを片付けて、その画面のモジュールを動かし直す。
+    if (location.host === 'cart.step.rakuten.co.jp') {
+      let lastKind = kind;
+      AZR.onRouteChange(() => {
+        const next = AZR.pageKind();
+        if (next === lastKind) return;
+        lastKind = next;
+        for (const p of document.querySelectorAll('.azr-panel')) p.remove();
+        runModules(next);
+      });
+    }
   }
 
   // 全モジュールの register が済んでから実行する

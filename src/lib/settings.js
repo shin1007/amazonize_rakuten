@@ -10,7 +10,8 @@
     couponAutoApply: true,    // 購入手続きで最良クーポンを自動適用
     couponAutoApplyConfirm: true, // 自動適用の前に確認する
     campaignEntry: true,          // キャンペーンページにエントリーパネルを出す
-    campaignAutoEntry: false,     // 開いただけで自動エントリー（既定OFF）
+    campaignAutoEntry: false,
+    campaignScanEntry: true,      // 一括スキャンで見つけたものをエントリーする
     campaignUrls: [               // ポップアップの一括エントリー対象（編集可）
       'https://event.rakuten.co.jp/card/pointday/',
       'https://event.rakuten.co.jp/campaign/sports/',

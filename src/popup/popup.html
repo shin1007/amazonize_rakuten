@@ -33,10 +33,22 @@
     <h2>キャンペーン</h2>
     <label><input type="checkbox" data-key="campaignEntry"> エントリーパネルを表示</label>
     <label><input type="checkbox" data-key="campaignAutoEntry"> 開いたページで自動エントリー</label>
-    <textarea id="campaignUrls" rows="4" spellcheck="false"
-      placeholder="https://event.rakuten.co.jp/campaign/&#10;1行に1URL"></textarea>
-    <button id="batchEntry" class="primary">一括エントリーを実行</button>
-    <p class="status" id="status"></p>
+    <label><input type="checkbox" data-key="campaignScanEntry"> 見つけたらエントリーまでする</label>
+    <button id="scanCampaigns" class="primary">トップから探してエントリー</button>
+    <p class="status" id="scanStatus"></p>
+
+    <details class="campaigns">
+      <summary>エントリー済み一覧 <span id="enteredCount"></span></summary>
+      <ul id="campaignList" class="campaign-list"></ul>
+    </details>
+
+    <details class="campaigns">
+      <summary>URLを指定して実行</summary>
+      <textarea id="campaignUrls" rows="4" spellcheck="false"
+        placeholder="https://event.rakuten.co.jp/campaign/&#10;1行に1URL"></textarea>
+      <button id="batchEntry">この一覧でエントリー</button>
+      <p class="status" id="status"></p>
+    </details>
   </section>
 
   <footer>

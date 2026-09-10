@@ -17,8 +17,11 @@
   "content_scripts": [
     {
       "matches": [
+        "https://www.rakuten.co.jp/*",
         "https://item.rakuten.co.jp/*",
         "https://search.rakuten.co.jp/*",
+        "https://cart.step.rakuten.co.jp/*",
+        "https://*.basket.step.rakuten.co.jp/*",
         "https://basket.step.rakuten.co.jp/*",
         "https://step.item.rakuten.co.jp/*",
         "https://order.step.rakuten.co.jp/*",
@@ -30,6 +33,7 @@
         "src/lib/dom.js",
         "src/lib/coupon-model.js",
         "src/content/boot.js",
+        "src/content/top.js",
         "src/content/item.js",
         "src/content/search.js",
         "src/content/cart.js",
@@ -43,6 +47,15 @@
         "src/styles/cart.css"
       ],
       "run_at": "document_start",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://cart.step.rakuten.co.jp/*"
+      ],
+      "js": ["src/content/state-bridge.js"],
+      "run_at": "document_start",
+      "world": "MAIN",
       "all_frames": false
     }
   ]

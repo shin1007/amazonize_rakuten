@@ -81,9 +81,71 @@
     return panel;
   }
 
+  /* 一括スキャンで裏から開かれたとき ---------------------------------------- */
+
+  /** ページの見出し。一覧に出すので、キャンペーン名らしいものを選ぶ。 */
+  function pageTitle() {
+    const h1 = document.querySelector('h1')?.textContent?.replace(/\s+/g, ' ').trim();
+    const title = document.title.replace(/\s*[|｜]\s*楽天市場.*$/, '').replace(/\s+/g, ' ').trim();
+    const name = (h1 && h1.length <= 60 ? h1 : title).slice(0, 60);
+    // 計測用のクエリを落とすと開けなくなるページがあり、そのままだとエラーページの
+    // 見出しが名前になってしまう。一覧で見分けが付かないのでURLを使う。
+    if (!name || /^\d{3}\s|Bad Request|Not Found|Forbidden/i.test(name)) {
+      return location.pathname.replace(/^\/|\/$/g, '') || location.host;
+    }
+    return name;
+  }
+
+  /**
+   * このページの状態を返す。
+   *   entry   … 未エントリーのボタンがある
+   *   already … エントリー済みの表示がある
+   *   none    … そもそもエントリーするものが無い（ただの特集ページ）
+   */
+  function pageStatus() {
+    if (findEntryButtons().length) return 'entry';
+    if (alreadyEntered()) return 'already';
+    return 'none';
+  }
+
+  /** 裏タブとしての仕事。エントリーして、結果を確かめてから返す。 */
+  async function reportForScan(task) {
+    await waitSettled({ quiet: 700, timeout: 9000 });
+
+    let status = pageStatus();
+    let entered = false;
+
+    if (status === 'entry' && task.entry) {
+      const buttons = findEntryButtons();
+      await entryAll(buttons);
+      // 押しただけで「エントリーした」と言わない。表示が変わるのを確かめる。
+      await sleep(2000);
+      const after = pageStatus();
+      entered = after === 'already';
+      status = entered ? 'entered' : after;
+    }
+
+    AZR.log('スキャン結果', { status, entered });
+    try {
+      await chrome.runtime.sendMessage({
+        type: 'azr:campaignResult', status, entered, title: pageTitle()
+      });
+    } catch (e) {
+      AZR.warn('結果の返信に失敗:', e);
+    }
+  }
+
   AZR.register('campaign', 'campaign-entry', async () => {
-    if (!AZR.settings.campaignEntry) return;
     if (!/(^|\.)event\.rakuten\.co\.jp$/.test(location.host)) return;
+
+    // 一括スキャンで開かれたタブは、パネルを出さずに結果だけ返して閉じてもらう
+    let task = null;
+    try {
+      task = await chrome.runtime.sendMessage({ type: 'azr:scanTask' });
+    } catch { /* service worker が落ちている */ }
+    if (task?.task === 'campaign') return reportForScan(task);
+
+    if (!AZR.settings.campaignEntry) return;
 
     await waitSettled({ quiet: 700, timeout: 9000 });
     const buttons = findEntryButtons();

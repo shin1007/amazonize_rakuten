@@ -123,17 +123,82 @@
     return el;
   }
 
-  /** 現在のページ種別 */
+  /**
+   * 現在のページ種別。
+   *
+   * かごと購入手続きは cart.step.rakuten.co.jp の単一SPAで、画面はパスで分かれる
+   * （/cart → /shipping-address → /order-confirmation）。ページ遷移は起きないので、
+   * 種別はそのつど location から判定し直す（boot.js が経路変更を見張っている）。
+   */
   function pageKind() {
     const { host, pathname } = location;
+    if (host === 'www.rakuten.co.jp') return 'top';
     if (host === 'item.rakuten.co.jp') return 'item';
     if (host === 'search.rakuten.co.jp') return 'search';
-    if (host === 'basket.step.rakuten.co.jp') return 'cart';
+    if (host === 'cart.step.rakuten.co.jp') {
+      if (pathname.startsWith('/order-confirmation')) return 'checkout';
+      if (pathname === '/' || pathname.startsWith('/cart')) return 'cart';
+      return 'other'; // 住所・支払い方法の入力途中には手を出さない
+    }
+    // 旧URL。いまは cart.step.rakuten.co.jp/cart へ転送される
+    if (/(^|\.)basket\.step\.rakuten\.co\.jp$/.test(host)) return 'cart';
     if (host === 'step.item.rakuten.co.jp' || host === 'order.step.rakuten.co.jp') return 'checkout';
-    if (host === 'coupon.rakuten.co.jp' || /coupon/i.test(pathname)) return 'coupon';
+    // event ドメインを先に見る。キャンペーンページのURLには
+    // .../itemcoupon/ のように coupon を含むものがあり、
+    // パスだけで判定するとクーポンページ扱いになってキャンペーンの処理が動かない。
     if (host === 'event.rakuten.co.jp') return 'campaign';
+    if (host === 'coupon.rakuten.co.jp' || /coupon/i.test(pathname)) return 'coupon';
     return 'other';
   }
 
-  Object.assign(AZR, { pick, pickAll, waitFor, waitSettled, h, parseYen, yen, mountOnce, pageKind });
+  /* かご/会計SPAの状態受け取り ------------------------------------------------
+   * state-bridge.js（MAINワールド）が postMessage で流してくる。
+   * 中身は金額・ポイント・クーポンだけ。個人情報は向こうで落としてある。 */
+
+  let latestState = null;
+  const stateListeners = new Set();
+
+  window.addEventListener('message', (e) => {
+    if (e.source !== window || e.data?.source !== 'azr:state') return;
+    latestState = e.data.data;
+    for (const cb of stateListeners) {
+      try { cb(latestState); } catch (err) { AZR.warn('state listener failed:', err); }
+    }
+  });
+
+  /** 状態が届くたびに呼ばれる。すでに届いていればその場で1回呼ぶ。 */
+  function onState(cb) {
+    stateListeners.add(cb);
+    if (latestState) cb(latestState);
+    else window.postMessage({ source: 'azr:state:request' }, location.origin);
+    return () => stateListeners.delete(cb);
+  }
+
+  /** 最初の状態が来るまで待つ。来なければ null（DOMからの推測に切り替える） */
+  function waitForState({ timeout = 8000 } = {}) {
+    if (latestState) return Promise.resolve(latestState);
+    return new Promise((resolve) => {
+      let done = false;
+      const finish = (v) => { if (!done) { done = true; off(); clearTimeout(timer); resolve(v); } };
+      const off = onState((s) => finish(s));
+      const timer = setTimeout(() => finish(null), timeout);
+    });
+  }
+
+  /** SPAの経路変更を見張る。ページ遷移が起きないのでpollingで見るしかない。 */
+  function onRouteChange(cb) {
+    let last = location.pathname;
+    const check = () => {
+      if (location.pathname === last) return;
+      last = location.pathname;
+      cb(last);
+    };
+    setInterval(check, 400);
+    window.addEventListener('popstate', check);
+  }
+
+  Object.assign(AZR, {
+    pick, pickAll, waitFor, waitSettled, h, parseYen, yen, mountOnce, pageKind,
+    onState, waitForState, onRouteChange
+  });
 })();

@@ -1,55 +1,61 @@
 /* Amazonize Rakuten - 買い物かごの合計金額パネル */
 (() => {
   const AZR = window.AZR;
-  const { h, yen, parseYen, waitSettled } = AZR;
+  const { h, yen, onState, waitForState } = AZR;
 
-  const LABEL_SUBTOTAL = /小計|商品合計/;
-  const LABEL_SHIPPING = /送料/;
-  const LABEL_POINT = /ポイント/;
+  const PANEL_ID = 'azr-cart-panel';
 
   /**
-   * かごページから金額を集計する。
-   * ショップごとに「小計」が並ぶため、それらを合算して全体合計を出す。
+   * ブリッジから届いた状態を、表示用の数字にまとめる。
+   *
+   * 楽天のかごは店舗ごとに小計・送料・ポイントが別々に出るうえ、
+   * 全店舗を足した「今いくら払うのか」がどこにも出ない。ここで足す。
    */
-  function collect() {
+  function summarize(state) {
+    if (!state) return null;
+    const order = state.shopDisplayOrder?.cart?.length
+      ? state.shopDisplayOrder.cart
+      : Object.keys(state.subtotals || {});
+
     const shops = [];
-    let shipping = 0;
-    let points = 0;
-
-    const nodes = document.querySelectorAll('td, dd, span, div, p');
-    const usedRows = new Set();
-
-    for (const el of nodes) {
-      const text = (el.textContent || '').replace(/\s+/g, ' ').trim();
-      if (!text || text.length > 40) continue;
-
-      const row = el.closest('tr, li, section, div');
-      if (!row) continue;
-
-      if (LABEL_SUBTOTAL.test(text) && !/合計金額/.test(text)) {
-        if (usedRows.has(row)) continue;
-        const amount = parseYen(row.textContent);
-        if (amount) {
-          usedRows.add(row);
-          const shopName = row.closest('[class*="shop"], table, section')
-            ?.querySelector('a[href*="rakuten.co.jp/"]')?.textContent?.trim();
-          shops.push({ name: shopName || `ショップ${shops.length + 1}`, subtotal: amount });
-        }
-      } else if (LABEL_SHIPPING.test(text) && !/無料/.test(text)) {
-        const amount = parseYen(row.textContent);
-        if (amount && amount < 50000) shipping = Math.max(shipping, amount);
-      } else if (LABEL_POINT.test(text)) {
-        const m = text.replace(/[,，]/g, '').match(/(\d+)\s*(?:ポイント|pt)/i);
-        if (m) points = Math.max(points, Number(m[1]));
-      }
+    for (const id of order) {
+      const t = state.subtotals?.[id];
+      if (!t) continue;
+      shops.push({
+        id,
+        name: state.shops?.[id]?.shopName || `ショップ${shops.length + 1}`,
+        url: state.shops?.[id]?.shopUrl || '',
+        itemCount: t.itemCount,
+        itemTotal: t.itemTotalPrice,
+        // 送料はかご段階では金額が出ず、無料かどうかだけ分かることが多い
+        fee: t.fee,
+        shippingFree: t.shippingFeeType === 'free',
+        coupon: t.couponUsage,
+        payment: t.paymentAmount || t.itemTotalPrice,
+        points: t.pointValue,
+        pointRate: t.pointRate
+      });
     }
+    if (!shops.length) return null;
 
-    const subtotal = shops.reduce((s, x) => s + x.subtotal, 0);
-    return { shops, subtotal, shipping, points };
+    const sum = (key) => shops.reduce((s, x) => s + (x[key] || 0), 0);
+    const payment = sum('payment');
+    const points = sum('points');
+    return {
+      shops,
+      itemCount: sum('itemCount'),
+      itemTotal: sum('itemTotal'),
+      fee: sum('fee'),
+      coupon: sum('coupon'),
+      payment,
+      points,
+      // Amazonのように「結局いくら得なのか」を一行で見せる
+      effective: Math.max(0, payment - points)
+    };
   }
 
   function render(data) {
-    const panel = h('div.azr-panel.azr-cart-panel', { id: 'azr-cart-panel' },
+    const panel = h('div.azr-panel.azr-cart-panel', { id: PANEL_ID },
       h('div.azr-panel-head',
         h('span.azr-panel-title', { text: 'かご合計' }),
         h('button.azr-panel-close', {
@@ -59,52 +65,91 @@
       ),
       h('div.azr-panel-body',
         h('div.azr-total-row.is-main',
-          h('span', { text: `商品合計（${data.shops.length}ショップ）` }),
-          h('strong', { text: yen(data.subtotal) })
+          h('span', { text: `商品合計（${data.itemCount}点 / ${data.shops.length}ショップ）` }),
+          h('strong', { text: yen(data.itemTotal) })
         ),
-        data.shipping ? h('div.azr-total-row',
-          h('span', { text: '送料' }), h('span', { text: yen(data.shipping) })
+        data.fee ? h('div.azr-total-row',
+          h('span', { text: '送料' }), h('span', { text: yen(data.fee) })
+        ) : h('div.azr-total-row',
+          h('span', { text: '送料' }),
+          h('span', { text: data.shops.every((s) => s.shippingFree) ? '無料' : '購入手続きで確定' })
+        ),
+        data.coupon ? h('div.azr-total-row',
+          h('span', { text: 'クーポン割引' }),
+          h('span.azr-discount', { text: `-${yen(data.coupon)}` })
         ) : '',
         h('div.azr-total-row.is-grand',
           h('span', { text: 'お支払い予定' }),
-          h('strong', { text: yen(data.subtotal + data.shipping) })
+          h('strong', { text: yen(data.payment) })
         ),
         data.points ? h('div.azr-total-row.is-point',
           h('span', { text: '獲得予定ポイント' }),
           h('span', { text: `${data.points.toLocaleString('ja-JP')}pt` })
         ) : '',
-        h('details.azr-breakdown',
-          h('summary', { text: 'ショップ別内訳' }),
-          h('ul', data.shops.map((s) => h('li',
-            h('span.azr-shop-name', { text: s.name }),
-            h('span.azr-shop-amount', { text: yen(s.subtotal) })
-          )))
-        )
+        data.points ? h('div.azr-total-row.is-effective',
+          h('span', { text: 'ポイント差引後' }),
+          h('strong', { text: yen(data.effective) })
+        ) : '',
+        data.shops.length > 1 || data.shops[0].itemCount > 1
+          ? h('details.azr-breakdown',
+              h('summary', { text: 'ショップ別内訳' }),
+              h('ul', data.shops.map((s) => h('li',
+                h('span.azr-shop-name', { text: s.name, title: s.name }),
+                h('span.azr-shop-amount', {
+                  text: s.points ? `${yen(s.payment)} / ${s.points.toLocaleString('ja-JP')}pt` : yen(s.payment)
+                })
+              )))
+            )
+          : ''
       )
     );
     return panel;
   }
 
+  // 中身が同じなら描き直さない。状態は数百msごとに流れてくるので、
+  // そのたびに作り直すと閉じるボタンを押した瞬間に差し替わってしまう。
+  let lastSignature = '';
+
+  function paint(state) {
+    const data = summarize(state);
+    if (!data) return false;
+    const signature = JSON.stringify([
+      data.itemCount, data.itemTotal, data.fee, data.coupon, data.payment, data.points,
+      data.shops.map((s) => [s.id, s.payment, s.points])
+    ]);
+    const existing = document.getElementById(PANEL_ID);
+    if (existing && signature === lastSignature) return true;
+    lastSignature = signature;
+
+    if (existing) existing.replaceWith(render(data));
+    else document.body.append(render(data));
+    AZR.log('cart totals', data);
+    return true;
+  }
+
+  // SPAの経路変更で同じモジュールが動き直すので、前回の購読は必ず切る
+  let unsubscribe = null;
+
   AZR.register('cart', 'cart-total', async () => {
     if (!AZR.settings.cartTotal) return;
-    await waitSettled({ quiet: 500, timeout: 8000 });
+    unsubscribe?.();
+    unsubscribe = null;
 
-    const paint = () => {
-      const data = collect();
-      if (!data.shops.length) return;
-      document.getElementById('azr-cart-panel')?.remove();
-      document.body.append(render(data));
-      AZR.log('cart totals', data);
-    };
+    const state = await waitForState({ timeout: 10000 });
+    if (!state) {
+      AZR.warn('かごの状態を受け取れなかった（__INITIAL_STATE__ が読めない）');
+      return;
+    }
+    if (!paint(state)) {
+      AZR.log('かごが空');
+      return;
+    }
 
-    paint();
-
-    // 数量変更・削除などで再集計する（連打を抑えるためデバウンス）
-    let timer = null;
-    const obs = new MutationObserver(() => {
-      clearTimeout(timer);
-      timer = setTimeout(paint, 700);
+    // 数量変更・削除・ショップ選択でそのつど状態が流れてくる
+    unsubscribe = onState((next) => {
+      if (AZR.pageKind() !== 'cart') return;
+      if (!document.getElementById(PANEL_ID)) return; // 閉じられたら描き直さない
+      paint(next);
     });
-    obs.observe(document.body, { childList: true, subtree: true, characterData: true });
   });
 })();

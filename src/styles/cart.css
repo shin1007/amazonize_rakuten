@@ -10,6 +10,15 @@
 }
 .azr-shop-amount { white-space: nowrap; }
 
+.azr-discount { color: #b12704; }
+
+/* ポイント差引後の「実質いくら」。楽天のかごにはどこにも出ない数字なので目立たせる */
+.azr-total-row.is-effective {
+  border-top: 1px dashed #eaeded;
+  padding-top: 6px;
+}
+.azr-total-row.is-effective strong { color: #007600; }
+
 /* 検索結果の広告枠を薄くする（消さずに見分けやすくする） */
 html.azr-search .azr-ad-item {
   opacity: .45;
