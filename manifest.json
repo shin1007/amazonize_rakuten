@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Amazonize Rakuten",
-  "version": "0.1.0",
+  "version": "2026.9.11",
   "description": "楽天市場をAmazon風のシンプルなUIに。商品ページでクーポン獲得・かご合計・最適クーポン自動適用・キャンペーン自動エントリー。",
   "icons": {
     "16": "icons/icon-16.png",
