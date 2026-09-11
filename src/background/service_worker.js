@@ -13,6 +13,31 @@ chrome.runtime.onInstalled.addListener(async () => {
 // 早すぎる打ち切りで「失敗」と言わないよう、長めに待つ（成功時は数秒で返る）。
 const COUPON_TIMEOUT_MS = 45000;
 
+/*
+ * service worker は、拡張のイベントもAPIの呼び出しも30秒ほど無いと止められる。
+ * 止まるとメモリにある待ち（裏タブの結果・打ち切りのタイマー・スキャンの進み具合）が消え、
+ * 裏タブが開いたまま残り、スキャンは途中で終わる。裏タブの1ページは45秒まで待つので、
+ * その間にイベントが途切れることがありうる。裏タブを待っている間だけ、20秒ごとに
+ * 拡張のAPIを呼んで起こしておく（Chrome 110 以降、APIの呼び出しで止めるまでの時間が延びる）。
+ */
+const KEEP_ALIVE_MS = 20000;
+let awakeHolders = 0;
+let keepAliveTimer = null;
+
+async function holdAwake(work) {
+  if (awakeHolders++ === 0) {
+    keepAliveTimer = setInterval(() => chrome.runtime.getPlatformInfo().catch(() => {}), KEEP_ALIVE_MS);
+  }
+  try {
+    return await work();
+  } finally {
+    if (--awakeHolders === 0) {
+      clearInterval(keepAliveTimer);
+      keepAliveTimer = null;
+    }
+  }
+}
+
 const COUPON_PAGE = /^https:\/\/coupon\.rakuten\.co\.jp\//;
 const COUPON_API = 'https://coupon.rakuten.co.jp/api/v2/coupons/';
 // ログインや結果不明は本人に見てもらうしかない。それ以外は裏で閉じる。
@@ -291,7 +316,7 @@ async function grabCoupon(url, { apiOnly = false } = {}) {
     console.warn('[AZR] 獲得APIが使えないのでタブで開きます:', e);
     if (apiOnly) return { ok: false, status: 'error' };
   }
-  return grabByTab(url);
+  return holdAwake(() => grabByTab(url));
 }
 
 /* キャンペーンの発見と一括エントリー ----------------------------------------
@@ -404,7 +429,7 @@ async function runScan(phase, job) {
   setBadge('…');
   let result;
   try {
-    result = await job();
+    result = await holdAwake(job);
   } catch (e) {
     result = { ok: false, error: String(e?.message || e) };
   }
