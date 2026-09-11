@@ -85,6 +85,7 @@
    */
   const OVERLAY_KEYS = ['shops', 'shopItems', 'shopItemSubtotals', 'shopCoupons', 'shopDisplayOrder', 'pointsUsage'];
   let overlay = {};
+  let overlayVersion = 0; // 重ねた応答が変わるたびに増やす（見張りの空回りを省くため）
 
   /** APIの応答らしきJSONから、状態と同じ形の部分だけを取り込む */
   function absorb(json) {
@@ -100,6 +101,7 @@
         }
       }
     }
+    if (changed) overlayVersion++;
     return changed;
   }
 
@@ -165,14 +167,28 @@
   // クーポンを選ぶモーダルは /order-confirmation/coupon-usage という子の経路で、
   // 閉じると /order-confirmation に戻る。ここで捨てると、適用した直後の金額が消えて
   // 古い __INITIAL_STATE__（クーポン無し）に戻ってしまう（実機で踏んだ）。
+  //
+  // 状態全体の抜き出しと JSON 化は重いので、毎回はやらない。流す中身の元になるもの
+  // （__INITIAL_STATE__ の参照・重ねた応答・パス）がどれも変わっていなければ飛ばす。
+  // __INITIAL_STATE__ が差し替えではなく中身だけ書き換えられる場合に備えて、
+  // 5秒に1回は変化の有無にかかわらず比べ直す。
   const screenOf = (path) => path.split('/')[1] || '';
+  const FULL_CHECK_EVERY = 10; // 500ms × 10
   let lastScreen = screenOf(location.pathname);
+  let lastInputs = null;
+  let tick = 0;
   setInterval(() => {
     const screen = screenOf(location.pathname);
     if (screen !== lastScreen) {
       lastScreen = screen;
       overlay = {}; // 別の画面の数字を持ち越さない
+      overlayVersion++;
     }
+    const inputs = [window.__INITIAL_STATE__, overlayVersion, location.pathname];
+    const same = lastInputs && inputs.every((v, i) => v === lastInputs[i]);
+    tick = (tick + 1) % FULL_CHECK_EVERY;
+    if (same && tick !== 0) return;
+    lastInputs = inputs;
     publish(false);
   }, 500);
 
