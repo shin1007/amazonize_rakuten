@@ -253,6 +253,41 @@ async function reviewRatings(shopId, itemId) {
   return ratings;
 }
 
+/* 獲得したクーポンの履歴 -----------------------------------------------------
+ * 自動獲得は既定でONで、押さなくても獲得が進む。何を獲得したのかをポップアップで
+ * 見られるよう、新たに獲得できたもの（獲得済みだったものは除く）だけを残す。
+ * 中身は商品ページに出ていたクーポン名・店舗名・商品名・ページのURLだけ。ブラウザの外へは出さない。
+ */
+const ACQUIRED_MAX = 100;
+
+/** storage を読んで書くまでを1件ずつにする。並べて走らせると、後の書き込みが先の分を消す。 */
+function serialized() {
+  let queue = Promise.resolve();
+  return (fn) => {
+    queue = queue.then(fn).catch((e) => console.warn('[AZR] 保存に失敗:', e));
+    return queue;
+  };
+}
+const saveAcquiredSerially = serialized();
+
+function recordAcquired(res, record) {
+  if (res?.status !== 'acquired' || !record || typeof record !== 'object') return;
+  const str = (v, max) => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, max) : '');
+  const url = str(record.url, 300);
+  const entry = {
+    name: str(record.name, 120),
+    shop: str(record.shop, 60),
+    item: str(record.item, 120),
+    url: /^https:\/\/item\.rakuten\.co\.jp\//.test(url) ? url : '',
+    auto: Boolean(record.auto),
+    at: Date.now()
+  };
+  saveAcquiredSerially(async () => {
+    const { azrAcquired: list = [] } = await chrome.storage.local.get('azrAcquired');
+    await chrome.storage.local.set({ azrAcquired: [entry, ...list].slice(0, ACQUIRED_MAX) });
+  });
+}
+
 /* APIが使えない場合の保険。
  * 裏のタブで本物の獲得ページを開き、結果を受け取ってから閉じる。 */
 const couponWaiters = new Map(); // tabId -> (result) => void
@@ -389,15 +424,14 @@ async function loadCampaigns() {
 
 // 3タブが同時に結果を返すので、読んで書くまでを1件ずつにする。
 // 並べて走らせると、先に書いた分を後の書き込みが古い一覧で上書きして消す。
-let saveQueue = Promise.resolve();
+const saveCampaignSerially = serialized();
 function saveCampaign(url, patch) {
-  saveQueue = saveQueue.then(async () => {
+  return saveCampaignSerially(async () => {
     const data = await loadCampaigns();
     data.items[url] = { url, ...(data.items[url] || {}), ...patch };
     data.updatedAt = Date.now();
     await chrome.storage.local.set({ azrCampaigns: data });
-  }).catch((e) => console.warn('[AZR] キャンペーンの記録に失敗:', e));
-  return saveQueue;
+  });
 }
 
 /** まとめて実行。並びは保ちつつ、数タブずつ同時に開く。 */
@@ -574,7 +608,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       sendResponse({ ok: false, status: 'error', error: '対象外のURLです' });
       return false;
     }
-    grabCoupon(url, { apiOnly: Boolean(msg.apiOnly) }).then(sendResponse);
+    grabCoupon(url, { apiOnly: Boolean(msg.apiOnly) }).then((res) => {
+      recordAcquired(res, msg.record);
+      sendResponse(res);
+    });
     return true; // 非同期応答
   }
 
@@ -612,7 +649,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       return false;
     }
     acquireFloatingCoupon(getKey)
-      .then(sendResponse)
+      .then((res) => {
+        recordAcquired(res, msg.record);
+        sendResponse(res);
+      })
       .catch((e) => sendResponse({ ok: false, status: 'error', error: String(e) }));
     return true; // 非同期応答
   }

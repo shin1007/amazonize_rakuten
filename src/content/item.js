@@ -776,20 +776,28 @@
 
   const GRAB_TIMEOUT_MS = 50000; // service worker 側の打ち切りより必ず後にする
 
+  // 獲得したクーポンの履歴（ポップアップに出す）に添える、どの商品ページで獲得したか
+  let grabContext = { shop: '', item: '', url: '' };
+
   /**
    * 獲得ページへ遷移せず、その場で獲得する。
    * 実際の獲得は service worker が行う（獲得ページと同じAPIを呼ぶ。
    * このAPIは商品ページのオリジンからは呼べないので、content script では代行できない）。
+   * auto は、押されずに自動で獲得したもの（履歴で見分けるため）。
    */
-  async function grabInPlace(link, status, request) {
+  async function grabInPlace(link, status, request, { auto = false } = {}) {
     if (link.dataset.azrGrab === 'busy' || link.dataset.azrGrab === 'done') return null;
     link.dataset.azrGrab = 'busy';
     status.textContent = '獲得中…';
 
+    // 名前は押した時点のもの（APIから正式名称が取れていれば、それに差し替わっている）
+    const name = link.querySelector('.azr-coupon-text')?.textContent || '';
+    const record = { ...grabContext, name, auto };
+
     let res = null;
     try {
       res = await Promise.race([
-        chrome.runtime.sendMessage(request),
+        chrome.runtime.sendMessage({ ...request, record }),
         // service worker が落ちた場合に、行が「獲得中…」のまま固まらないようにする
         new Promise((r) => setTimeout(() => r({ ok: false, status: 'timeout' }), GRAB_TIMEOUT_MS))
       ]);
@@ -888,7 +896,7 @@
    */
   function floatingRow(c, auto) {
     const status = h('span.azr-coupon-get', { text: c.acquired ? '獲得済みです' : '獲得する' });
-    const grab = () => grabInPlace(link, status, { type: 'azr:grabFloatingCoupon', getKey: c.getKey });
+    const grab = (opts) => grabInPlace(link, status, { type: 'azr:grabFloatingCoupon', getKey: c.getKey }, opts);
     const link = h('a.azr-coupon-link', {
       role: 'button',
       tabindex: '0',
@@ -906,7 +914,7 @@
       status
     );
     if (c.acquired) link.dataset.azrGrab = 'done';
-    else auto.push({ key: `getkey:${c.getKey}`, link, status, run: grab });
+    else auto.push({ key: `getkey:${c.getKey}`, link, status, run: () => grab({ auto: true }) });
     return link;
   }
 
@@ -953,7 +961,7 @@
         status
       );
       refineCoupon(link, textEl, status, c.href);
-      auto.push({ key: couponKey(c.href), link, status, run: () => grabInPlace(link, status, { type: 'azr:grabCoupon', url: c.href, apiOnly: true }) });
+      auto.push({ key: couponKey(c.href), link, status, run: () => grabInPlace(link, status, { type: 'azr:grabCoupon', url: c.href, apiOnly: true }, { auto: true }) });
       return link;
     };
     const section = h('section.azr-item-coupons',
@@ -1213,6 +1221,8 @@
       AZR.warn('商品名か価格を取得できないため、元のページを表示します');
       return AZR.unhide();
     }
+
+    grabContext = { shop: data.shop.name || '', item: data.title, url: location.origin + location.pathname };
 
     const items = data.images.filter(Boolean).map(galleryItem);
     // 動画は1枚目の画像の隣に置く（後ろにすると、説明から足す数十枚に埋もれる）

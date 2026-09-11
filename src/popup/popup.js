@@ -27,6 +27,46 @@ async function init() {
     chrome.storage.sync.set({ campaignUrls: list });
   });
 
+  /* 獲得したクーポン ---------------------------------------------------------
+   * 商品ページで獲得できたもの（自動・手動とも）。service worker が新たに獲得できたときだけ残す。 */
+
+  async function renderAcquired() {
+    const { azrAcquired: items = [] } = await chrome.storage.local.get('azrAcquired');
+    const list = $('#acquiredList');
+    list.textContent = '';
+    $('#acquiredCount').textContent = items.length ? `(${items.length})` : '';
+
+    if (!items.length) {
+      const li = document.createElement('li');
+      li.className = 'empty';
+      li.textContent = 'まだありません';
+      list.append(li);
+      return;
+    }
+    for (const c of items) {
+      const li = document.createElement('li');
+      li.className = 'campaign';
+
+      const label = c.url ? document.createElement('a') : document.createElement('span');
+      if (c.url) {
+        label.href = c.url;
+        label.target = '_blank';
+      }
+      label.textContent = c.name || '（名前なし）';
+      label.title = [c.name, c.shop && `ショップ: ${c.shop}`, c.item && `商品: ${c.item}`].filter(Boolean).join('\n');
+
+      const state = document.createElement('span');
+      state.className = 'campaign-state';
+      state.textContent = `${day(c.at)}${c.auto ? ' 自動' : ''}`;
+
+      li.append(label, state);
+      list.append(li);
+    }
+  }
+
+  const day = (ms) => (ms ? new Date(ms).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' }) : '');
+  renderAcquired();
+
   /* キャンペーンの一括スキャン ---------------------------------------------- */
 
   const scanStatus = $('#scanStatus');
@@ -44,8 +84,6 @@ async function init() {
     unknown: '不明'
   };
   const ORDER = ['entered', 'already', 'entry', 'timeout', 'error', 'closed', 'unknown', 'none'];
-
-  const day = (ms) => (ms ? new Date(ms).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' }) : '');
 
   async function renderCampaignList() {
     const items = (await chrome.runtime.sendMessage({ type: 'azr:campaignList' })) || [];
