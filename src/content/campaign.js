@@ -9,6 +9,18 @@
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+  /** 別のサイトへ移るリンクか */
+  function leavesSite(el) {
+    if (el.tagName !== 'A') return false;
+    const href = el.getAttribute('href') || '';
+    if (!href || href.startsWith('#') || /^javascript:/i.test(href)) return false;
+    try {
+      return new URL(href, location.href).host !== location.host;
+    } catch {
+      return false;
+    }
+  }
+
   /** 未エントリーのボタンを集める */
   function findEntryButtons() {
     const out = [];
@@ -18,6 +30,12 @@
       if (DONE_TEXT.test(text)) continue;
       if (!ENTRY_TEXT.test(text)) continue;
       if (el.disabled || el.getAttribute('aria-disabled') === 'true') continue;
+      // 別のサイトの案内へのリンクは、このページのエントリーではない。SPUのページには
+      // 楽天モバイルのSPUページ（network.mobile.rakuten.co.jp）へ飛ぶ「エントリーはこちら」があり、
+      // 押すとタブがそちらへ移って判定が返らず「時間切れ」になっていた。
+      // 実際のエントリーボタンは <button class="rcEntryButton-button"> で、リンクではなかった
+      // （トップから辿れる55ページと既知のキャンペーンで、未ログインで確認）。
+      if (leavesSite(el)) continue;
       if (!el.offsetParent) continue;
       out.push(el);
     }
