@@ -56,10 +56,21 @@ src/content/top.js         トップページからキャンペーンのリン�
 src/content/campaign.js    キャンペーンの判定とエントリー
 src/background/            service worker（タブ操作・session storage）
 src/popup/                 設定UI
+tests/                     クーポンの解析と、注文確認で切り替えるクーポンの判断のテスト（下記）
 tools/harness.mjs          保存したページで拡張を動かす検証用ハーネス（下記）
 tools/store-images.mjs     Chrome ウェブストアに載せる画像を作る（store/images/ に出る）
 store/listing.md           Chrome ウェブストアの掲載文・権限の説明・審査で気をつけること
 ```
+
+### テスト
+
+```
+node --test
+```
+
+注文確認の自動切り替えは既定でON・確認なしで、本人の注文に直接効く。画面の操作はログインが要るので自動では回せないが、「どのクーポンに切り替えるか」は状態（`state-bridge.js` の `slim()` を通した形）だけで決まる。その判断（`coupon-model.js` の `collect` / `chooseSwitch`）と文言の解析を、下の「実機での検証状況」で実際に出たクーポンを実物の項目名で書いたデータで確かめている。`tests/load.mjs` が content script を Node の `vm` で読み込む（依存パッケージは無い）。
+
+配布用のzipには `tests/` を入れない（`manifest.json` / `src/` / `icons/` だけでよい）。
 
 ### 保存したページで試す
 

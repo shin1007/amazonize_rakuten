@@ -11,91 +11,9 @@
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-  /* 状態からクーポンを読む ---------------------------------------------------
-   * shopCoupons は店舗ごとの配列。項目のキー名は店舗・クーポン種別で揺れるので、
-   * 「それらしいキー」を順に見て、名前・割引額・利用条件を拾う。
-   * 割引額が状態から取れないものは、文言から coupon-model が推定する。 */
-
-  const firstNumber = (obj, keys) => {
-    for (const k of keys) {
-      const v = obj?.[k];
-      const n = typeof v === 'string' ? Number(v.replace(/[,，]/g, '')) : v;
-      if (Number.isFinite(n) && n > 0) return n;
-    }
-    return 0;
-  };
-  const firstString = (obj, keys) => {
-    for (const k of keys) {
-      const v = obj?.[k];
-      if (typeof v === 'string' && v.trim()) return v.trim();
-    }
-    return '';
-  };
-
-  /**
-   * 実物の1件（楽天24の700円OFF）はこうなっていた:
-   *   couponName  "【楽天24】全商品対象税込4000円以上で700円OFFクーポン"
-   *   description "商品の合計金額から700円OFF"
-   *   conditions  "利用条件：対象ショップ｜4,000円以上の購入｜…｜併用不可｜…"
-   *   discountPrice "700円OFF"   ← 数値ではなく文字列
-   *   couponCode / selected / usable / alerts / countStatus
-   * 割引額も利用条件も数値では入っていないので、結局は文言から読むことになる。
-   * 店舗やクーポン種別でキーが違っても拾えるよう、候補キーを順に見る。
-   */
-  function normalizeCoupon(rawEntry, shopId) {
-    const name = firstString(rawEntry, ['couponName', 'name', 'title', 'displayName', 'couponTitle']);
-    const detail = firstString(rawEntry, ['description', 'message', 'couponMessage', 'note']);
-    const conditions = firstString(rawEntry, ['conditions', 'condition', 'usageConditions']);
-    const priceText = firstString(rawEntry, ['discountPrice', 'discountText', 'benefitText']);
-    const parsed = AZR.coupons.parseCoupon(
-      [name, detail, priceText, conditions].filter(Boolean).join(' '),
-      { source: 'checkout', shopId, raw: rawEntry }
-    );
-    parsed.label = name || parsed.label;
-
-    // 数値で割引額が入っている形なら、そちらを優先する
-    const amount = firstNumber(rawEntry, ['discountAmount', 'discount', 'couponPrice']);
-    if (amount) {
-      parsed.type = 'fixed';
-      parsed.amount = amount;
-    }
-    const min = firstNumber(rawEntry, ['minPurchaseAmount', 'minimumAmount', 'lowerLimit', 'conditionAmount']);
-    if (min) parsed.minSpend = min;
-
-    parsed.id = firstString(rawEntry, ['couponCode', 'couponId', 'id', 'issueId']);
-    parsed.selected = Boolean(
-      rawEntry?.selected ?? rawEntry?.isSelected ?? rawEntry?.applied ?? rawEntry?.isApplied
-    );
-    parsed.usable = rawEntry?.usable ?? rawEntry?.canUse ?? rawEntry?.isAvailable ?? true;
-    // 1枚選ぶと、他のクーポンは全部 usable:false になり、alerts に理由が付く。
-    //   ["選択済みのクーポンと併用が出来ません。"]                       ← 選び直せば使える
-    //   ["選択済みのクーポンと併用が出来ません。", "5,000円以上お買い上げの…"] ← 選び直しても使えない
-    // 併用の理由だけで使えないものは、切り替えの候補に残す。
-    const alerts = Array.isArray(rawEntry?.alerts) ? rawEntry.alerts.map(String) : [];
-    parsed.blockedBySelection = parsed.usable === false && alerts.length > 0
-      && alerts.every((a) => /併用/.test(a));
-    return parsed;
-  }
-
-  /** 店舗ごとに「今の小計」と「使えるクーポン」を組にする */
-  function collect(state) {
-    const groups = [];
-    for (const [shopId, list] of Object.entries(state?.shopCoupons || {})) {
-      const coupons = (Array.isArray(list) ? list : [])
-        .map((c) => normalizeCoupon(c, shopId))
-        .filter((c) => c.usable !== false || c.blockedBySelection);
-      const t = state.subtotals?.[shopId] || state.subtotals?.SUM || {};
-      groups.push({
-        shopId,
-        shopName: state.shops?.[shopId]?.shopName || '',
-        subtotal: t.itemTotalPrice || 0,
-        shipping: t.fee || 0,
-        applied: t.couponUsage || 0,
-        coupons
-      });
-    }
-    return groups;
-  }
+  // 状態からクーポンを読む処理と、どれに切り替えるかの判断は coupon-model.js にある
+  // （画面に依らない部分なので、tests/ で実物の形のデータを通して確かめている）。
+  const { collect, sameCoupon, chooseSwitch } = AZR.coupons;
 
   /* 実際の画面を操作して適用する ---------------------------------------------
    * クーポンは「クーポン利用」カードの『変更』→モーダルで選択→『変更する』で確定する。
@@ -242,8 +160,6 @@
     return isChecked(box) === want;
   }
 
-  const sameCoupon = (a, b) => (a.id && b.id ? a.id === b.id : a.label === b.label);
-
   /**
    * クーポンを1枚適用する。「変更」→行を選ぶ→「変更する」の順に押す。
    * current は今選ばれているクーポン。併用できないので、先に外さないと新しい方を選べない。
@@ -389,23 +305,9 @@
     const paint = async (current) => {
       if (busy) return;
       const groups = collect(current);
-      const appliedTotal = groups.reduce((s, g) => s + g.applied, 0);
-
-      // 店舗ごとの最良を見て、いちばん得なものを1件だけ勧める。
-      // 楽天のクーポンは店舗ごとに1枚しか選べないため、まとめて適用はしない
-      // （そもそも注文確認は1回の手続きで1ショップ分しか出ない）。
-      // 「得」は割引率ではなく実際に引かれる金額で比べる。10%OFFでも小計が小さければ200円OFFに負ける。
-      let best = null;
-      for (const g of groups) {
-        const b = AZR.coupons.pickBest(g.coupons, g.subtotal, g.shipping);
-        if (b && (!best || b.discount > best.discount)) best = { ...b, shopId: g.shopId };
-      }
-
-      // 楽天はクーポンを1枚先に選んでおくことがある。それが最良とは限らない。
-      // 今の割引額より多く引けるものがあるときだけ切り替える。
-      selectedNow = groups.flatMap((g) => g.coupons.filter((c) => c.selected));
-      const bestSelected = Boolean(best && selectedNow.some((c) => sameCoupon(c, best.coupon)));
-      const better = best && !bestSelected && best.discount > appliedTotal ? best : null;
+      // 今より多く引けるものがあるときだけ better が来る（楽天が先に選んだものが最良とは限らない）
+      const { appliedTotal, best, better, selected } = chooseSwitch(groups);
+      selectedNow = selected;
 
       const note = better
         ? (appliedTotal ? `今のクーポン（-${yen(appliedTotal)}）より得なクーポンがあります` : null)
