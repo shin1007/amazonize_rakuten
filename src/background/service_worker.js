@@ -278,7 +278,7 @@ function grabByTab(url) {
  * 未ログインもタブに落とす。ログインすれば獲得ページがそのまま獲得まで進むので、
  * ここでただ「ログインしてください」と言うより手数が少ない。
  */
-async function grabCoupon(url) {
+async function grabCoupon(url, { apiOnly = false } = {}) {
   const key = couponGetKey(url);
   // getkey の無いページは獲得ページではない。タブで開くと、クーポンのページを「離れた」ことを
   // 獲得できた印と読むため、何も獲得していないのに成功と返してしまう。
@@ -286,8 +286,11 @@ async function grabCoupon(url) {
   try {
     const viaApi = await acquireByApi(key);
     if (viaApi && viaApi.status !== 'login') return viaApi;
+    // 自動獲得は押されていないので、裏タブを勝手に開かない。未ログイン等は行に返すだけにする。
+    if (apiOnly) return viaApi || { ok: false, status: 'unknown' };
   } catch (e) {
     console.warn('[AZR] 獲得APIが使えないのでタブで開きます:', e);
+    if (apiOnly) return { ok: false, status: 'error' };
   }
   return grabByTab(url);
 }
@@ -490,7 +493,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       sendResponse({ ok: false, status: 'error', error: '対象外のURLです' });
       return false;
     }
-    grabCoupon(url).then(sendResponse);
+    grabCoupon(url, { apiOnly: Boolean(msg.apiOnly) }).then(sendResponse);
     return true; // 非同期応答
   }
 

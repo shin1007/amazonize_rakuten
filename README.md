@@ -14,6 +14,7 @@
 | 検索結果の広告枠を目立たなくする | `search.rakuten.co.jp` | ON |
 | かごの合計金額パネル（ポイント差引後の実質価格つき） | `cart.step.rakuten.co.jp/cart` | ON |
 | 商品ページのクーポンをその場で獲得 | `item.rakuten.co.jp` | ON |
+| 商品ページを開いた時点でクーポンを自動獲得 | `item.rakuten.co.jp` | ON（ポップアップの「開いたときに自動で獲得する」で切れる） |
 | 注文確認画面で最良クーポンに自動で切り替え | `cart.step.rakuten.co.jp/order-confirmation` | ON（確認なし。ポップアップで「適用前に確認する」にもできる） |
 | キャンペーンをトップページから探して一括エントリー | `www.rakuten.co.jp` → `event.rakuten.co.jp` | ポップアップから手動実行 |
 | エントリー済みキャンペーンの一覧 | ポップアップ | ON |

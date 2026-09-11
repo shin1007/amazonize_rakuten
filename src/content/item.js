@@ -782,7 +782,7 @@
    * このAPIは商品ページのオリジンからは呼べないので、content script では代行できない）。
    */
   async function grabInPlace(link, status, request) {
-    if (link.dataset.azrGrab === 'busy' || link.dataset.azrGrab === 'done') return;
+    if (link.dataset.azrGrab === 'busy' || link.dataset.azrGrab === 'done') return null;
     link.dataset.azrGrab = 'busy';
     status.textContent = '獲得中…';
 
@@ -797,14 +797,53 @@
       AZR.warn('クーポン獲得の依頼に失敗:', e);
     }
 
-    const ok = Boolean(res?.ok);
+    showGrabResult(link, status, res);
+    return res;
+  }
+
+  /** 獲得の結果を行に書く。行を作り直したときにも、同じ結果をそのまま写せるように分けてある。 */
+  function showGrabResult(link, status, res) {
     // 失敗した行は押し直せるようにしておく（ログイン後にもう一度など）
-    link.dataset.azrGrab = ok ? 'done' : 'failed';
+    link.dataset.azrGrab = res?.ok ? 'done' : 'failed';
     status.textContent = res?.status === 'rejected'
       ? (REJECT_LABEL[res.reason] || GRAB_LABEL.rejected)
       : (GRAB_LABEL[res?.status] || GRAB_LABEL.error);
     // 訳し切れない理由コードは、確認できるようにマウスオーバーへ逃がす
     if (res?.reason) link.title = res.reason;
+  }
+
+  /* 自動獲得 ----------------------------------------------------------------
+   * 押さなくても、商品ページを開いた時点で獲得する。
+   * 押したときと違って裏タブは開かない（apiOnly）。ページを開いただけでタブが増えたり、
+   * ログイン画面が勝手に前へ出たりしないようにする。APIで決着しない分は行に「獲得する」が残る。
+   */
+  const autoGrabbed = new Map(); // クーポンの鍵 → 獲得の約束。同じクーポンを二度は獲得しない。
+  let autoGrabStopped = false;
+
+  async function autoGrab(rows) {
+    if (!AZR.settings.couponAutoGrab) return;
+    for (const { key, link, status, run } of rows) {
+      const already = autoGrabbed.get(key);
+      if (already) {
+        // クーポンを拾い直して行を作り直した場合。獲得はもう済んでいるので、結果だけ写す。
+        already.then((res) => { if (res) showGrabResult(link, status, res); });
+        continue;
+      }
+      if (autoGrabStopped) return;
+      // 楽天の獲得APIを一度に叩かないよう、1枚ずつ順に獲得する
+      const grabbing = run();
+      autoGrabbed.set(key, grabbing);
+      const res = await grabbing;
+      if (res?.status !== 'login') continue;
+      // 未ログインなら残りも同じ結果になる。押せば獲得ページ（＝ログイン）へ進めるので、
+      // 行は「獲得する」に戻したうえで、自動での獲得はここで止める。
+      autoGrabStopped = true;
+      autoGrabbed.delete(key);
+      link.dataset.azrGrab = '';
+      status.textContent = '獲得する';
+      link.title = 'このページのまま獲得します';
+      return;
+    }
   }
 
   /**
@@ -826,7 +865,7 @@
       // 正式名称が取れたなら、裏取り用のバナーは要らない。名前に幅を回す。
       link.querySelector('.azr-coupon-thumb')?.remove();
     }
-    if (d.acquired && link.dataset.azrGrab !== 'busy') {
+    if (d.acquired && !link.dataset.azrGrab) {
       link.dataset.azrGrab = 'done';
       status.textContent = '獲得済みです';
     }
@@ -847,7 +886,7 @@
    * フローティングクーポンの行。獲得ページのURLが無いので、元のページの枠と同じAPIで獲得する。
    * リンク先が無いため a[href] にはせず、キーボードでも押せるボタンとして作る。
    */
-  function floatingRow(c) {
+  function floatingRow(c, auto) {
     const status = h('span.azr-coupon-get', { text: c.acquired ? '獲得済みです' : '獲得する' });
     const grab = () => grabInPlace(link, status, { type: 'azr:grabFloatingCoupon', getKey: c.getKey });
     const link = h('a.azr-coupon-link', {
@@ -867,13 +906,15 @@
       status
     );
     if (c.acquired) link.dataset.azrGrab = 'done';
+    else auto.push({ key: `getkey:${c.getKey}`, link, status, run: grab });
     return link;
   }
 
   /** Amazon風のクーポン表示。押した場所から離れずに獲得できるようにする。 */
   function buildCoupons(coupons) {
+    const auto = []; // 自動で獲得する行（作った順に、1枚ずつ獲得する）
     const row = (c) => {
-      if (c.floating) return floatingRow(c);
+      if (c.floating) return floatingRow(c, auto);
       const textEl = h('span.azr-coupon-text', { text: c.label });
       const parts = [
         h('span.azr-coupon-badge', { text: 'クーポン' }),
@@ -912,12 +953,15 @@
         status
       );
       refineCoupon(link, textEl, status, c.href);
+      auto.push({ key: couponKey(c.href), link, status, run: () => grabInPlace(link, status, { type: 'azr:grabCoupon', url: c.href, apiOnly: true }) });
       return link;
     };
-    return h('section.azr-item-coupons',
+    const section = h('section.azr-item-coupons',
       h('div.azr-section-label', { text: 'クーポン' }),
       h('ul', coupons.map((c) => h('li', row(c))))
     );
+    autoGrab(auto);
+    return section;
   }
 
   /*
