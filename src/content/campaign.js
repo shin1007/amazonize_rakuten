@@ -138,7 +138,8 @@
   AZR.register('campaign', 'campaign-entry', async () => {
     if (!/(^|\.)event\.rakuten\.co\.jp$/.test(location.host)) return;
 
-    // 一括スキャンで開かれたタブは、パネルを出さずに結果だけ返して閉じてもらう
+    // 一括スキャン・URL指定の実行で開かれたタブは、パネルを出さずに結果だけ返して閉じてもらう。
+    // どのタブが対象かは service worker がタブIDで覚えている（自分で開いたページは対象にならない）。
     let task = null;
     try {
       task = await chrome.runtime.sendMessage({ type: 'azr:scanTask' });
@@ -153,11 +154,7 @@
     document.getElementById('azr-campaign-panel')?.remove();
     document.body.append(render(buttons));
 
-    // ポップアップからの一括実行で開かれたタブは、自動でエントリーして閉じる
-    let batch = null;
-    try {
-      batch = (await chrome.storage.session.get('azrBatchEntry')).azrBatchEntry;
-    } catch { /* session storage 不可 */ }
+    if (!AZR.settings.campaignAutoEntry || !buttons.length) return;
 
     // エントリーボタンを押すとページが再読み込みされることがある。
     // 何度も押し続けないよう、このURLで一度実行したことを記録しておく。
@@ -167,15 +164,9 @@
       alreadyRun = Boolean((await chrome.storage.session.get(doneKey))[doneKey]);
     } catch { /* session storage 不可 */ }
 
-    const autoRun = AZR.settings.campaignAutoEntry || (batch && batch.until > Date.now());
-    if (autoRun && buttons.length && !alreadyRun) {
-      try { await chrome.storage.session.set({ [doneKey]: Date.now() }); } catch { /* noop */ }
-      AZR.log(`自動エントリー: ${buttons.length}件`);
-      await entryAll(buttons);
-    }
-    if (batch && batch.until > Date.now() && batch.closeTab) {
-      await sleep(1500);
-      try { chrome.runtime.sendMessage({ type: 'azr:closeTab' }); } catch { /* noop */ }
-    }
+    if (alreadyRun) return;
+    try { await chrome.storage.session.set({ [doneKey]: Date.now() }); } catch { /* noop */ }
+    AZR.log(`自動エントリー: ${buttons.length}件`);
+    await entryAll(buttons);
   });
 })();

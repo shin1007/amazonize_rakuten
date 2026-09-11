@@ -9,7 +9,6 @@ chrome.runtime.onInstalled.addListener(async () => {
   }
 });
 
-const BATCH_WINDOW_MS = 3 * 60 * 1000;
 // 裏のタブはブラウザに実行を絞られるため、獲得ページの遷移が数十秒かかることがある。
 // 早すぎる打ち切りで「失敗」と言わないよう、長めに待つ（成功時は数秒で返る）。
 const COUPON_TIMEOUT_MS = 45000;
@@ -363,11 +362,17 @@ async function loadCampaigns() {
   return stored.azrCampaigns || { updatedAt: 0, items: {} };
 }
 
-async function saveCampaign(url, patch) {
-  const data = await loadCampaigns();
-  data.items[url] = { url, ...(data.items[url] || {}), ...patch };
-  data.updatedAt = Date.now();
-  await chrome.storage.local.set({ azrCampaigns: data });
+// 3タブが同時に結果を返すので、読んで書くまでを1件ずつにする。
+// 並べて走らせると、先に書いた分を後の書き込みが古い一覧で上書きして消す。
+let saveQueue = Promise.resolve();
+function saveCampaign(url, patch) {
+  saveQueue = saveQueue.then(async () => {
+    const data = await loadCampaigns();
+    data.items[url] = { url, ...(data.items[url] || {}), ...patch };
+    data.updatedAt = Date.now();
+    await chrome.storage.local.set({ azrCampaigns: data });
+  }).catch((e) => console.warn('[AZR] キャンペーンの記録に失敗:', e));
+  return saveQueue;
 }
 
 /** まとめて実行。並びは保ちつつ、数タブずつ同時に開く。 */
@@ -382,10 +387,94 @@ async function eachLimited(list, limit, worker) {
   await Promise.all(runners);
 }
 
-async function scanCampaigns({ entry }) {
+/** 実行中はアイコンに残りの件数を出す。ポップアップを閉じても進み具合が分かるように。 */
+function setBadge(text) {
+  chrome.action.setBadgeBackgroundColor({ color: '#f08804' }).catch(() => {});
+  chrome.action.setBadgeText({ text }).catch(() => {});
+}
+
+/**
+ * スキャンとURL指定の実行を1つずつ走らせる。
+ * 結果は session storage にも残す。ポップアップは実行中に閉じられることが多く、
+ * 開き直したときにそこから読んで出す（sendMessage の応答は閉じた時点で受け取れなくなる）。
+ */
+async function runScan(phase, job) {
   if (scanState.running) return { ok: false, error: 'すでに実行中です' };
-  scanState = { running: true, phase: 'トップページを読み込み中', done: 0, total: 0, startedAt: Date.now() };
+  scanState = { running: true, phase, done: 0, total: 0, startedAt: Date.now() };
+  setBadge('…');
+  let result;
   try {
+    result = await job();
+  } catch (e) {
+    result = { ok: false, error: String(e?.message || e) };
+  }
+  // 結果を書いてから running を下ろす。ポップアップは running が下りたのを見て結果を読みに来る。
+  await chrome.storage.session.set({ azrScanResult: { ...result, finishedAt: Date.now() } }).catch(() => {});
+  setBadge('');
+  scanState = { ...scanState, running: false, phase: '' };
+  return result;
+}
+
+/**
+ * キャンペーンのページを数タブずつ裏で開いて判定（とエントリー）し、結果を記録する。
+ * targets は { url: 記録に使う正規化したURL, open: 実際に開くURL }。
+ */
+async function checkCampaigns(targets, entry) {
+  scanState.phase = entry ? 'エントリー中' : '確認中';
+  scanState.total = targets.length;
+
+  const results = [];
+  await eachLimited(targets, SCAN_CONCURRENCY, async ({ url, open }) => {
+    const r = await runInTab(open, 'campaign', entry);
+    const item = {
+      url,
+      title: r?.title || '',
+      status: r?.status || 'unknown',
+      entered: Boolean(r?.entered),
+      checkedAt: Date.now()
+    };
+    await saveCampaign(url, item);
+    results.push(item);
+    scanState.done = results.length;
+    setBadge(String(targets.length - results.length || ''));
+  });
+
+  const count = (s) => results.filter((r) => r.status === s).length;
+  return {
+    ok: true,
+    checked: results.length,
+    entered: count('entered'),
+    alreadyEntered: count('already'),
+    none: count('none'),
+    failed: results.filter((r) => ['timeout', 'error', 'unknown', 'closed'].includes(r.status)).length
+  };
+}
+
+/**
+ * ポップアップの「URLを指定して実行」。スキャンと同じく、そのURLのために開いたタブだけで
+ * エントリーし、表示が変わったことを確かめてから記録する。
+ * （以前は「3分間はどのキャンペーンページでも自動エントリーして閉じる」印を立てていたため、
+ * その間に自分で開いたキャンペーンページまでエントリーされて閉じていた。）
+ */
+function enterCampaignUrls(rawUrls) {
+  const targets = [];
+  const seen = new Set();
+  let skipped = 0;
+  for (const raw of rawUrls) {
+    const url = normalizeCampaignUrl(raw);
+    if (!url) { skipped++; continue; }
+    if (seen.has(url)) continue;
+    seen.add(url);
+    // クエリを落とすと開けなくなるページがあるので、書かれたURLのまま開く（rd.rakuten の包みは剥がす）
+    targets.push({ url, open: new URL(raw).hostname === CAMPAIGN_HOST ? raw : url });
+  }
+  if (!targets.length) return Promise.resolve({ ok: false, error: `${CAMPAIGN_HOST} のURLがありません` });
+
+  return runScan('エントリー中', async () => ({ ...(await checkCampaigns(targets, true)), skipped }));
+}
+
+function scanCampaigns({ entry }) {
+  return runScan('トップページを読み込み中', async () => {
     const found = await runInTab(TOP_PAGE, 'links', false);
     const rawLinks = Array.isArray(found?.links) ? found.links : [];
     if (!rawLinks.length) return { ok: false, error: 'トップページからリンクを取れませんでした' };
@@ -407,37 +496,9 @@ async function scanCampaigns({ entry }) {
       return !(prev && prev.status === 'none' && now - (prev.checkedAt || 0) < SKIP_NONE_MS);
     }).slice(0, MAX_CAMPAIGNS);
 
-    scanState.phase = entry ? 'エントリー中' : '確認中';
-    scanState.total = targets.length;
-
-    const results = [];
-    await eachLimited(targets, SCAN_CONCURRENCY, async (url) => {
-      const r = await runInTab(url, 'campaign', entry);
-      const item = {
-        url,
-        title: r?.title || '',
-        status: r?.status || 'unknown',
-        entered: Boolean(r?.entered),
-        checkedAt: Date.now()
-      };
-      await saveCampaign(url, item);
-      results.push(item);
-      scanState.done = results.length;
-    });
-
-    const count = (s) => results.filter((r) => r.status === s).length;
-    return {
-      ok: true,
-      scanned: urls.length,
-      checked: results.length,
-      entered: count('entered'),
-      alreadyEntered: count('already'),
-      none: count('none'),
-      failed: results.filter((r) => ['timeout', 'error', 'unknown', 'closed'].includes(r.status)).length
-    };
-  } finally {
-    scanState = { ...scanState, running: false, phase: '' };
-  }
+    const summary = await checkCampaigns(targets.map((url) => ({ url, open: url })), entry);
+    return { ...summary, scanned: urls.length };
+  });
 }
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
@@ -479,11 +540,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg?.type === 'azr:campaignList') {
     loadCampaigns().then((d) => sendResponse(Object.values(d.items).sort((a, b) => (b.checkedAt || 0) - (a.checkedAt || 0))));
     return true; // 非同期応答
-  }
-
-  if (msg?.type === 'azr:closeTab') {
-    if (sender.tab?.id) chrome.tabs.remove(sender.tab.id).catch(() => {});
-    return false;
   }
 
   // 商品ページから: このクーポンを裏で獲得してほしい
@@ -561,19 +617,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return false;
   }
 
-  if (msg?.type === 'azr:batchEntry') {
-    (async () => {
-      const urls = Array.isArray(msg.urls) ? msg.urls.filter((u) => /^https:\/\/[\w.-]*rakuten\.co\.jp\//.test(u)) : [];
-      if (!urls.length) return sendResponse({ ok: false, error: 'URLがありません' });
-
-      await chrome.storage.session.set({
-        azrBatchEntry: { until: Date.now() + BATCH_WINDOW_MS, closeTab: msg.closeTab !== false }
-      });
-      for (const url of urls) {
-        await chrome.tabs.create({ url, active: false });
-      }
-      sendResponse({ ok: true, opened: urls.length });
-    })();
+  // ポップアップから: 指定したURLでエントリーする
+  if (msg?.type === 'azr:enterCampaignUrls') {
+    enterCampaignUrls(Array.isArray(msg.urls) ? msg.urls.map(String) : []).then(sendResponse);
     return true; // 非同期応答
   }
 

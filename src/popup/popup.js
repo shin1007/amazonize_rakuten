@@ -1,24 +1,7 @@
 /* Amazonize Rakuten - ポップアップ設定 */
 
-const DEFAULTS = {
-  enabled: true,
-  simplifyItem: true,
-  simplifySearch: true,
-  cartTotal: true,
-  couponList: true,
-  couponAutoGrab: true,
-  couponAutoApply: true,
-  couponAutoApplyConfirm: false,
-  campaignEntry: true,
-  campaignAutoEntry: false,
-  campaignScanEntry: true,
-  campaignUrls: [
-    'https://event.rakuten.co.jp/card/pointday/',
-    'https://event.rakuten.co.jp/campaign/sports/',
-    'https://event.rakuten.co.jp/campaign/point-up/everyday/point/'
-  ],
-  debug: false
-};
+// 既定値は content script と同じ settings.js のものを使う（2か所に書くとずれる）
+const { DEFAULTS } = window.AZR;
 
 const $ = (sel) => document.querySelector(sel);
 const status = $('#status');
@@ -101,51 +84,94 @@ async function init() {
     }
   }
 
-  let pollTimer = null;
-  async function pollScan() {
-    const s = await chrome.runtime.sendMessage({ type: 'azr:scanStatus' });
-    if (!s?.running) {
-      clearInterval(pollTimer);
-      pollTimer = null;
-      return;
-    }
-    scanStatus.textContent = s.total
-      ? `${s.phase}… ${s.done}/${s.total}`
-      : `${s.phase}…`;
+  /* 実行と進み具合 -----------------------------------------------------------
+   * スキャンは数分かかり、その間にポップアップは閉じられる。閉じると sendMessage の応答は
+   * 受け取れないので、進み具合は service worker に聞き、結果は session storage から読む。
+   * 開き直したときも同じ道筋で、実行中なら進み具合を、終わっていれば前回の結果を出す。 */
+
+  const batchButton = $('#batchEntry');
+  const runButtons = [scanButton, batchButton];
+
+  function describe(res) {
+    if (!res?.ok) return `失敗しました: ${res?.error ?? '不明なエラー'}`;
+    return `${res.checked}件を確認 / 新たに${res.entered}件エントリー / 既にエントリー済み${res.alreadyEntered}件`
+      + (res.failed ? ` / 判定できず${res.failed}件` : '')
+      + (res.skipped ? ` / 対象外のURL ${res.skipped}件` : '');
   }
 
-  scanButton.addEventListener('click', async () => {
-    scanButton.disabled = true;
-    scanStatus.textContent = 'トップページを読み込み中…';
-    pollTimer = setInterval(pollScan, 800);
+  async function showLastResult({ withTime }) {
+    let res = null;
+    try {
+      res = (await chrome.storage.session.get('azrScanResult')).azrScanResult;
+    } catch { /* session storage 不可 */ }
+    if (!res) return;
+    const at = withTime && res.finishedAt
+      ? `前回（${new Date(res.finishedAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}）: `
+      : '';
+    scanStatus.textContent = at + describe(res);
+  }
 
-    const entry = $('input[data-key="campaignScanEntry"]').checked;
-    const res = await chrome.runtime.sendMessage({ type: 'azr:scanCampaigns', entry });
+  let pollTimer = null;
+  function setRunning(on) {
+    for (const b of runButtons) b.disabled = on;
+    if (on && !pollTimer) {
+      pollTimer = setInterval(pollScan, 800);
+    } else if (!on && pollTimer) {
+      clearInterval(pollTimer);
+      pollTimer = null;
+    }
+  }
 
-    clearInterval(pollTimer);
-    pollTimer = null;
-    scanButton.disabled = false;
-    scanStatus.textContent = res?.ok
-      ? `${res.checked}件を確認 / 新たに${res.entered}件エントリー / 既にエントリー済み${res.alreadyEntered}件`
-        + (res.failed ? ` / 判定できず${res.failed}件` : '')
-      : `失敗しました: ${res?.error ?? '不明なエラー'}`;
+  async function pollScan() {
+    const s = await chrome.runtime.sendMessage({ type: 'azr:scanStatus' }).catch(() => null);
+    if (!s?.running) {
+      setRunning(false);
+      await showLastResult({ withTime: false });
+      await renderCampaignList();
+      return;
+    }
+    scanStatus.textContent = s.total ? `${s.phase}… ${s.done}/${s.total}` : `${s.phase}…`;
+  }
+
+  async function start(message, firstText) {
+    setRunning(true);
+    scanStatus.textContent = firstText;
+    const res = await chrome.runtime.sendMessage(message).catch((e) => ({ ok: false, error: String(e?.message || e) }));
+    if (res?.ok) return pollScan();
+    // 別の実行がすでに走っていたなら、そちらの進み具合をそのまま追う
+    const s = await chrome.runtime.sendMessage({ type: 'azr:scanStatus' }).catch(() => null);
+    if (s?.running) return;
+    // 対象のURLが無かったなど、始まらずに終わったものは保存されないので、ここで出す
+    setRunning(false);
+    scanStatus.textContent = describe(res);
     await renderCampaignList();
+  }
+
+  scanButton.addEventListener('click', () => {
+    const entry = $('input[data-key="campaignScanEntry"]').checked;
+    start({ type: 'azr:scanCampaigns', entry }, 'トップページを読み込み中…');
   });
 
-  renderCampaignList();
-
-  $('#batchEntry').addEventListener('click', async () => {
+  batchButton.addEventListener('click', () => {
     const list = urls.value.split('\n').map((v) => v.trim()).filter(Boolean);
     if (!list.length) {
       status.textContent = 'URLを1行以上入力してください';
       return;
     }
-    status.textContent = 'タブを開いています…';
-    const res = await chrome.runtime.sendMessage({ type: 'azr:batchEntry', urls: list, closeTab: true });
-    status.textContent = res?.ok
-      ? `${res.opened}件のページでエントリーを実行中です`
-      : `失敗しました: ${res?.error ?? '不明なエラー'}`;
+    status.textContent = '';
+    start({ type: 'azr:enterCampaignUrls', urls: list }, 'エントリー中…');
   });
+
+  renderCampaignList();
+
+  // 開いた時点で実行中なら進み具合を追い、終わっていれば前回の結果を出す
+  const now = await chrome.runtime.sendMessage({ type: 'azr:scanStatus' }).catch(() => null);
+  if (now?.running) {
+    setRunning(true);
+    pollScan();
+  } else {
+    showLastResult({ withTime: true });
+  }
 }
 
 init();
