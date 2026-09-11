@@ -49,7 +49,10 @@ src/lib/settings.js        設定の読み込みと既定値
 src/lib/dom.js             セレクタ候補・待機・要素生成などの共通処理
 src/lib/coupon-model.js    クーポン文言の解析と最良クーポン選択
 src/content/boot.js        ページ種別の判定とモジュールのディスパッチ
-src/content/item.js        商品ページの再構成
+src/content/item.js        商品ページの再構成（商品データの読み取り・レイアウト・購入エリアと動画の移設）
+src/content/item-images.js 楽天の画像URLの扱いと、説明の画像の選り分け（ギャラリーへ移す/重複を消す/残す）
+src/content/item-gallery.js 左ペインのギャラリーと拡大表示
+src/content/item-coupons.js 商品ページのクーポンを拾う・その場で獲得する・自動で獲得する
 src/content/search.js      検索結果の整理
 src/content/cart.js        かご合計の集計と表示
 src/content/state-bridge.js かご/会計SPAの状態をページ側から受け取る（MAINワールド）
