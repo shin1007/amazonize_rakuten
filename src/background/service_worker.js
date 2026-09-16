@@ -782,6 +782,28 @@ function scanCampaigns({ entry }) {
   });
 }
 
+/**
+ * トップページを開いたときの自動スキャン。開くたびに裏タブを何十枚も走らせないよう、
+ * 前回からの間隔をあける（キャンペーンは1日単位で入れ替わるので、これで足りる）。
+ */
+const AUTO_SCAN_INTERVAL_MS = 12 * 60 * 60 * 1000;
+
+async function autoScanFromTop() {
+  if (scanState.running) return { ok: false, skipped: 'running' };
+
+  const cfg = await chrome.storage.sync.get({
+    enabled: true, campaignScanOnTop: true, campaignScanEntry: true
+  });
+  if (!cfg.enabled || !cfg.campaignScanOnTop) return { ok: false, skipped: 'off' };
+
+  const { azrAutoScanAt = 0 } = await chrome.storage.local.get('azrAutoScanAt');
+  if (Date.now() - azrAutoScanAt < AUTO_SCAN_INTERVAL_MS) return { ok: false, skipped: 'recent' };
+
+  // 走らせる前に印を立てる。トップページを複数のタブで開くと、ほぼ同時に頼まれる。
+  await chrome.storage.local.set({ azrAutoScanAt: Date.now() });
+  return scanCampaigns({ entry: cfg.campaignScanEntry !== false });
+}
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   // 裏タブから: 自分は何をすべきタブか
   if (msg?.type === 'azr:scanTask') {
@@ -808,6 +830,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   // ポップアップから: 探して（必要なら）エントリーする
   if (msg?.type === 'azr:scanCampaigns') {
     scanCampaigns({ entry: msg.entry !== false }).then(sendResponse);
+    return true; // 非同期応答
+  }
+
+  // トップページから: 裏で探してエントリーする
+  if (msg?.type === 'azr:autoScanCampaigns') {
+    autoScanFromTop().then(sendResponse);
     return true; // 非同期応答
   }
 

@@ -34,8 +34,20 @@
     try {
       task = await chrome.runtime.sendMessage({ type: 'azr:scanTask' });
     } catch { /* service worker が落ちている */ }
-    // 普段のトップページでは何もしない。裏で開かれたときだけ集めて返す。
-    if (task?.task !== 'links') return;
+    // 裏で開かれたタブの仕事は、リンクを集めて返すこと。
+    if (task?.task !== 'links') {
+      // 自分で開いたトップページ。ここを起点に、裏でキャンペーンを探してエントリーする。
+      // 走らせるかどうか（設定・前回からの間隔・実行中か）は service worker が決める。
+      // トップそのものを開いたときだけ。カテゴリ等の下層ページでは起こさない。
+      if (location.pathname !== '/' || !AZR.settings.campaignScanOnTop) return;
+      try {
+        const r = await chrome.runtime.sendMessage({ type: 'azr:autoScanCampaigns' });
+        AZR.log('トップからの自動スキャン', r);
+      } catch (e) {
+        AZR.warn('自動スキャンを頼めませんでした:', e);
+      }
+      return;
+    }
 
     await waitSettled({ quiet: 700, timeout: 9000 });
     await scrollThrough();

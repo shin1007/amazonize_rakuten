@@ -13,6 +13,7 @@
     campaignEntry: true,          // キャンペーンページにエントリーパネルを出す
     campaignAutoEntry: false,
     campaignScanEntry: true,      // 一括スキャンで見つけたものをエントリーする
+    campaignScanOnTop: true,      // トップページを開いたら、裏で探してエントリーする
     campaignUrls: [               // ポップアップの一括エントリー対象（編集可）
       'https://event.rakuten.co.jp/card/pointday/',
       'https://event.rakuten.co.jp/campaign/sports/',
