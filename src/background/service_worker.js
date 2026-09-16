@@ -1,5 +1,8 @@
 /* Amazonize Rakuten - service worker */
 
+// 商品名の正規化と突き合わせ。商品ページと同じ判断を使いたいので、同じファイルを読む。
+importScripts("/src/lib/amazon-match.js");
+
 // content script から chrome.storage.session を読めるようにする
 chrome.runtime.onInstalled.addListener(async () => {
   try {
@@ -251,6 +254,225 @@ async function reviewRatings(shopId, itemId) {
   cache[key] = { at: now, ratings };
   await chrome.storage.local.set({ azrRatings: cache });
   return ratings;
+}
+
+/* Amazonで同じ商品はいくらか -------------------------------------------------
+ * 楽天の商品ページから「これはAmazonではいくらか」を知りたい。Amazonには
+ * 商品を引くための公開APIが無い（Product Advertising API はアソシエイトの登録と売上が要る）ので、
+ * 検索結果のページを1枚読んで、商品を取り出す。
+ *
+ * 引き方は2通り。
+ *   JANがある商品  → JANで検索する。ほぼ一意に当たる。
+ *   JANが無い商品  → 商品名から宣伝を落とした検索語で引き、商品名の重なり（scoreMatch）で選ぶ。
+ *
+ * 当たりかどうかは本人が確かめられるよう、商品ページにはAmazon側の商品名と
+ * 検索結果へのリンクも必ず出す（item-amazon.js）。
+ *
+ * Cookieは送らない（credentials:'omit'）。本人のAmazonのアカウントには触らず、
+ * 誰が見ても同じ棚を読む。ログインしていなくても価格は出る。
+ * 拡張からのfetchにはOriginが付かないので、CORSで弾かれることもない。
+ */
+const AMAZON_TTL_MS = 6 * 60 * 60 * 1000;
+const AMAZON_CACHE_MAX = 200;
+const AMAZON_TIMEOUT_MS = 12000;
+const AMAZON_RETRY_MS = 800;
+
+const amazonSearchUrl = (query) =>
+  `https://www.amazon.co.jp/s?k=${encodeURIComponent(query)}&i=aps&language=ja_JP`;
+
+const amazonItemUrl = (asin) => `https://www.amazon.co.jp/dp/${asin}/`;
+
+/** HTMLの実体参照。商品名にしか使わないので、よく出るものだけ戻す。 */
+function decodeEntities(s) {
+  return String(s)
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ')
+    .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(Number(d)));
+}
+
+/** 検索結果の1件を、HTMLの切れ端から組み立てる。service worker に DOMParser は無いので、文字で拾う。 */
+function parseAmazonResult(asin, chunk) {
+  // 価格は a-offscreen（読み上げ用の "￥1,234"）に入る。先頭が販売価格で、参考価格はその後ろ。
+  const price = chunk.match(/class="a-offscreen">\s*[¥￥]\s*([\d,]+)/);
+  if (!price) return null;
+
+  // 商品名は h2 の aria-label、無ければ h2 の中の最初の span
+  const title = chunk.match(/<h2[^>]*\saria-label="([^"]+)"/)
+    || chunk.match(/<h2[\s\S]{0,400}?<span[^>]*>([^<]{4,})<\/span>/);
+  if (!title) return null;
+
+  const rating = chunk.match(/5つ星のうち\s*([\d.]+)/);
+  // 件数は「157件のレビューから5つ星のうち4.4と評価されました」(aria-label) か、リンクの "(157)"
+  const count = chunk.match(/aria-label="([\d,]+)\s*件の(?:評価|レビュー)/)
+    || chunk.match(/s-underline-text[^>]*>\s*\(?([\d,]+)\)?\s*</);
+  const image = chunk.match(/<img[^>]+class="s-image"[^>]+src="([^"]+)"/);
+  const num = (m) => (m ? Number(m[1].replace(/,/g, '')) : null);
+
+  return {
+    asin,
+    title: decodeEntities(title[1]).replace(/\s+/g, ' ').trim(),
+    price: num(price),
+    rating: rating ? Number(rating[1]) : null,
+    count: num(count),
+    image: image ? image[1] : null,
+    url: amazonItemUrl(asin)
+  };
+}
+
+/*
+ * 検索結果のページは2段になっている。
+ *
+ *   <h2>結果</h2>          ← 検索語に一致した商品。本人が画面で見るのはここ
+ *   <h2>その他の結果</h2>   ← 一致しなかったときの寄せ集め。同じ形の枠で何十件も続く
+ *
+ * 「その他の結果」の商品は、本人が検索結果を見ても出てこない（楽天24の温泡の詰め合わせで、
+ * 画面には3件しか出ないのに、拡張は「その他の結果」から拾った別の商品を出していた）。
+ * 実測でも、枠60件のうち「結果」に属するのは7件だけだった。ここから先は読まない。
+ */
+function mainResults(html) {
+  const m = html.match(/<h2[^>]*>(?:その他の結果|関連する検索結果|他の検索結果)<\/h2>/);
+  return m ? html.slice(0, m.index) : html;
+}
+
+/**
+ * 検索結果のHTMLから商品を並べる。
+ *
+ * 1件は data-component-type="s-search-result" の div で、ASINは同じタグの data-asin にある。
+ * data-asin だけを目印にすると、検索結果の上に出る広告の枠（商品を横に並べるもの）まで拾ってしまい、
+ * 次の data-asin までが1件の切れ端にならない（実機のHTMLで確認）。
+ * 広告（AdHolder / スポンサー）は、その値段がその商品の値段とは限らないので外す。
+ */
+const AMAZON_CHUNK_MAX = 20000;
+
+function parseAmazonSearch(fullHtml) {
+  const html = mainResults(fullHtml);
+  const re = /data-component-type="s-search-result"/g;
+  const starts = [];
+  for (let m = re.exec(html); m; m = re.exec(html)) {
+    const at = html.lastIndexOf("<div", m.index);
+    if (at >= 0) starts.push(at);
+  }
+
+  const items = [];
+  const seen = new Set();
+  for (let i = 0; i < starts.length; i++) {
+    const at = starts[i];
+    const end = Math.min(starts[i + 1] ?? html.length, at + AMAZON_CHUNK_MAX);
+    const chunk = html.slice(at, end);
+    const asin = chunk.match(/^<div[^>]*\sdata-asin="([A-Z0-9]{10})"/);
+    if (!asin || seen.has(asin[1])) continue;
+    // 広告の印は3通り見る。実測では枠の class の AdHolder が付いていた（60件中12件、すべて外せた）が、
+    // 商品名（h2 の aria-label）が「スポンサー広告 - …」で始まるものもあるので、それも弾く。
+    if (/AdHolder|sp-sponsored-result|aria-label="スポンサー広告|>スポンサー</.test(chunk)) continue;
+    const item = parseAmazonResult(asin[1], chunk);
+    if (!item) continue;
+    seen.add(asin[1]);
+    items.push(item);
+    if (items.length >= 8) break;
+  }
+  return items;
+}
+
+/**
+ * 商品の枠がページのどこかに1つでもあるか（「その他の結果」の分も数える）。
+ * 1つも無いのは「この商品はAmazonに無い」ではなく、応答がおかしいとき（空で返ることが実際にある）。
+ */
+function hasAnyResultFrame(html) {
+  return /data-component-type="s-search-result"/.test(html);
+}
+
+/** 人手の閲覧に見えない通信は弾かれることがある。弾かれたと分かる形で返し、商品ページでは検索への導線だけ出す。 */
+function amazonBlocked(html) {
+  return /validateCaptcha|api-services-support@amazon\.com|自動化されたアクセス/.test(html);
+}
+
+async function amazonFetch(url) {
+  const res = await fetch(url, {
+    credentials: 'omit',
+    signal: AbortSignal.timeout(AMAZON_TIMEOUT_MS),
+    headers: { 'Accept-Language': 'ja-JP,ja;q=0.9' }
+  });
+  if (!res.ok) return { status: res.status === 503 ? 'blocked' : 'error' };
+  const html = await res.text();
+  if (amazonBlocked(html)) return { status: 'blocked' };
+  return { status: 'ok', html };
+}
+
+/*
+ * 名前で引いたときの合格点。同じ商品でも楽天側の商品名には余計な語が残るので満点は出ない
+ * （実測で0.5前後）。0.3に満たないものは別の商品とみなして出さない。
+ *
+ * 候補は「結果」の欄のものだけ（mainResults）。Amazon自身が検索語に一致すると言っている商品なので、
+ * この点は低めでよい。「その他の結果」まで見ていたときは、まるで関係の無い商品が0.3〜0.4で混ざっていた。
+ */
+const AMAZON_MIN_SCORE = 0.3;
+
+async function amazonLookup({ title, jan }) {
+  const useJan = AZR.amazon.isJan(jan);
+  const query = useJan ? String(jan) : AZR.amazon.buildQuery(title);
+  if (!query) return { status: 'none', query: '', searchUrl: null };
+
+  const searchUrl = amazonSearchUrl(query);
+  let got = await amazonFetch(searchUrl);
+  if (got.status !== 'ok') return { status: got.status, query, searchUrl };
+
+  /*
+   * 商品の枠がページのどこにも無いことがある。同じ検索語をすぐ引き直すと48件返るので、
+   * 「その商品はAmazonに無い」わけではない（実機で確認）。1度だけ読み直す。
+   *
+   * 「結果」の欄が空なだけ（枠は「その他の結果」にしかない）のときは読み直さない。
+   * それは応答の不調ではなく、検索語に一致する商品が無いという答えそのもの。
+   */
+  let items = parseAmazonSearch(got.html);
+  if (!items.length && !hasAnyResultFrame(got.html)) {
+    await new Promise((r) => setTimeout(r, AMAZON_RETRY_MS));
+    got = await amazonFetch(searchUrl);
+    if (got.status !== 'ok') return { status: got.status, query, searchUrl };
+    items = parseAmazonSearch(got.html);
+    if (!items.length && !hasAnyResultFrame(got.html)) return { status: 'none', empty: true, query, searchUrl };
+  }
+  if (!items.length) return { status: 'none', query, searchUrl };
+
+  if (useJan) {
+    // JANは一意なので、広告を除いた先頭がその商品。重なりは参考として付けるだけにする。
+    const item = items[0];
+    return {
+      status: 'ok', query, searchUrl, byJan: true,
+      item: { ...item, score: AZR.amazon.scoreMatch(title, item.title) }
+    };
+  }
+
+  // 名前で引いたときは、商品名がいちばん重なるものを選ぶ（先頭が一番近いとは限らない）
+  let best = null;
+  for (const it of items) {
+    const score = AZR.amazon.scoreMatch(title, it.title);
+    if (!best || score > best.score) best = { ...it, score };
+  }
+  if (!best || best.score < AMAZON_MIN_SCORE) return { status: 'none', query, searchUrl };
+  return { status: 'ok', query, searchUrl, byJan: false, item: best };
+}
+
+/** 価格は日単位で動くが、同じ商品ページを開き直すたびに読みに行く必要は無い。 */
+async function amazonPrice({ title, jan }) {
+  const key = AZR.amazon.isJan(jan) ? `jan:${jan}` : `q:${AZR.amazon.buildQuery(title)}`;
+  const { azrAmazon: cache = {} } = await chrome.storage.local.get('azrAmazon');
+  const now = Date.now();
+  const hit = cache[key];
+  if (hit && now - hit.at < AMAZON_TTL_MS) return { ...hit.result, cached: true };
+
+  const result = await amazonLookup({ title, jan });
+  // 弾かれた・通信に失敗した・空で返った、は覚えない（次に開いたときは読みに行く）
+  if ((result.status === 'ok' || result.status === 'none') && !result.empty) {
+    for (const [k, v] of Object.entries(cache)) if (now - v.at >= AMAZON_TTL_MS) delete cache[k];
+    cache[key] = { at: now, result };
+    const keys = Object.keys(cache);
+    if (keys.length > AMAZON_CACHE_MAX) {
+      const oldest = keys.sort((a, b) => cache[a].at - cache[b].at).slice(0, keys.length - AMAZON_CACHE_MAX);
+      for (const k of oldest) delete cache[k];
+    }
+    await chrome.storage.local.set({ azrAmazon: cache });
+  }
+  return result;
 }
 
 /* 獲得したクーポンの履歴 -----------------------------------------------------
@@ -666,6 +888,21 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       return false;
     }
     reviewRatings(shopId, itemId).then(sendResponse).catch(() => sendResponse(null));
+    return true; // 非同期応答
+  }
+
+  // 商品ページから: Amazonでの価格
+  if (msg?.type === 'azr:amazonPrice') {
+    const title = String(msg.title || '');
+    const jan = msg.jan ? String(msg.jan) : '';
+    if (!title) {
+      sendResponse({ status: 'error' });
+      return false;
+    }
+    // 読み直しを挟むと30秒近くかかることがある。その間 service worker を止めさせない。
+    holdAwake(() => amazonPrice({ title, jan }))
+      .then(sendResponse)
+      .catch((e) => { console.warn('[AZR] Amazonの価格を取れない:', e); sendResponse({ status: 'error' }); });
     return true; // 非同期応答
   }
 

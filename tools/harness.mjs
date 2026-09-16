@@ -127,6 +127,10 @@ async function run(names) {
     // 商品とショップの評価は service worker が商品レビューのページから取ってくる
     await page.waitForFunction(() => document.documentElement.dataset.azrRatings === 'settled', null, { timeout: 15000 })
       .catch(() => logs.push('harness: 評価が settled にならない'));
+    // Amazonでの価格は service worker が amazon.co.jp の検索結果を読んで返す
+    // （保存したページには入っていないので、ここだけは実際にAmazonへ通信する）
+    await page.waitForFunction(() => document.documentElement.dataset.azrAmazon, null, { timeout: 25000 })
+      .catch(() => logs.push('harness: Amazonの価格が返らない'));
     // 商品動画のプレーヤーは楽天の動画スクリプトが後から描き、それを動画の枠へ移設する
     if (await page.$('.azr-gallery-video')) {
       await page.waitForFunction(() => document.documentElement.dataset.azrVideo, null, { timeout: 20000 })
@@ -179,6 +183,14 @@ async function run(names) {
           return max;
         })(),
         itemReview: document.querySelector('.azr-review')?.innerText.replace(/\s+/g, ' ').trim() ?? null,
+        // 価格。クーポンが効いているときは「適用後 / 元の価格 / クーポン適用後」が並ぶ
+        price: document.querySelector('.azr-price-block')?.innerText.replace(/\s+/g, ' ').trim() ?? null,
+        coupons: q('.azr-item-coupons li').map((li) => li.innerText.replace(/\s+/g, ' ').trim()),
+        amazon: {
+          state: document.documentElement.dataset.azrAmazon || null,
+          text: document.querySelector('.azr-amazon')?.innerText.replace(/\s+/g, ' ').trim() ?? null,
+          href: document.querySelector('.azr-amazon-item')?.href ?? null
+        },
         shopCard: document.querySelector('.azr-shop-card')?.innerText.replace(/\s+/g, ' ').trim() ?? null
       };
     });
@@ -196,6 +208,7 @@ async function run(names) {
     if (report.infoOverflow) console.log(`  中央ペインのはみ出し ${report.infoOverflow}px`);
     if (report.buyboxOverflow) console.log(`  右ペインのはみ出し ${report.buyboxOverflow}px`);
     console.log(`  商品評価  ${report.itemReview ?? '(なし)'}`);
+    console.log(`  Amazon  ${report.amazon.state ?? '(なし)'}  ${report.amazon.text ?? ''}`);
     console.log(`  ショップ  ${report.shopCard ?? '(なし)'}`);
     for (const d of report.dropped || []) console.log(`  重複  ${short(d.src)}  = ${d.sameAs}`);
     const why = new Map((report.left || []).map((l) => [short(l.src), l.why]));

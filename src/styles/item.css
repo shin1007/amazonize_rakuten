@@ -383,6 +383,9 @@ html.azr-lb-open body { overflow: hidden !important; }
 }
 .azr-price { font-size: 28px; color: #b12704; font-weight: 500; }
 .azr-points { color: #bf0000; font-size: 13px; }
+/* クーポン適用後の価格。適用後を主役にし、元の価格は取り消し線で小さく添える。 */
+.azr-price-was { color: #565959; font-size: 13px; text-decoration: line-through; }
+.azr-price-note { color: #067d62; font-size: 13px; font-weight: 700; }
 
 /* クーポン（価格の直下）。店舗のバナーは画像だけのことが多いので、
    文言・現物のバナー・獲得への導線を1行にまとめる。 */
@@ -455,7 +458,8 @@ a.azr-coupon-link[data-azr-grab="failed"] .azr-coupon-get { color: #b12704; }
   /* 右ペインは中央と一緒にスクロールさせる（貼り付くのは左だけ） */
   background: #fff;
 }
-.azr-buybox-price { font-size: 22px; color: #b12704; }
+.azr-buybox-price { font-size: 22px; color: #b12704; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.azr-buybox-price .azr-price-was, .azr-buybox-price .azr-price-note { font-size: 12px; }
 .azr-buybox-points { color: #bf0000; font-size: 12px; margin-top: 2px; }
 .azr-buybox-slot { margin-top: 12px; }
 .azr-buybox-loading { color: #565959; font-size: 13px; padding: 8px 0; }

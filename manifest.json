@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Amazonize Rakuten",
-  "version": "2026.9.15",
-  "description": "楽天市場をAmazon風のシンプルなUIに。商品ページでクーポン獲得・かご合計・最適クーポン自動適用・キャンペーン自動エントリー。",
+  "version": "2026.9.16",
+  "description": "楽天市場をAmazon風のシンプルなUIに。商品ページにAmazonでの価格を表示。クーポン獲得・かご合計・最適クーポン自動適用・キャンペーン自動エントリー。",
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",
@@ -11,7 +11,8 @@
   },
   "permissions": ["storage", "declarativeNetRequestWithHostAccess"],
   "host_permissions": [
-    "https://*.rakuten.co.jp/*"
+    "https://*.rakuten.co.jp/*",
+    "https://www.amazon.co.jp/*"
   ],
   "background": {
     "service_worker": "src/background/service_worker.js"
@@ -42,12 +43,14 @@
         "src/lib/settings.js",
         "src/lib/dom.js",
         "src/lib/coupon-model.js",
+        "src/lib/amazon-match.js",
         "src/content/boot.js",
         "src/content/top.js",
         "src/content/item-images.js",
         "src/content/item-gallery.js",
         "src/content/item-coupons.js",
         "src/content/item.js",
+        "src/content/item-amazon.js",
         "src/content/search.js",
         "src/content/cart.js",
         "src/content/coupon.js",
@@ -57,6 +60,7 @@
       "css": [
         "src/styles/common.css",
         "src/styles/item.css",
+        "src/styles/amazon.css",
         "src/styles/cart.css"
       ],
       "run_at": "document_start",

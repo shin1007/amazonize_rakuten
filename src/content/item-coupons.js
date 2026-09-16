@@ -183,7 +183,8 @@
    * バナー画像のファイル名から推測した文言より、こちらが正しい。
    * 表示を待たせないため、行を出したあとに非同期で上書きする。
    */
-  async function refineCoupon(link, textEl, status, url) {
+  async function refineCoupon(c, link, textEl, status, onChange) {
+    const url = c.href;
     let d = null;
     try {
       d = await chrome.runtime.sendMessage({ type: 'azr:couponDetails', url });
@@ -196,11 +197,27 @@
       textEl.textContent = d.name;
       // 正式名称が取れたなら、裏取り用のバナーは要らない。名前に幅を回す。
       link.querySelector('.azr-coupon-thumb')?.remove();
+      // バナーのファイル名から推測した文言には利用条件が入らない（500off.jpg が実は
+      // 「5,000円以上で500円OFF」のこともある）。正式名称の方を読み直して条件を入れ替える。
+      Object.assign(c, AZR.coupons.parseCoupon(d.name, { source: c.source, href: c.href, image: c.image }));
+      const cond = link.querySelector('.azr-coupon-cond');
+      if (cond && c.minSpend) cond.textContent = `${yen(c.minSpend)}以上で利用可`;
+      else if (cond) cond.remove();
+    }
+    // 割引の内訳はAPIの数値が正。文言の読み取りより確か。
+    if (Number(d.discountType) === 1 && Number(d.discountFactor) > 0) {
+      c.type = 'fixed';
+      c.amount = Number(d.discountFactor);
+    } else if (Number(d.discountType) === 2 && Number(d.discountFactor) > 0) {
+      c.type = 'percent';
+      c.percent = Number(d.discountFactor);
     }
     if (d.acquired && !link.dataset.azrGrab) {
       link.dataset.azrGrab = 'done';
       status.textContent = '獲得済みです';
     }
+    // 割引・条件が変わったので、価格の出し直しを呼び出し元に任せる
+    onChange?.();
   }
 
   /** service worker が返したフローティングクーポンを、クーポン欄の1行の形にする */
@@ -211,7 +228,22 @@
       f.minUnits ? `${f.minUnits}個以上` : '',
       f.salesMethod === 'normal' ? '通常購入限定' : f.salesMethod === 'subscription' ? '定期購入限定' : ''
     ].filter(Boolean).join('・');
-    return { floating: true, getKey: f.getKey, label: f.name || f.discount, cond, acquired: f.acquired };
+    // 割引は「500円OFF」「10%OFF」の形で来る。率OFFの上限額はこの欄にもAPIの条件にも入らないので、
+    // 名前に「最大1,000円」と書いてあればそれを上限として拾う（上限を見落として安く見せない）。
+    const parsed = AZR.coupons.parseCoupon(f.discount, { source: 'floating' });
+    const named = AZR.coupons.parseCoupon(`${f.name || ''} ${f.discount}`);
+    return {
+      ...parsed,
+      cap: parsed.cap ?? named.cap,
+      minSpend: f.minSpend || named.minSpend || 0,
+      minUnits: f.minUnits || 0,
+      salesMethod: f.salesMethod || null,
+      floating: true,
+      getKey: f.getKey,
+      label: f.name || f.discount,
+      cond,
+      acquired: f.acquired
+    };
   }
 
   /**
@@ -243,7 +275,7 @@
   }
 
   /** Amazon風のクーポン表示。押した場所から離れずに獲得できるようにする。 */
-  function buildCoupons(coupons) {
+  function buildCoupons(coupons, { onChange } = {}) {
     const auto = []; // 自動で獲得する行（作った順に、1枚ずつ獲得する）
     const row = (c) => {
       if (c.floating) return floatingRow(c, auto);
@@ -284,7 +316,7 @@
         c.image ? h('img.azr-coupon-thumb', { src: c.image, alt: '', loading: 'lazy' }) : '',
         status
       );
-      refineCoupon(link, textEl, status, c.href);
+      refineCoupon(c, link, textEl, status, onChange);
       auto.push({ key: couponKey(c.href), link, status, run: () => grabInPlace(link, status, { type: 'azr:grabCoupon', url: c.href, apiOnly: true }, { auto: true }) });
       return link;
     };
@@ -296,8 +328,15 @@
     return section;
   }
 
+  /**
+   * 価格に反映してよいクーポン。この商品ページで実際に獲得できるものに限る。
+   * 店舗のお知らせ（「SALE×クーポンで最大40%OFF」など、店舗ページへのリンク）は
+   * 対象商品も条件も分からないので、価格には効かせない。
+   */
+  const affectsPrice = (c) => Boolean(c.floating || (c.href && /[?&]getkey=/.test(c.href)));
+
   /** 獲得したクーポンの履歴に添える、どの商品ページで獲得したか */
   const setGrabContext = (ctx) => { grabContext = ctx; };
 
-  AZR.itemCoupons = { harvestCoupons, couponKey, buildCoupons, fromFloating, setGrabContext };
+  AZR.itemCoupons = { harvestCoupons, couponKey, buildCoupons, fromFloating, affectsPrice, setGrabContext };
 })();

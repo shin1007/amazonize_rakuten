@@ -21,7 +21,7 @@
     imageAt, isPlaceholder, galleryItem, takeCandidates, restore, sortDescriptionImages, isEmptyDescription
   } = AZR.itemImages;
   const { buildGallery } = AZR.itemGallery;
-  const { harvestCoupons, couponKey, buildCoupons, fromFloating, setGrabContext } = AZR.itemCoupons;
+  const { harvestCoupons, couponKey, buildCoupons, fromFloating, affectsPrice, setGrabContext } = AZR.itemCoupons;
 
   const SEL = {
     // 実ページで確認したID。ハッシュ付きクラス名より安定している。
@@ -72,6 +72,7 @@
         name: app.shop?.shopName || '',
         url: `https://www.rakuten.co.jp/${app.shop?.shopUrl || ''}/`
       },
+      jan: janFromAppData(sku),
       variants: (sku.variantSelectors || []).map((v) => v.label).filter(Boolean),
       review: reviewFromAppData(sku),
       // 商品説明文 → 販売説明文 の順（元のページと同じ並び）
@@ -80,6 +81,18 @@
         sku.salesDescription
       ].filter((s) => typeof s === 'string' && s.trim())
     };
+  }
+
+  /**
+   * JANコード（articleNumber）。Amazonで同じ商品を引くのに使う。
+   * SKUごとに入っていて、選んだSKUで別の商品になる。どのSKUでも同じ1つのときだけ使う
+   * （容量違い・色違いが並ぶ商品では、いまどれを見ているのかをこの時点では決められない）。
+   */
+  function janFromAppData(sku) {
+    const list = Array.isArray(sku?.sku) ? sku.sku : [];
+    const codes = new Set(list.map((v) => v?.articleNumber?.value).filter(Boolean));
+    if (codes.size === 1) return [...codes][0];
+    return sku?.articleNumber?.value || null;
   }
 
   /**
@@ -133,6 +146,7 @@
       images: metaImages,
       video: null,
       itemId: null,
+      jan: null,
       shop: { id: null, code, name: code, url: `https://www.rakuten.co.jp/${code}/` },
       variants: [],
       review: null,
@@ -206,11 +220,51 @@
     return nodes;
   }
 
-  function priceLabel(data) {
-    if (data.minPrice && data.maxPrice && data.maxPrice !== data.minPrice) {
-      return `${yen(data.minPrice)}〜${yen(data.maxPrice)}`;
+  const priceLabel = (min, max) => (min && max && max !== min ? `${yen(min)}〜${yen(max)}` : yen(min));
+
+  /**
+   * クーポンを適用したあとの価格。
+   * 条件（最低購入金額・個数・定期購入限定）を満たさないクーポンは、持っていても効かせない。
+   * 使えるものが複数あるときは、いちばん安くなる1枚（楽天のクーポンは1店舗1枚しか使えない）。
+   *
+   * 価格に幅がある商品（SKUで値段が違う）は、安い方で選んだクーポンを高い方にも当てる。
+   * 幅の両端で別のクーポンが最良になることはあるが、どちらか片方の名前しか出せない以上、
+   * 「この1枚を使うと、いくらになるか」を通しで見せる方が読み違えにくい。
+   */
+  function couponPricing(data, coupons) {
+    const best = AZR.coupons.itemPrice((coupons || []).filter(affectsPrice), data.minPrice);
+    if (!best) return null;
+    const high = data.maxPrice && data.maxPrice !== data.minPrice
+      ? AZR.coupons.itemPrice([best.coupon], data.maxPrice)?.price ?? data.maxPrice
+      : null;
+    return { coupon: best.coupon, min: best.price, max: high };
+  }
+
+  /**
+   * 今の「クーポン適用後の価格」。item-amazon.js が Amazon との値差に使う。
+   * クーポンは後から（フローティングの応答・内容の確認で）増えたり内容が変わったりするので、
+   * 今の値と、変わったときの知らせの両方を渡す。効くクーポンが無ければ value は null。
+   */
+  AZR.itemPricing = { value: null, watchers: [] };
+  function publishPricing(pricing) {
+    AZR.itemPricing.value = pricing;
+    for (const cb of AZR.itemPricing.watchers) {
+      try {
+        cb(pricing);
+      } catch (e) {
+        AZR.warn('価格の変化を受け取る側で失敗:', e);
+      }
     }
-    return yen(data.minPrice);
+  }
+
+  /** 価格の行。クーポンが効くときは、適用後を主役にして元の価格に取り消し線を引く。 */
+  function priceNodes(data, pricing, nowSpec) {
+    if (!pricing) return [h(nowSpec, { text: priceLabel(data.minPrice, data.maxPrice) })];
+    return [
+      h(nowSpec, { text: priceLabel(pricing.min, pricing.max) }),
+      h('span.azr-price-was', { text: priceLabel(data.minPrice, data.maxPrice) }),
+      h('span.azr-price-note', { text: 'クーポン適用後', title: pricing.coupon.label })
+    ];
   }
 
   /** 4.7 なら星5つ分の94%を塗る。四捨五入せず半端な点も見た目に出す。 */
@@ -316,15 +370,16 @@
         data.review.score ? h('span.azr-score', { text: data.review.score.toFixed(2) }) : '',
         data.review.count ? h('span.azr-count', { text: `${data.review.count.toLocaleString('ja-JP')}件のレビュー` }) : ''
       ),
-      h('div.azr-price-block', h('span.azr-price', { text: priceLabel(data) })),
-      h('div.azr-coupons-slot', data.coupons.length ? buildCoupons(data.coupons) : ''),
+      // 価格とクーポンは、拾い直しやAPIの応答のたびに出し直す（paintCoupons）
+      h('div.azr-price-block'),
+      h('div.azr-coupons-slot'),
       data.variants.length ? h('div.azr-variants', {
         text: `選択項目: ${data.variants.join(' / ')}（右のボックスで選択）`
       }) : ''
     );
 
     const buybox = h('aside.azr-buybox',
-      h('div.azr-buybox-price', { text: priceLabel(data) }),
+      h('div.azr-buybox-price'),
       h('div.azr-buybox-slot', h('div.azr-buybox-loading', { text: '購入エリアを読み込み中…' }))
     );
 
@@ -465,6 +520,8 @@
         ? base.descriptionHtml.map(descriptionFromHtml)
         : harvestDescriptions()
     };
+    // 商品ページの他のモジュール（item-amazon.js）はここから読む
+    AZR.itemData = data;
     AZR.log('harvested', data);
 
     if (!data.title || !data.minPrice) {
@@ -484,6 +541,23 @@
     const candidates = takeCandidates(data.descriptionNodes);
     for (const node of data.descriptionNodes) disarmAutoplay(node);
     const root = buildLayout(data, gallery);
+
+    /* 価格とクーポン欄は、フローティングクーポンの応答・Reactが描いた分の拾い直し・
+     * クーポン内容の確認（refineCoupon）のたびに出し直す。最初の1回も同じ道を通る。 */
+    let shownCoupons = data.coupons;
+    const paintPrice = () => {
+      const pricing = couponPricing(data, shownCoupons);
+      root.querySelector('.azr-price-block').replaceChildren(...priceNodes(data, pricing, 'span.azr-price'));
+      root.querySelector('.azr-buybox-price').replaceChildren(...priceNodes(data, pricing, 'span.azr-price-now'));
+      publishPricing(pricing);
+    };
+    const paintCoupons = () => {
+      root.querySelector('.azr-coupons-slot')
+        .replaceChildren(shownCoupons.length ? buildCoupons(shownCoupons, { onChange: paintPrice }) : '');
+      paintPrice();
+    };
+    paintCoupons();
+
     document.body.append(root);
     mountHeader(root);
 
@@ -521,10 +595,10 @@
       // フローティングクーポン（元のページで右下に出る枠）を先頭に、ページから拾ったものを後ろに並べる。
       // 同じクーポンへのリンクがページにもあれば、フローティングの方だけを残す。
       let floating = [];
-      const paintCoupons = () => {
+      const mergeCoupons = () => {
         const taken = new Set(floating.map((c) => `getkey:${c.getKey}`));
-        const list = [...floating, ...data.coupons.filter((c) => !c.href || !taken.has(couponKey(c.href)))];
-        root.querySelector('.azr-coupons-slot').replaceChildren(list.length ? buildCoupons(list) : '');
+        shownCoupons = [...floating, ...data.coupons.filter((c) => !c.href || !taken.has(couponKey(c.href)))];
+        paintCoupons();
       };
 
       // 元のページと同じく、通常購入の価格で問い合わせる。ログインしていないと何も返らない。
@@ -539,7 +613,7 @@
           AZR.log('floating coupons', r);
           if (!r?.coupons?.length) return;
           floating = r.coupons.map(fromFloating);
-          paintCoupons();
+          mergeCoupons();
         }).catch((e) => AZR.warn('フローティングクーポンの問い合わせに失敗:', e));
       }
 
@@ -549,7 +623,7 @@
         const keys = (list) => list.map((c) => c.href || c.label).join('\n');
         if (keys(later) === keys(data.coupons)) return;
         data.coupons = later;
-        paintCoupons();
+        mergeCoupons();
       });
     }
 

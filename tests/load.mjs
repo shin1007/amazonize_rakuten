@@ -22,3 +22,43 @@ export function loadAZR(files) {
   }
   return window.AZR;
 }
+
+/**
+ * service worker を Node で読む。chrome API とネットワークは差し替える。
+ * 中の関数は function 宣言なので、文脈のグローバルとして触れる。
+ *   const sw = loadServiceWorker({ fetch: async () => ({ ok: true, text: async () => html }) });
+ *   sw.parseAmazonSearch(html)
+ */
+export function loadServiceWorker({ fetch = async () => { throw new Error("fetch されない前提"); }, storage = {} } = {}) {
+  const noop = () => {};
+  const listener = { addListener: noop };
+  const ctx = vm.createContext({
+    console,
+    fetch,
+    setInterval: noop,
+    clearInterval: noop,
+    setTimeout, // 空で返ったときの読み直しの待ちに使う
+    URL,
+    URLSearchParams,
+    AbortSignal: { timeout: () => null },
+    chrome: {
+      runtime: { onInstalled: listener, onMessage: listener, getPlatformInfo: async () => ({}) },
+      tabs: { onUpdated: listener, onRemoved: listener },
+      action: {},
+      declarativeNetRequest: { updateSessionRules: async () => {} },
+      storage: {
+        session: { setAccessLevel: noop },
+        // chrome.storage.local の代わり。渡した storage をそのまま読み書きする。
+        local: {
+          get: async (key) => (key in storage ? { [key]: storage[key] } : {}),
+          set: async (obj) => Object.assign(storage, obj)
+        }
+      }
+    }
+  });
+  ctx.self = ctx;
+  // service worker の importScripts は拡張のルートからの絶対パス
+  ctx.importScripts = (path) => vm.runInContext(readFileSync(join(ROOT, path.replace(/^\//, '')), 'utf8'), ctx, { filename: path });
+  vm.runInContext(readFileSync(join(ROOT, "src/background/service_worker.js"), "utf8"), ctx, { filename: "service_worker.js" });
+  return ctx;
+}

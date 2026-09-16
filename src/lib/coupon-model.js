@@ -81,6 +81,31 @@
   }
 
   /**
+   * このクーポンを「商品1個ぶん」の価格に効かせてよいか。
+   * 持っているクーポンでも、条件を満たさないものは価格に出さない。
+   *   minSpend    この価格では足りない（2個買えば届くとしても、出しているのは1個の価格）
+   *   minUnits    2個以上でないと使えない
+   *   salesMethod 定期購入限定（出しているのは通常購入の価格）
+   * 送料無料クーポンは商品の価格を動かさないので効かない（discountFor が 0 を返す）。
+   */
+  function appliesToItem(coupon, price) {
+    if (!coupon || !(price > 0)) return false;
+    if (coupon.minUnits > 1) return false;
+    if (coupon.salesMethod === 'subscription') return false;
+    if (coupon.minSpend && price < coupon.minSpend) return false;
+    return discountFor(coupon, price) > 0;
+  }
+
+  /**
+   * 商品を1個買ったときに、いちばん安くなるクーポンと適用後の価格。
+   * 使えるクーポンが1枚も無ければ null（＝価格はそのまま）。
+   */
+  function itemPrice(coupons, price) {
+    const best = pickBest((coupons || []).filter((c) => appliesToItem(c, price)), price);
+    return best ? { ...best, price: price - best.discount } : null;
+  }
+
+  /**
    * 適用可能なクーポンのうち割引額が最大のものを返す。
    * 同額なら「条件が緩い（minSpendが小さい）」ものを優先。
    */
@@ -217,5 +242,5 @@
     return { appliedTotal, best, better, selected };
   }
 
-  AZR.coupons = { parseCoupon, discountFor, pickBest, rank, normalizeCoupon, collect, sameCoupon, chooseSwitch };
+  AZR.coupons = { parseCoupon, discountFor, appliesToItem, itemPrice, pickBest, rank, normalizeCoupon, collect, sameCoupon, chooseSwitch };
 })();
