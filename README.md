@@ -88,6 +88,12 @@ Amazonの価格（`tests/amazon-match.test.mjs`）も同じ作りで確かめて
 
 配布用のzipには `tests/` を入れない（`manifest.json` / `src/` / `icons/` だけでよい）。
 
+```
+node tools/pack.mjs   # tools/out/amazonize-rakuten-<version>.zip を作る
+```
+
+Windows の `Compress-Archive` は区切りに `` を使ったzipを作るので使わない。
+
 ### 保存したページで試す
 
 楽天のページを毎回取りに行くと遅く、中身も日々変わる。`tools/harness.mjs` は実ページを通信ごとHARに保存し、以後はそれを再生して拡張を当てる（ページ側のReactも保存したJSがそのまま動く）。1ページ数秒で回る。
