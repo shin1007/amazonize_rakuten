@@ -92,7 +92,7 @@ Amazonの価格（`tests/amazon-match.test.mjs`）も同じ作りで確かめて
 node tools/pack.mjs   # tools/out/amazonize-rakuten-<version>.zip を作る
 ```
 
-Windows の `Compress-Archive` は区切りに `` を使ったzipを作るので使わない。
+Windows の `Compress-Archive` は区切りに `\` を使ったzipを作るので使わない。
 
 ### 保存したページで試す
 
