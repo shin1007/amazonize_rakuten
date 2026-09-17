@@ -1,0 +1,35 @@
+/* Amazonize Rakuten - かご / 検索結果の調整 */
+
+.azr-cart-panel { width: 340px; }
+.azr-cart-panel .azr-total-row.is-main strong { font-size: 15px; }
+.azr-shop-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 190px;
+}
+.azr-shop-amount { white-space: nowrap; }
+
+.azr-discount { color: #b12704; }
+
+/* 「お支払い予定」の後ろに付ける、送料が入っていない旨の注記 */
+.azr-fee-note {
+  margin-left: 2px;
+  font-size: 11px;
+  font-weight: normal;
+  color: #565959;
+}
+
+/* ポイント差引後の「実質いくら」。楽天のかごにはどこにも出ない数字なので目立たせる */
+.azr-total-row.is-effective {
+  border-top: 1px dashed #eaeded;
+  padding-top: 6px;
+}
+.azr-total-row.is-effective strong { color: #007600; }
+
+/* 検索結果の広告枠を薄くする（消さずに見分けやすくする） */
+html.azr-search .azr-ad-item {
+  opacity: .45;
+  filter: grayscale(.5);
+}
+html.azr-search .azr-ad-item:hover { opacity: 1; filter: none; }

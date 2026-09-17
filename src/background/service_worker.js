@@ -1,0 +1,1032 @@
+/* Amazonize Rakuten - service worker */
+
+// 商品名の正規化と突き合わせ。商品ページと同じ判断を使いたいので、同じファイルを読む。
+importScripts("/src/lib/amazon-match.js");
+
+// content script から chrome.storage.session を読めるようにする
+chrome.runtime.onInstalled.addListener(async () => {
+  try {
+    await chrome.storage.session.setAccessLevel({ accessLevel: 'TRUSTED_AND_UNTRUSTED_CONTEXTS' });
+  } catch (e) {
+    console.warn('[AZR] session storage access level:', e);
+  }
+});
+
+// 裏のタブはブラウザに実行を絞られるため、獲得ページの遷移が数十秒かかることがある。
+// 早すぎる打ち切りで「失敗」と言わないよう、長めに待つ（成功時は数秒で返る）。
+const COUPON_TIMEOUT_MS = 45000;
+
+/*
+ * service worker は、拡張のイベントもAPIの呼び出しも30秒ほど無いと止められる。
+ * 止まるとメモリにある待ち（裏タブの結果・打ち切りのタイマー・スキャンの進み具合）が消え、
+ * 裏タブが開いたまま残り、スキャンは途中で終わる。裏タブの1ページは45秒まで待つので、
+ * その間にイベントが途切れることがありうる。裏タブを待っている間だけ、20秒ごとに
+ * 拡張のAPIを呼んで起こしておく（Chrome 110 以降、APIの呼び出しで止めるまでの時間が延びる）。
+ */
+const KEEP_ALIVE_MS = 20000;
+let awakeHolders = 0;
+let keepAliveTimer = null;
+
+async function holdAwake(work) {
+  if (awakeHolders++ === 0) {
+    keepAliveTimer = setInterval(() => chrome.runtime.getPlatformInfo().catch(() => {}), KEEP_ALIVE_MS);
+  }
+  try {
+    return await work();
+  } finally {
+    if (--awakeHolders === 0) {
+      clearInterval(keepAliveTimer);
+      keepAliveTimer = null;
+    }
+  }
+}
+
+const COUPON_PAGE = /^https:\/\/coupon\.rakuten\.co\.jp\//;
+const COUPON_API = 'https://coupon.rakuten.co.jp/api/v2/coupons/';
+// ログインや結果不明は本人に見てもらうしかない。それ以外は裏で閉じる。
+const KEEP_TAB = new Set(['login', 'unknown', 'timeout']);
+
+/** 獲得ページのURLから getkey を取り出す */
+function couponGetKey(url) {
+  const m = String(url).match(/[?&]getkey=([^&#]+)/);
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
+/*
+ * 獲得ページ（Next.js製）が実際に叩いているのと同じAPIを、そのまま呼ぶ。
+ *
+ *   PUT /api/v2/coupons/{getkey}/acquire
+ *     200        → 本文の is_already_acquired で「獲得」と「獲得済み」を分ける
+ *     401        → 未ログイン
+ *     400/404/410→ 本文の reason に COUPON_STATUS_INVALID 等の理由コード
+ *
+ * ここから呼べる理由（実機で確認済み）:
+ *   - host_permissions があるので service worker からの fetch はCORSの対象外。
+ *     商品ページの content script から直接呼ぶと、このAPIは 403 で弾く。
+ *   - 拡張からの fetch には Origin が付かず、SameSite付きのCookieも送られる。
+ */
+async function acquireByApi(key) {
+  const res = await fetch(`${COUPON_API}${encodeURIComponent(key)}/acquire`, {
+    method: 'PUT',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: '{}'
+  });
+  if (res.status === 401) return { ok: false, status: 'login' };
+
+  const data = await res.json().catch(() => null);
+  if (res.ok) return { ok: true, status: data?.is_already_acquired ? 'already' : 'acquired' };
+  if ([400, 404, 410].includes(res.status)) {
+    return { ok: false, status: 'rejected', reason: typeof data?.reason === 'string' ? data.reason : '' };
+  }
+  return null; // 想定外の応答。呼び出し側でタブ方式に落とす。
+}
+
+/** クーポンの内容。認証不要で、名前・割引・獲得済みかどうかが取れる。 */
+async function couponDetails(key) {
+  const res = await fetch(`${COUPON_API}${encodeURIComponent(key)}/details`, { credentials: 'include' });
+  if (!res.ok) return null;
+  const d = await res.json();
+  return {
+    name: d?.coupon_name || '',
+    discountType: d?.discount_type ?? null,
+    discountFactor: d?.discount_factor ?? null,
+    acquired: d?.acquire_status === 'ACQUIRED',
+    endDate: d?.coupon_end_date || null
+  };
+}
+
+/* 商品ページのフローティングクーポン -------------------------------------------
+ * 元の商品ページで右下に出る「100円OFF … クーポンを獲得する」の枠。
+ * 商品ページのバンドル（item-pc の pc.bundle.js、fetchFloatingCoupon / acquireFloatingCoupon）が
+ * 呼んでいるのと同じAPIを、同じ引数で呼ぶ。どちらもJSONP。
+ *   GET api.coupon.rakuten.co.jp/search?items=["itemId=…&price=…&shopId=…"]&locId=101&options=["incAcqCond=true"]
+ *     → { code, items: [{ coupons: [{ getKey, couponName, discountType, discountFactor, otherConds, acquired, … }] }] }
+ *     未ログインだと { code: 2 } だけが返り、クーポンは出ない。
+ *   GET api.coupon.rakuten.co.jp/acquireCoupon/json?getKey=…&key=<商品ページ用のキー>
+ *     → { code, alreadyAcquired }  code: 1 成功 / 2 未ログイン / 3 期限切れ / 4 配布終了 / 0 失敗 / 9 メンテナンス
+ * 商品ページのオリジンから呼ぶと Cookie の扱いがページ次第になるので、service worker から呼ぶ。
+ *
+ * **このAPIは Referer が商品ページでないと、ログインしていても {"code":2}（未ログイン）を返す。**
+ * Cookie は届いていても駄目だった（実機で Referer の有無だけを変えて確認）。拡張からの fetch には
+ * Referer が付かず、fetch の referrer 指定も別オリジンは効かないので、ヘッダーの書き換え規則で付ける。
+ * 対象はタブに属さない通信（= この service worker からの通信）だけにし、ページの通信には触らない。
+ */
+const REFERER_RULE_ID = 1;
+async function installCouponRefererRule() {
+  try {
+    await chrome.declarativeNetRequest.updateSessionRules({
+      removeRuleIds: [REFERER_RULE_ID],
+      addRules: [{
+        id: REFERER_RULE_ID,
+        priority: 1,
+        action: {
+          type: 'modifyHeaders',
+          requestHeaders: [{ header: 'referer', operation: 'set', value: 'https://item.rakuten.co.jp/' }]
+        },
+        condition: {
+          urlFilter: '||api.coupon.rakuten.co.jp/',
+          tabIds: [chrome.tabs.TAB_ID_NONE],
+          resourceTypes: ['xmlhttprequest']
+        }
+      }]
+    });
+  } catch (e) {
+    console.warn('[AZR] Referer の規則を入れられない:', e);
+  }
+}
+// 規則はブラウザを閉じると消えるので、service worker が起きるたびに入れ直す
+const refererRuleReady = installCouponRefererRule();
+
+const FLOATING_SEARCH = 'https://api.coupon.rakuten.co.jp/search';
+const FLOATING_ACQUIRE = 'https://api.coupon.rakuten.co.jp/acquireCoupon/json';
+const FLOATING_ITEM_PAGE_KEY = 'wIIcsUeYctybYOMyuJn8V040KBPNF5ee'; // 商品ページのバンドルに埋め込まれている ITEM_PAGE_KEY
+const FLOATING_LOC_ID = '101'; // 同じく COUPON_LOC_ID（PCの商品ページ）
+
+/** JSONPの応答 cb({...}) から中身を取り出す */
+async function fetchJsonp(url) {
+  await refererRuleReady;
+  const u = new URL(url);
+  u.searchParams.set('callback', 'azr');
+  const res = await fetch(u.href, { credentials: 'include', cache: 'no-cache' });
+  if (!res.ok) return null;
+  const text = await res.text();
+  const start = text.indexOf('(');
+  const end = text.lastIndexOf(')');
+  if (start < 0 || end <= start) return null;
+  return JSON.parse(text.slice(start + 1, end));
+}
+
+async function floatingCoupons({ itemId, shopId, price, hasSubscription }) {
+  const u = new URL(FLOATING_SEARCH);
+  u.searchParams.set('items', `["itemId=${itemId}&price=${price}&shopId=${shopId}"]`);
+  u.searchParams.set('locId', FLOATING_LOC_ID);
+  u.searchParams.set('options', '["incAcqCond=true"]');
+  // 定期購入の無い商品では、定期購入専用のクーポンを除く（商品ページと同じ）
+  if (!hasSubscription) {
+    u.searchParams.set('otherCondFilters', '[{"typeCode": "RS002","startValue": "1","isExcluded": true}]');
+  }
+  const data = await fetchJsonp(u.href);
+  if (!data) return null;
+  if (Number(data.code) === 2) return { login: true, coupons: [] };
+  const list = Array.isArray(data.items) && Array.isArray(data.items[0]?.coupons) ? data.items[0].coupons : [];
+  return {
+    login: false,
+    coupons: list.filter((c) => c?.getKey).map((c) => {
+      const conds = Array.isArray(c.otherConds) ? c.otherConds : [];
+      const amount = conds.find((o) => o?.otherCondTypeCd === 'RS003' || o?.otherCondTypeCd === 'RS004');
+      const sales = conds.find((o) => o?.otherCondTypeCd === 'RS002')?.startValue;
+      return {
+        getKey: String(c.getKey),
+        name: String(c.couponName || ''),
+        // 1: 円引き / 2: %引き
+        discount: Number(c.discountType) === 1 ? `${Number(c.discountFactor).toLocaleString('ja-JP')}円OFF` : `${c.discountFactor}%OFF`,
+        minSpend: amount?.otherCondTypeCd === 'RS003' ? Number(amount.startValue) || null : null,
+        minUnits: amount?.otherCondTypeCd === 'RS004' ? Number(amount.startValue) || null : null,
+        salesMethod: sales === '0' ? 'normal' : sales === '1' ? 'subscription' : null,
+        endDate: c.couponEndDate || null,
+        acquired: Boolean(c.acquired)
+      };
+    })
+  };
+}
+
+async function acquireFloatingCoupon(getKey) {
+  const u = new URL(FLOATING_ACQUIRE);
+  u.searchParams.set('getKey', getKey);
+  u.searchParams.set('key', FLOATING_ITEM_PAGE_KEY);
+  const data = await fetchJsonp(u.href);
+  const code = Number(data?.code);
+  if (code === 1) return { ok: true, status: data.alreadyAcquired ? 'already' : 'acquired' };
+  if (code === 2) return { ok: false, status: 'login' };
+  if (code === 3) return { ok: false, status: 'rejected', reason: 'COUPON_VALIDITY_PERIOD_OVER' };
+  if (code === 4) return { ok: false, status: 'rejected', reason: 'COUPON_STATUS_FINISHED' };
+  return { ok: false, status: 'error', reason: Number.isFinite(code) ? `CODE_${code}` : '' };
+}
+
+/* 商品とショップの評価 -------------------------------------------------------
+ * 商品ページのJSONにはレビューの件数しか無く（評価点が入らなくなった）、店舗の評価はどこにも無い。
+ * 商品レビューのページは window.__INITIAL_STATE__ に両方を埋め込んでいるので、そこを読む。
+ *   "itemInfo":{"itemId":…,"reviewRatings":{"average":4.32,"totalCount":78479,…}
+ *   "shopInfo":{"reviewRatings":{"average":4.78,"totalCount":127449,…}
+ * 状態全体はJSONとして解析できない形で書かれているので、必要な所だけ切り出す。
+ * 1ページ300KB余りあるので、商品ごとに覚えておく。評価は日単位でしか動かない。
+ */
+const RATINGS_TTL_MS = 12 * 60 * 60 * 1000;
+
+/** 'itemInfo' / 'shopInfo' の reviewRatings。楽天自身が出さないもの（shouldBeDisplayed:false）は null。 */
+function parseRating(html, section) {
+  // reviewRatings がその節の直下にあるものだけを拾う。ページには空の "itemInfo":{} も先に出てくるので、
+  // 単に次の reviewRatings を探すと、後ろの shopInfo の評価を商品の評価と取り違える。
+  const m = new RegExp(`"${section}":\\{[^{}]*"reviewRatings":\\{`).exec(html);
+  if (!m) return undefined;
+  // 評価の分布（distribution）が続くが、そこには average / totalCount の名前は出てこない
+  const s = html.slice(m.index + m[0].length, m.index + m[0].length + 600);
+  if (/"shouldBeDisplayed":false/.test(s)) return null;
+  const avg = Number(s.match(/"average":([\d.]+)/)?.[1]);
+  const count = Number(s.match(/"totalCount":(\d+)/)?.[1]);
+  if (!Number.isFinite(avg) || avg <= 0) return null;
+  return { score: Math.round(avg * 100) / 100, count: Number.isFinite(count) ? count : null };
+}
+
+/** 商品IDが無ければショップレビューのページで店舗の評価だけ取る */
+async function reviewRatings(shopId, itemId) {
+  const key = itemId ? `${shopId}_${itemId}` : `${shopId}_${shopId}`;
+  const { azrRatings: cache = {} } = await chrome.storage.local.get('azrRatings');
+  const now = Date.now();
+  const hit = cache[key];
+  if (hit && now - hit.at < RATINGS_TTL_MS) return hit.ratings;
+
+  const url = itemId
+    ? `https://review.rakuten.co.jp/item/1/${key}/1.1/`
+    : `https://review.rakuten.co.jp/shop/4/${key}/1.1/`;
+  const res = await fetch(url, { credentials: 'omit' });
+  if (!res.ok) return null;
+  const html = await res.text();
+  const item = itemId ? parseRating(html, 'itemInfo') : null;
+  const shop = parseRating(html, 'shopInfo');
+  // どちらも見つからない = ページの形が変わった。覚えずに次も読みに行く。
+  if (item === undefined && shop === undefined) return null;
+  const ratings = { item: item ?? null, shop: shop ?? null };
+
+  // 期限切れはここで捨てる（見た商品の数だけ溜まり続けないように）
+  for (const [k, v] of Object.entries(cache)) if (now - v.at >= RATINGS_TTL_MS) delete cache[k];
+  cache[key] = { at: now, ratings };
+  await chrome.storage.local.set({ azrRatings: cache });
+  return ratings;
+}
+
+/* Amazonで同じ商品はいくらか -------------------------------------------------
+ * 楽天の商品ページから「これはAmazonではいくらか」を知りたい。Amazonには
+ * 商品を引くための公開APIが無い（Product Advertising API はアソシエイトの登録と売上が要る）ので、
+ * 検索結果のページを1枚読んで、商品を取り出す。
+ *
+ * 引き方は2通り。
+ *   JANがある商品  → JANで検索する。ほぼ一意に当たる。
+ *   JANが無い商品  → 商品名から宣伝を落とした検索語で引き、商品名の重なり（scoreMatch）で選ぶ。
+ *
+ * 当たりかどうかは本人が確かめられるよう、商品ページにはAmazon側の商品名と
+ * 検索結果へのリンクも必ず出す（item-amazon.js）。
+ *
+ * Cookieは送らない（credentials:'omit'）。本人のAmazonのアカウントには触らず、
+ * 誰が見ても同じ棚を読む。ログインしていなくても価格は出る。
+ * 拡張からのfetchにはOriginが付かないので、CORSで弾かれることもない。
+ */
+const AMAZON_TTL_MS = 6 * 60 * 60 * 1000;
+const AMAZON_CACHE_MAX = 200;
+const AMAZON_TIMEOUT_MS = 12000;
+const AMAZON_RETRY_MS = 800;
+
+const amazonSearchUrl = (query) =>
+  `https://www.amazon.co.jp/s?k=${encodeURIComponent(query)}&i=aps&language=ja_JP`;
+
+const amazonItemUrl = (asin) => `https://www.amazon.co.jp/dp/${asin}/`;
+
+/** HTMLの実体参照。商品名にしか使わないので、よく出るものだけ戻す。 */
+function decodeEntities(s) {
+  return String(s)
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ')
+    .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(Number(d)));
+}
+
+/** 検索結果の1件を、HTMLの切れ端から組み立てる。service worker に DOMParser は無いので、文字で拾う。 */
+function parseAmazonResult(asin, chunk) {
+  // 価格は a-offscreen（読み上げ用の "￥1,234"）に入る。先頭が販売価格で、参考価格はその後ろ。
+  const price = chunk.match(/class="a-offscreen">\s*[¥￥]\s*([\d,]+)/);
+  if (!price) return null;
+
+  // 商品名は h2 の aria-label、無ければ h2 の中の最初の span
+  const title = chunk.match(/<h2[^>]*\saria-label="([^"]+)"/)
+    || chunk.match(/<h2[\s\S]{0,400}?<span[^>]*>([^<]{4,})<\/span>/);
+  if (!title) return null;
+
+  const rating = chunk.match(/5つ星のうち\s*([\d.]+)/);
+  // 件数は「157件のレビューから5つ星のうち4.4と評価されました」(aria-label) か、リンクの "(157)"
+  const count = chunk.match(/aria-label="([\d,]+)\s*件の(?:評価|レビュー)/)
+    || chunk.match(/s-underline-text[^>]*>\s*\(?([\d,]+)\)?\s*</);
+  const image = chunk.match(/<img[^>]+class="s-image"[^>]+src="([^"]+)"/);
+  const num = (m) => (m ? Number(m[1].replace(/,/g, '')) : null);
+
+  return {
+    asin,
+    title: decodeEntities(title[1]).replace(/\s+/g, ' ').trim(),
+    price: num(price),
+    rating: rating ? Number(rating[1]) : null,
+    count: num(count),
+    image: image ? image[1] : null,
+    url: amazonItemUrl(asin)
+  };
+}
+
+/*
+ * 検索結果のページは2段になっている。
+ *
+ *   <h2>結果</h2>          ← 検索語に一致した商品。本人が画面で見るのはここ
+ *   <h2>その他の結果</h2>   ← 一致しなかったときの寄せ集め。同じ形の枠で何十件も続く
+ *
+ * 「その他の結果」の商品は、本人が検索結果を見ても出てこない（楽天24の温泡の詰め合わせで、
+ * 画面には3件しか出ないのに、拡張は「その他の結果」から拾った別の商品を出していた）。
+ * 実測でも、枠60件のうち「結果」に属するのは7件だけだった。ここから先は読まない。
+ */
+function mainResults(html) {
+  const m = html.match(/<h2[^>]*>(?:その他の結果|関連する検索結果|他の検索結果)<\/h2>/);
+  return m ? html.slice(0, m.index) : html;
+}
+
+/**
+ * 検索結果のHTMLから商品を並べる。
+ *
+ * 1件は data-component-type="s-search-result" の div で、ASINは同じタグの data-asin にある。
+ * data-asin だけを目印にすると、検索結果の上に出る広告の枠（商品を横に並べるもの）まで拾ってしまい、
+ * 次の data-asin までが1件の切れ端にならない（実機のHTMLで確認）。
+ * 広告（AdHolder / スポンサー）は、その値段がその商品の値段とは限らないので外す。
+ */
+const AMAZON_CHUNK_MAX = 20000;
+
+function parseAmazonSearch(fullHtml) {
+  const html = mainResults(fullHtml);
+  const re = /data-component-type="s-search-result"/g;
+  const starts = [];
+  for (let m = re.exec(html); m; m = re.exec(html)) {
+    const at = html.lastIndexOf("<div", m.index);
+    if (at >= 0) starts.push(at);
+  }
+
+  const items = [];
+  const seen = new Set();
+  for (let i = 0; i < starts.length; i++) {
+    const at = starts[i];
+    const end = Math.min(starts[i + 1] ?? html.length, at + AMAZON_CHUNK_MAX);
+    const chunk = html.slice(at, end);
+    const asin = chunk.match(/^<div[^>]*\sdata-asin="([A-Z0-9]{10})"/);
+    if (!asin || seen.has(asin[1])) continue;
+    // 広告の印は3通り見る。実測では枠の class の AdHolder が付いていた（60件中12件、すべて外せた）が、
+    // 商品名（h2 の aria-label）が「スポンサー広告 - …」で始まるものもあるので、それも弾く。
+    if (/AdHolder|sp-sponsored-result|aria-label="スポンサー広告|>スポンサー</.test(chunk)) continue;
+    const item = parseAmazonResult(asin[1], chunk);
+    if (!item) continue;
+    seen.add(asin[1]);
+    items.push(item);
+    if (items.length >= 8) break;
+  }
+  return items;
+}
+
+/**
+ * 商品の枠がページのどこかに1つでもあるか（「その他の結果」の分も数える）。
+ * 1つも無いのは「この商品はAmazonに無い」ではなく、応答がおかしいとき（空で返ることが実際にある）。
+ */
+function hasAnyResultFrame(html) {
+  return /data-component-type="s-search-result"/.test(html);
+}
+
+/** 人手の閲覧に見えない通信は弾かれることがある。弾かれたと分かる形で返し、商品ページでは検索への導線だけ出す。 */
+function amazonBlocked(html) {
+  return /validateCaptcha|api-services-support@amazon\.com|自動化されたアクセス/.test(html);
+}
+
+async function amazonFetch(url) {
+  const res = await fetch(url, {
+    credentials: 'omit',
+    signal: AbortSignal.timeout(AMAZON_TIMEOUT_MS),
+    headers: { 'Accept-Language': 'ja-JP,ja;q=0.9' }
+  });
+  if (!res.ok) return { status: res.status === 503 ? 'blocked' : 'error' };
+  const html = await res.text();
+  if (amazonBlocked(html)) return { status: 'blocked' };
+  return { status: 'ok', html };
+}
+
+/*
+ * 名前で引いたときの合格点。同じ商品でも楽天側の商品名には余計な語が残るので満点は出ない
+ * （実測で0.5前後）。0.3に満たないものは別の商品とみなして出さない。
+ *
+ * 候補は「結果」の欄のものだけ（mainResults）。Amazon自身が検索語に一致すると言っている商品なので、
+ * この点は低めでよい。「その他の結果」まで見ていたときは、まるで関係の無い商品が0.3〜0.4で混ざっていた。
+ */
+const AMAZON_MIN_SCORE = 0.3;
+
+async function amazonLookup({ title, jan }) {
+  const useJan = AZR.amazon.isJan(jan);
+  const query = useJan ? String(jan) : AZR.amazon.buildQuery(title);
+  if (!query) return { status: 'none', query: '', searchUrl: null };
+
+  const searchUrl = amazonSearchUrl(query);
+  let got = await amazonFetch(searchUrl);
+  if (got.status !== 'ok') return { status: got.status, query, searchUrl };
+
+  /*
+   * 商品の枠がページのどこにも無いことがある。同じ検索語をすぐ引き直すと48件返るので、
+   * 「その商品はAmazonに無い」わけではない（実機で確認）。1度だけ読み直す。
+   *
+   * 「結果」の欄が空なだけ（枠は「その他の結果」にしかない）のときは読み直さない。
+   * それは応答の不調ではなく、検索語に一致する商品が無いという答えそのもの。
+   */
+  let items = parseAmazonSearch(got.html);
+  if (!items.length && !hasAnyResultFrame(got.html)) {
+    await new Promise((r) => setTimeout(r, AMAZON_RETRY_MS));
+    got = await amazonFetch(searchUrl);
+    if (got.status !== 'ok') return { status: got.status, query, searchUrl };
+    items = parseAmazonSearch(got.html);
+    if (!items.length && !hasAnyResultFrame(got.html)) return { status: 'none', empty: true, query, searchUrl };
+  }
+  if (!items.length) return { status: 'none', query, searchUrl };
+
+  if (useJan) {
+    // JANは一意なので、広告を除いた先頭がその商品。重なりは参考として付けるだけにする。
+    const item = items[0];
+    return {
+      status: 'ok', query, searchUrl, byJan: true,
+      item: { ...item, score: AZR.amazon.scoreMatch(title, item.title) }
+    };
+  }
+
+  // 名前で引いたときは、商品名がいちばん重なるものを選ぶ（先頭が一番近いとは限らない）
+  let best = null;
+  for (const it of items) {
+    const score = AZR.amazon.scoreMatch(title, it.title);
+    if (!best || score > best.score) best = { ...it, score };
+  }
+  if (!best || best.score < AMAZON_MIN_SCORE) return { status: 'none', query, searchUrl };
+  return { status: 'ok', query, searchUrl, byJan: false, item: best };
+}
+
+/** 価格は日単位で動くが、同じ商品ページを開き直すたびに読みに行く必要は無い。 */
+async function amazonPrice({ title, jan }) {
+  const key = AZR.amazon.isJan(jan) ? `jan:${jan}` : `q:${AZR.amazon.buildQuery(title)}`;
+  const { azrAmazon: cache = {} } = await chrome.storage.local.get('azrAmazon');
+  const now = Date.now();
+  const hit = cache[key];
+  if (hit && now - hit.at < AMAZON_TTL_MS) return { ...hit.result, cached: true };
+
+  const result = await amazonLookup({ title, jan });
+  // 弾かれた・通信に失敗した・空で返った、は覚えない（次に開いたときは読みに行く）
+  if ((result.status === 'ok' || result.status === 'none') && !result.empty) {
+    for (const [k, v] of Object.entries(cache)) if (now - v.at >= AMAZON_TTL_MS) delete cache[k];
+    cache[key] = { at: now, result };
+    const keys = Object.keys(cache);
+    if (keys.length > AMAZON_CACHE_MAX) {
+      const oldest = keys.sort((a, b) => cache[a].at - cache[b].at).slice(0, keys.length - AMAZON_CACHE_MAX);
+      for (const k of oldest) delete cache[k];
+    }
+    await chrome.storage.local.set({ azrAmazon: cache });
+  }
+  return result;
+}
+
+/* 獲得したクーポンの履歴 -----------------------------------------------------
+ * 自動獲得は既定でONで、押さなくても獲得が進む。何を獲得したのかをポップアップで
+ * 見られるよう、新たに獲得できたもの（獲得済みだったものは除く）だけを残す。
+ * 中身は商品ページに出ていたクーポン名・店舗名・商品名・ページのURLだけ。ブラウザの外へは出さない。
+ */
+const ACQUIRED_MAX = 100;
+
+/** storage を読んで書くまでを1件ずつにする。並べて走らせると、後の書き込みが先の分を消す。 */
+function serialized() {
+  let queue = Promise.resolve();
+  return (fn) => {
+    queue = queue.then(fn).catch((e) => console.warn('[AZR] 保存に失敗:', e));
+    return queue;
+  };
+}
+const saveAcquiredSerially = serialized();
+
+function recordAcquired(res, record) {
+  if (res?.status !== 'acquired' || !record || typeof record !== 'object') return;
+  const str = (v, max) => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, max) : '');
+  const url = str(record.url, 300);
+  const entry = {
+    name: str(record.name, 120),
+    shop: str(record.shop, 60),
+    item: str(record.item, 120),
+    url: /^https:\/\/item\.rakuten\.co\.jp\//.test(url) ? url : '',
+    auto: Boolean(record.auto),
+    at: Date.now()
+  };
+  saveAcquiredSerially(async () => {
+    const { azrAcquired: list = [] } = await chrome.storage.local.get('azrAcquired');
+    await chrome.storage.local.set({ azrAcquired: [entry, ...list].slice(0, ACQUIRED_MAX) });
+  });
+}
+
+/* APIが使えない場合の保険。
+ * 裏のタブで本物の獲得ページを開き、結果を受け取ってから閉じる。 */
+const couponWaiters = new Map(); // tabId -> (result) => void
+
+function grabByTab(url) {
+  return new Promise((resolve) => {
+    chrome.tabs.create({ url, active: false }).then((tab) => {
+      const tabId = tab.id;
+      let settled = false;
+
+      const finish = async (result) => {
+        if (settled) return;
+        settled = true;
+        couponWaiters.delete(tabId);
+        clearTimeout(timer);
+        chrome.tabs.onUpdated.removeListener(onUpdated);
+        chrome.tabs.onRemoved.removeListener(onRemoved);
+
+        if (result.status === 'closed') return resolve(result);
+        // 本人の操作や確認が要るものだけ前面に出す。
+        // 結果がはっきりしている失敗（配布終了など）は、行の文言で足りるので閉じる。
+        if (KEEP_TAB.has(result.status)) await chrome.tabs.update(tabId, { active: true }).catch(() => {});
+        else await chrome.tabs.remove(tabId).catch(() => {});
+        resolve(result);
+      };
+
+      const onUpdated = (id, info, t) => {
+        if (id !== tabId || info.status !== 'complete') return;
+        // 権限のある *.rakuten.co.jp を出るとURLが読めなくなる = SSOログインへ飛ばされた
+        if (!t.url) return finish({ ok: false, status: 'login' });
+        // 獲得後は rd= の戻り先へ遷移する。獲得ページを離れていれば獲得できたとみなす。
+        if (!COUPON_PAGE.test(t.url)) return finish({ ok: true, status: 'acquired' });
+        // 獲得ページに留まっている間は、そのページのcontent scriptの報告を待つ
+      };
+      const onRemoved = (id) => { if (id === tabId) finish({ ok: false, status: 'closed' }); };
+      const timer = setTimeout(() => finish({ ok: false, status: 'timeout' }), COUPON_TIMEOUT_MS);
+
+      couponWaiters.set(tabId, finish);
+      chrome.tabs.onUpdated.addListener(onUpdated);
+      chrome.tabs.onRemoved.addListener(onRemoved);
+    }).catch((e) => resolve({ ok: false, status: 'error', error: String(e) }));
+  });
+}
+
+/**
+ * まず獲得ページと同じAPIを叩き、それで決着が付かない場合だけタブ方式に落とす。
+ * 未ログインもタブに落とす。ログインすれば獲得ページがそのまま獲得まで進むので、
+ * ここでただ「ログインしてください」と言うより手数が少ない。
+ */
+async function grabCoupon(url, { apiOnly = false } = {}) {
+  const key = couponGetKey(url);
+  // getkey の無いページは獲得ページではない。タブで開くと、クーポンのページを「離れた」ことを
+  // 獲得できた印と読むため、何も獲得していないのに成功と返してしまう。
+  if (!key) return { ok: false, status: 'error' };
+  try {
+    const viaApi = await acquireByApi(key);
+    if (viaApi && viaApi.status !== 'login') return viaApi;
+    // 自動獲得は押されていないので、裏タブを勝手に開かない。未ログイン等は行に返すだけにする。
+    if (apiOnly) return viaApi || { ok: false, status: 'unknown' };
+  } catch (e) {
+    console.warn('[AZR] 獲得APIが使えないのでタブで開きます:', e);
+    if (apiOnly) return { ok: false, status: 'error' };
+  }
+  return holdAwake(() => grabByTab(url));
+}
+
+/* キャンペーンの発見と一括エントリー ----------------------------------------
+ *
+ * 楽天には「エントリーできるキャンペーンの一覧」も「エントリー済みの一覧」も無い。
+ * そこでトップページから event.rakuten.co.jp へのリンクを集め、1ページずつ裏タブで
+ * 開いて「エントリーボタンがあるか / もう済んでいるか / そもそも特集ページか」を
+ * 判定し、結果をこちらで記録する。記録がそのまま「エントリー済み一覧」になる。
+ */
+const TOP_PAGE = 'https://www.rakuten.co.jp/';
+const CAMPAIGN_HOST = 'event.rakuten.co.jp';
+const SCAN_CONCURRENCY = 3;        // 同時に開く裏タブの数
+const SCAN_TAB_TIMEOUT_MS = 45000; // 1ページあたりの待ち時間（裏タブは実行を絞られるので長め）
+const MAX_CAMPAIGNS = 80;
+// 「エントリーするものが無いページ」は同じ日のうちは開き直さない。
+// 日ごとに開くキャンペーン（イーグルス・ヴィッセルが勝った翌日だけボタンが出る sports など）があり、
+// 以前の「7日間は開かない」では、ボタンの無い日に一度見ただけで勝った日を取り逃していた。
+const jstDay = (ms) => new Date(ms + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+/** このタブに何をさせたいか。content script が起動時に聞きに来る。 */
+const scanTasks = new Map(); // tabId -> { task: 'links' | 'campaign', entry: boolean }
+const scanWaiters = new Map(); // tabId -> (result) => void
+
+let scanState = { running: false, phase: '', done: 0, total: 0, startedAt: 0 };
+
+/** 計測用のパラメータを落として、同じページを1つに寄せる */
+function normalizeCampaignUrl(raw) {
+  let url;
+  try { url = new URL(raw); } catch { return null; }
+  // トップページのバナーは rd.rakuten.co.jp/rat/?R2=<本来のURL> で包まれている
+  if (url.hostname === 'rd.rakuten.co.jp') {
+    const inner = url.searchParams.get('R2');
+    if (!inner) return null;
+    return normalizeCampaignUrl(inner);
+  }
+  if (url.hostname !== CAMPAIGN_HOST) return null;
+  // l-id / scid などは同じページの計測違いでしかない
+  return `${url.origin}${url.pathname}`;
+}
+
+/** 1つのタブに仕事をさせて、結果を受け取ってから閉じる */
+function runInTab(url, task, entry) {
+  return new Promise((resolve) => {
+    chrome.tabs.create({ url, active: false }).then((tab) => {
+      const tabId = tab.id;
+      let settled = false;
+      const finish = async (result) => {
+        if (settled) return;
+        settled = true;
+        scanTasks.delete(tabId);
+        scanWaiters.delete(tabId);
+        clearTimeout(timer);
+        chrome.tabs.onRemoved.removeListener(onRemoved);
+        await chrome.tabs.remove(tabId).catch(() => {});
+        resolve(result);
+      };
+      const onRemoved = (id) => { if (id === tabId) finish({ status: 'closed' }); };
+      const timer = setTimeout(() => finish({ status: 'timeout' }), SCAN_TAB_TIMEOUT_MS);
+
+      scanTasks.set(tabId, { task, entry });
+      scanWaiters.set(tabId, finish);
+      chrome.tabs.onRemoved.addListener(onRemoved);
+    }).catch((e) => resolve({ status: 'error', error: String(e) }));
+  });
+}
+
+/* エントリーAPI -------------------------------------------------------------
+ * 楽天共通のエントリーボタン（r.r10s.jp/com/js/c/common/entry_button）が呼んでいるのと同じAPI。
+ * ボタンの文言や形はページごとに違うが、コード（settings の campaignCode）で呼べば関係ない。
+ *   GET api.oubo.rakuten.co.jp/2.0/entry/check?code=<code>,<code>…（ボタンのスクリプトは20件ずつ）
+ *     → { message: 'ok', results: [{ campaign: { code, status, end_date, entry_date }, applied }] }
+ *       status: ongoing / before_start / closed / campaign_not_found
+ *   GET api.oubo.rakuten.co.jp/2.0/entry/apply?code=<code>[&ekey=…]
+ *     → { message: 'ok', results: [{ success, campaign }] }
+ * 未ログインだと 403 {"message":"not allowed"}。ログインしていれば拡張からの fetch でも通る（Braveで確認）。
+ * コードは /ic/marathon/… のような英数字と記号だけで、ボタンのスクリプトと同じくそのまま並べる。
+ */
+const OUBO_API = 'https://api.oubo.rakuten.co.jp/2.0/entry/';
+const OUBO_CHECK_CHUNK = 20;
+const ENTRY_CODE = /^\/[\w./-]{1,120}$/;
+
+async function ouboCall(pathAndQuery) {
+  const res = await fetch(OUBO_API + pathAndQuery, { credentials: 'include', cache: 'no-store' });
+  if (!res.ok) return null;
+  const data = await res.json().catch(() => null);
+  return data?.message === 'ok' && Array.isArray(data.results) ? data.results : null;
+}
+
+/** コードごとの状態。1つでも取れなければ null */
+async function checkEntryCodes(codes) {
+  const out = new Map();
+  for (let i = 0; i < codes.length; i += OUBO_CHECK_CHUNK) {
+    const results = await ouboCall(`check?code=${codes.slice(i, i + OUBO_CHECK_CHUNK).join(',')}`);
+    if (!results) return null;
+    for (const r of results) {
+      if (r?.campaign?.code) out.set(r.campaign.code, { status: r.campaign.status, applied: Boolean(r.applied) });
+    }
+  }
+  return out;
+}
+
+/**
+ * キャンペーンページで集めたコードを確かめて、entry なら未エントリーのものをエントリーする。
+ * 返す status はスキャンの記録と同じ語彙。APIが使えなければ null（ページ側でボタンを押す方式に戻る）。
+ */
+async function enterByCodes(items, entry) {
+  const ekeys = new Map();
+  for (const it of Array.isArray(items) ? items : []) {
+    const code = String(it?.code || '');
+    if (ENTRY_CODE.test(code) && !ekeys.has(code)) ekeys.set(code, typeof it.ekey === 'string' ? it.ekey : '');
+  }
+  const codes = [...ekeys.keys()];
+  if (!codes.length) return null;
+
+  const before = await checkEntryCodes(codes);
+  if (!before) return null;
+  const open = codes.filter((c) => before.get(c)?.status === 'ongoing' && !before.get(c).applied);
+  if (!open.length) {
+    return { status: codes.some((c) => before.get(c)?.applied) ? 'already' : 'none', entered: false };
+  }
+  if (!entry) return { status: 'entry', entered: false };
+
+  for (const code of open) {
+    const ekey = ekeys.get(code);
+    await ouboCall(`apply?code=${code}${ekey ? `&ekey=${encodeURIComponent(ekey)}` : ''}`).catch(() => null);
+  }
+  // 呼んだだけで「エントリーした」と言わない。状態を取り直して確かめる。
+  const after = await checkEntryCodes(open);
+  const done = open.filter((c) => after?.get(c)?.applied);
+  return { status: done.length === open.length ? 'entered' : 'entry', entered: done.length > 0 };
+}
+
+/** 保存してある結果（= エントリー済み一覧の元データ） */
+async function loadCampaigns() {
+  const stored = await chrome.storage.local.get('azrCampaigns');
+  return stored.azrCampaigns || { updatedAt: 0, items: {} };
+}
+
+// 3タブが同時に結果を返すので、読んで書くまでを1件ずつにする。
+// 並べて走らせると、先に書いた分を後の書き込みが古い一覧で上書きして消す。
+const saveCampaignSerially = serialized();
+function saveCampaign(url, patch) {
+  return saveCampaignSerially(async () => {
+    const data = await loadCampaigns();
+    data.items[url] = { url, ...(data.items[url] || {}), ...patch };
+    data.updatedAt = Date.now();
+    await chrome.storage.local.set({ azrCampaigns: data });
+  });
+}
+
+/** まとめて実行。並びは保ちつつ、数タブずつ同時に開く。 */
+async function eachLimited(list, limit, worker) {
+  let index = 0;
+  const runners = Array.from({ length: Math.min(limit, list.length) }, async () => {
+    while (index < list.length) {
+      const i = index++;
+      await worker(list[i], i);
+    }
+  });
+  await Promise.all(runners);
+}
+
+/** 実行中はアイコンに残りの件数を出す。ポップアップを閉じても進み具合が分かるように。 */
+function setBadge(text) {
+  chrome.action.setBadgeBackgroundColor({ color: '#f08804' }).catch(() => {});
+  chrome.action.setBadgeText({ text }).catch(() => {});
+}
+
+/**
+ * スキャンとURL指定の実行を1つずつ走らせる。
+ * 結果は session storage にも残す。ポップアップは実行中に閉じられることが多く、
+ * 開き直したときにそこから読んで出す（sendMessage の応答は閉じた時点で受け取れなくなる）。
+ */
+async function runScan(phase, job) {
+  if (scanState.running) return { ok: false, error: 'すでに実行中です' };
+  scanState = { running: true, phase, done: 0, total: 0, startedAt: Date.now() };
+  setBadge('…');
+  let result;
+  try {
+    result = await holdAwake(job);
+  } catch (e) {
+    result = { ok: false, error: String(e?.message || e) };
+  }
+  // 結果を書いてから running を下ろす。ポップアップは running が下りたのを見て結果を読みに来る。
+  await chrome.storage.session.set({ azrScanResult: { ...result, finishedAt: Date.now() } }).catch(() => {});
+  setBadge('');
+  scanState = { ...scanState, running: false, phase: '' };
+  return result;
+}
+
+/**
+ * キャンペーンのページを数タブずつ裏で開いて判定（とエントリー）し、結果を記録する。
+ * targets は { url: 記録に使う正規化したURL, open: 実際に開くURL }。
+ */
+async function checkCampaigns(targets, entry) {
+  scanState.phase = entry ? 'エントリー中' : '確認中';
+  scanState.total = targets.length;
+
+  const results = [];
+  await eachLimited(targets, SCAN_CONCURRENCY, async ({ url, open }) => {
+    const r = await runInTab(open, 'campaign', entry);
+    const item = {
+      url,
+      title: r?.title || '',
+      status: r?.status || 'unknown',
+      entered: Boolean(r?.entered),
+      checkedAt: Date.now()
+    };
+    await saveCampaign(url, item);
+    results.push(item);
+    scanState.done = results.length;
+    setBadge(String(targets.length - results.length || ''));
+  });
+
+  const count = (s) => results.filter((r) => r.status === s).length;
+  return {
+    ok: true,
+    checked: results.length,
+    entered: count('entered'),
+    alreadyEntered: count('already'),
+    none: count('none'),
+    suspect: count('suspect'),
+    failed: results.filter((r) => ['timeout', 'error', 'unknown', 'closed'].includes(r.status)).length
+  };
+}
+
+/**
+ * ポップアップの「URLを指定して実行」。スキャンと同じく、そのURLのために開いたタブだけで
+ * エントリーし、表示が変わったことを確かめてから記録する。
+ * （以前は「3分間はどのキャンペーンページでも自動エントリーして閉じる」印を立てていたため、
+ * その間に自分で開いたキャンペーンページまでエントリーされて閉じていた。）
+ */
+function enterCampaignUrls(rawUrls) {
+  const targets = [];
+  const seen = new Set();
+  let skipped = 0;
+  for (const raw of rawUrls) {
+    const url = normalizeCampaignUrl(raw);
+    if (!url) { skipped++; continue; }
+    if (seen.has(url)) continue;
+    seen.add(url);
+    // クエリを落とすと開けなくなるページがあるので、書かれたURLのまま開く（rd.rakuten の包みは剥がす）
+    targets.push({ url, open: new URL(raw).hostname === CAMPAIGN_HOST ? raw : url });
+  }
+  if (!targets.length) return Promise.resolve({ ok: false, error: `${CAMPAIGN_HOST} のURLがありません` });
+
+  return runScan('エントリー中', async () => ({ ...(await checkCampaigns(targets, true)), skipped }));
+}
+
+function scanCampaigns({ entry }) {
+  return runScan('トップページを読み込み中', async () => {
+    const found = await runInTab(TOP_PAGE, 'links', false);
+    const rawLinks = Array.isArray(found?.links) ? found.links : [];
+    if (!rawLinks.length) return { ok: false, error: 'トップページからリンクを取れませんでした' };
+
+    const urls = [];
+    const seen = new Set();
+    for (const raw of rawLinks) {
+      const url = normalizeCampaignUrl(raw);
+      if (!url || seen.has(url)) continue;
+      seen.add(url);
+      urls.push(url);
+    }
+
+    // 今日すでに「エントリーするものが無い」と分かったページは、開き直さない
+    const stored = await loadCampaigns();
+    const now = Date.now();
+    const targets = urls.filter((u) => {
+      const prev = stored.items[u];
+      return !(prev && prev.status === 'none' && jstDay(now) === jstDay(prev.checkedAt || 0));
+    }).slice(0, MAX_CAMPAIGNS);
+
+    const summary = await checkCampaigns(targets.map((url) => ({ url, open: url })), entry);
+    return { ...summary, scanned: urls.length };
+  });
+}
+
+/**
+ * トップページを開いたときの自動スキャン。開くたびに裏タブを何十枚も走らせないよう、
+ * 前回からの間隔をあける（キャンペーンは1日単位で入れ替わるので、これで足りる）。
+ */
+const AUTO_SCAN_INTERVAL_MS = 12 * 60 * 60 * 1000;
+
+async function autoScanFromTop() {
+  if (scanState.running) return { ok: false, skipped: 'running' };
+
+  const cfg = await chrome.storage.sync.get({
+    enabled: true, campaignScanOnTop: true, campaignScanEntry: true
+  });
+  if (!cfg.enabled || !cfg.campaignScanOnTop) return { ok: false, skipped: 'off' };
+
+  const { azrAutoScanAt = 0 } = await chrome.storage.local.get('azrAutoScanAt');
+  if (Date.now() - azrAutoScanAt < AUTO_SCAN_INTERVAL_MS) return { ok: false, skipped: 'recent' };
+
+  // 走らせる前に印を立てる。トップページを複数のタブで開くと、ほぼ同時に頼まれる。
+  await chrome.storage.local.set({ azrAutoScanAt: Date.now() });
+  return scanCampaigns({ entry: cfg.campaignScanEntry !== false });
+}
+
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  // 裏タブから: 自分は何をすべきタブか
+  if (msg?.type === 'azr:scanTask') {
+    sendResponse(sender.tab?.id != null ? (scanTasks.get(sender.tab.id) || null) : null);
+    return false;
+  }
+
+  // トップページの裏タブから: 集めたリンク
+  if (msg?.type === 'azr:campaignLinks') {
+    scanWaiters.get(sender.tab?.id)?.({ links: msg.links || [] });
+    return false;
+  }
+
+  // キャンペーンページの裏タブから: 判定とエントリーの結果
+  if (msg?.type === 'azr:campaignResult') {
+    scanWaiters.get(sender.tab?.id)?.({
+      status: msg.status || 'unknown',
+      title: msg.title || '',
+      entered: Boolean(msg.entered)
+    });
+    return false;
+  }
+
+  // ポップアップから: 探して（必要なら）エントリーする
+  if (msg?.type === 'azr:scanCampaigns') {
+    scanCampaigns({ entry: msg.entry !== false }).then(sendResponse);
+    return true; // 非同期応答
+  }
+
+  // トップページから: 裏で探してエントリーする
+  if (msg?.type === 'azr:autoScanCampaigns') {
+    autoScanFromTop().then(sendResponse);
+    return true; // 非同期応答
+  }
+
+  // ポップアップから: 進み具合
+  if (msg?.type === 'azr:scanStatus') {
+    sendResponse(scanState);
+    return false;
+  }
+
+  // ポップアップから: 記録してある一覧
+  if (msg?.type === 'azr:campaignList') {
+    loadCampaigns().then((d) => sendResponse(Object.values(d.items).sort((a, b) => (b.checkedAt || 0) - (a.checkedAt || 0))));
+    return true; // 非同期応答
+  }
+
+  // 商品ページから: このクーポンを裏で獲得してほしい
+  if (msg?.type === 'azr:grabCoupon') {
+    const url = String(msg.url || '');
+    if (!COUPON_PAGE.test(url)) {
+      sendResponse({ ok: false, status: 'error', error: '対象外のURLです' });
+      return false;
+    }
+    grabCoupon(url, { apiOnly: Boolean(msg.apiOnly) }).then((res) => {
+      recordAcquired(res, msg.record);
+      sendResponse(res);
+    });
+    return true; // 非同期応答
+  }
+
+  // 商品ページから: クーポンの内容（名前・割引・獲得済みか）
+  if (msg?.type === 'azr:couponDetails') {
+    const key = couponGetKey(msg.url || '');
+    if (!key) {
+      sendResponse(null);
+      return false;
+    }
+    couponDetails(key).then(sendResponse).catch(() => sendResponse(null));
+    return true; // 非同期応答
+  }
+
+  // 商品ページから: フローティングクーポン（元のページで右下に出る枠）の一覧
+  if (msg?.type === 'azr:floatingCoupons') {
+    const itemId = String(msg.itemId || '');
+    const shopId = String(msg.shopId || '');
+    const price = Number(msg.price);
+    if (!/^\d+$/.test(itemId) || !/^\d+$/.test(shopId) || !(price > 0)) {
+      sendResponse(null);
+      return false;
+    }
+    floatingCoupons({ itemId, shopId, price: Math.round(price), hasSubscription: Boolean(msg.hasSubscription) })
+      .then(sendResponse)
+      .catch((e) => { console.warn('[AZR] フローティングクーポンを取れない:', e); sendResponse(null); });
+    return true; // 非同期応答
+  }
+
+  // 商品ページから: フローティングクーポンの獲得
+  if (msg?.type === 'azr:grabFloatingCoupon') {
+    const getKey = String(msg.getKey || '');
+    if (!/^[A-Za-z0-9_=-]+$/.test(getKey)) {
+      sendResponse({ ok: false, status: 'error' });
+      return false;
+    }
+    acquireFloatingCoupon(getKey)
+      .then((res) => {
+        recordAcquired(res, msg.record);
+        sendResponse(res);
+      })
+      .catch((e) => sendResponse({ ok: false, status: 'error', error: String(e) }));
+    return true; // 非同期応答
+  }
+
+  // 商品ページから: 商品とショップの評価
+  if (msg?.type === 'azr:reviewRatings') {
+    const shopId = String(msg.shopId || '');
+    const itemId = msg.itemId ? String(msg.itemId) : '';
+    if (!/^\d+$/.test(shopId) || (itemId && !/^\d+$/.test(itemId))) {
+      sendResponse(null);
+      return false;
+    }
+    reviewRatings(shopId, itemId).then(sendResponse).catch(() => sendResponse(null));
+    return true; // 非同期応答
+  }
+
+  // 商品ページから: Amazonでの価格
+  if (msg?.type === 'azr:amazonPrice') {
+    const title = String(msg.title || '');
+    const jan = msg.jan ? String(msg.jan) : '';
+    if (!title) {
+      sendResponse({ status: 'error' });
+      return false;
+    }
+    // 読み直しを挟むと30秒近くかかることがある。その間 service worker を止めさせない。
+    holdAwake(() => amazonPrice({ title, jan }))
+      .then(sendResponse)
+      .catch((e) => { console.warn('[AZR] Amazonの価格を取れない:', e); sendResponse({ status: 'error' }); });
+    return true; // 非同期応答
+  }
+
+  // 獲得ページから: 自分は裏で開かれたタブか？（そうならパネルを出さずに結果だけ返す）
+  if (msg?.type === 'azr:isGrabTab') {
+    sendResponse({ grab: sender.tab?.id != null && couponWaiters.has(sender.tab.id) });
+    return false;
+  }
+
+  // 獲得ページから: 獲得の結果
+  if (msg?.type === 'azr:couponResult') {
+    const done = sender.tab?.id != null && couponWaiters.get(sender.tab.id);
+    if (done) done({ ok: Boolean(msg.ok), status: msg.status || 'unknown', message: msg.message || '' });
+    return false;
+  }
+
+  // キャンペーンページから: 集めたコードで判定（とエントリー）
+  if (msg?.type === 'azr:entryCodes') {
+    enterByCodes(msg.items, Boolean(msg.entry)).catch(() => null).then(sendResponse);
+    return true; // 非同期応答
+  }
+
+  // ポップアップから: 指定したURLでエントリーする
+  if (msg?.type === 'azr:enterCampaignUrls') {
+    enterCampaignUrls(Array.isArray(msg.urls) ? msg.urls.map(String) : []).then(sendResponse);
+    return true; // 非同期応答
+  }
+
+  return false;
+});
