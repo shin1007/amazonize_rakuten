@@ -77,13 +77,14 @@ async function init() {
     entered: 'エントリーした',
     already: 'エントリー済み',
     entry: '未エントリー',
+    suspect: '要確認',
     none: 'エントリー不要',
     timeout: '時間切れ',
     error: '失敗',
     closed: '中断',
     unknown: '不明'
   };
-  const ORDER = ['entered', 'already', 'entry', 'timeout', 'error', 'closed', 'unknown', 'none'];
+  const ORDER = ['suspect', 'entered', 'already', 'entry', 'timeout', 'error', 'closed', 'unknown', 'none'];
 
   async function renderCampaignList() {
     const items = (await chrome.runtime.sendMessage({ type: 'azr:campaignList' })) || [];
@@ -133,6 +134,7 @@ async function init() {
   function describe(res) {
     if (!res?.ok) return `失敗しました: ${res?.error ?? '不明なエラー'}`;
     return `${res.checked}件を確認 / 新たに${res.entered}件エントリー / 既にエントリー済み${res.alreadyEntered}件`
+      + (res.suspect ? ` / 要確認${res.suspect}件` : '')
       + (res.failed ? ` / 判定できず${res.failed}件` : '')
       + (res.skipped ? ` / 対象外のURL ${res.skipped}件` : '');
   }

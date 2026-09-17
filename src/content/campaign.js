@@ -4,27 +4,66 @@
   const { h, waitSettled } = AZR;
 
   const ENTRY_TEXT = /^(エントリー(する)?|今すぐエントリー|エントリーはこちら)$/;
-  const DONE_TEXT = /エントリー(済|完了|ずみ)/;
+  // 楽天共通のエントリーボタン（rcEntryButton）は、押した直後は「エントリーが完了しました」、
+  // 開き直すと「エントリー済です」になる。前者を拾えず、押せたのに「none」と記録していた。
+  const DONE_TEXT = /エントリー(が)?(済|完了|ずみ)/;
   const ENTRY_INTERVAL_MS = 1200;
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-  /** 別のサイトへ移るリンクか */
-  function leavesSite(el) {
+  /**
+   * 別のページへ移るリンクか（別のサイトも、同じサイトの別のページも）。
+   * 同じサイトの別ページへの「エントリーする」は、ほかのキャンペーンへの案内バナーだった
+   * （ママ割のページにマラソンやホームライフ特典への「エントリーする」がある）。押すとタブが移る。
+   */
+  function leavesPage(el) {
     if (el.tagName !== 'A') return false;
     const href = el.getAttribute('href') || '';
     if (!href || href.startsWith('#') || /^javascript:/i.test(href)) return false;
     try {
-      return new URL(href, location.href).host !== location.host;
+      const u = new URL(href, location.href);
+      return u.host !== location.host || u.pathname.replace(/\/$/, '') !== location.pathname.replace(/\/$/, '');
     } catch {
       return false;
     }
   }
 
-  /** 未エントリーのボタンを集める */
-  function findEntryButtons() {
+  /**
+   * 楽天共通のエントリーボタン（<div class="rcEntryButton" settings='{"campaignCode": …}'>）。
+   * ボタンは entry_button.js が描く <button class="rcEntryButton-button"> か、ページ側が書いた
+   * [data-entry-button] のリンク。後者は「買いまわりキャンペーンに事前エントリーする」のように文言が長く、
+   * href が oubo.rakuten.co.jp なので、下の文言の判定では拾えなかった（お買い物マラソン）。
+   * クリックは entry_button.js が preventDefault してその場でエントリーするので、別サイトへは移らない。
+   * 同じキャンペーンのボタンがページに何か所もあるので、キャンペーンごとに1つだけ押す。
+   */
+  function findComponentButtons() {
     const out = [];
+    const codes = new Set();
+    for (const box of document.querySelectorAll('.rcEntryButton')) {
+      const btn = box.querySelector('[data-entry-button], button.rcEntryButton-button');
+      if (!btn || !btn.offsetParent) continue;
+      if (btn.disabled || btn.getAttribute('aria-disabled') === 'true') continue;
+      const text = (btn.textContent || '').replace(/\s+/g, '');
+      if (DONE_TEXT.test(text) || !/エントリー/.test(text)) continue;
+      let code = '';
+      try { code = JSON.parse(box.getAttribute('settings') || '{}').campaignCode || ''; } catch { /* 壊れた設定 */ }
+      if (code) {
+        if (codes.has(code)) continue;
+        codes.add(code);
+      }
+      out.push(btn);
+    }
+    return out;
+  }
+
+  /**
+   * 未エントリーのボタンを集める。
+   * component が false のときは共通ボタンを除く（APIで判定済みのキャンペーンを押し直さない）。
+   */
+  function findEntryButtons({ component = true } = {}) {
+    const out = component ? findComponentButtons() : [];
     for (const el of document.querySelectorAll('a, button, input[type="submit"], input[type="image"], [role="button"]')) {
+      if (el.closest('.rcEntryButton')) continue; // 上で見た
       const text = (el.value || el.alt || el.textContent || '').replace(/\s+/g, ' ').trim();
       if (!text || text.length > 16) continue;
       if (DONE_TEXT.test(text)) continue;
@@ -35,7 +74,8 @@
       // 押すとタブがそちらへ移って判定が返らず「時間切れ」になっていた。
       // 実際のエントリーボタンは <button class="rcEntryButton-button"> で、リンクではなかった
       // （トップから辿れる55ページと既知のキャンペーンで、未ログインで確認）。
-      if (leavesSite(el)) continue;
+      // 同じサイトの別ページへのリンクも、ほかのキャンペーンへの案内なので押さない。
+      if (leavesPage(el)) continue;
       if (!el.offsetParent) continue;
       out.push(el);
     }
@@ -68,12 +108,103 @@
     return ok;
   }
 
-  function render(buttons) {
-    const status = h('div.azr-coupon-status', {
-      text: buttons.length
-        ? `未エントリーのボタン ${buttons.length}件`
-        : (alreadyEntered() ? 'エントリー済みです' : 'エントリーボタンは見つかりませんでした')
+  /* 判定とエントリー -----------------------------------------------------------
+   * まずページにあるキャンペーンのコードを集め、service worker からエントリーAPIで判定・エントリーする。
+   * 文言やボタンの形に左右されない。コードが無い・APIが使えない（未ログイン等）ときだけボタンを押す。 */
+
+  /** ページにあるキャンペーンのコード。共通ボタンの settings と、応募ページへのリンクから集める。 */
+  function collectEntryCodes() {
+    const map = new Map();
+    const add = (raw, ekey) => {
+      let code = String(raw || '').trim();
+      if (!code) return;
+      if (!code.startsWith('/')) code = '/' + code;
+      if (!map.has(code)) map.set(code, { code, ekey: ekey || '' });
+    };
+    for (const box of document.querySelectorAll('.rcEntryButton[settings]')) {
+      try {
+        const s = JSON.parse(box.getAttribute('settings'));
+        add(s.campaignCode, s.ekey);
+      } catch { /* 壊れた設定 */ }
+    }
+    for (const a of document.querySelectorAll('a[href*="oubo.rakuten.co.jp/apply/"]')) {
+      try {
+        const u = new URL(a.href);
+        if (u.hostname === 'oubo.rakuten.co.jp') add(u.pathname.replace(/^\/apply/, ''), u.searchParams.get('ekey'));
+      } catch { /* 壊れたURL */ }
+    }
+    return [...map.values()];
+  }
+
+  /**
+   * エントリーできそうな気配があるか。ボタンを押せず、APIでも判定できなかったのにこれがあれば、
+   * 「エントリー不要」と黙って記録せず「要確認」にする（見落としに気づけるように）。
+   */
+  function looksEnterable() {
+    if (document.querySelector('.rcEntryButton, a[href*="oubo.rakuten.co.jp/apply"]')) return true;
+    return Array.from(document.querySelectorAll('a, button, [role="button"], input[type="submit"]')).some((el) => {
+      if (!el.offsetParent || el.closest('.azr-panel')) return false;
+      // ページ内の目次（SPUの「楽天モバイル＋エントリー」→ #rule_mobile）と、別ページへの案内は除く
+      if (el.tagName === 'A' && ((el.getAttribute('href') || '').startsWith('#') || leavesPage(el))) return false;
+      const text = (el.value || el.textContent || '').replace(/\s+/g, '');
+      return text.length <= 30 && /エントリー/.test(text) &&
+        !DONE_TEXT.test(text) && !/履歴|期間|終了|開始前|詳細|方法|について/.test(text);
     });
+  }
+
+  /** APIでの判定（entry なら エントリーまで）。使えなければ null */
+  async function enterByApi(entry) {
+    const items = collectEntryCodes();
+    if (!items.length) return null;
+    try {
+      return await chrome.runtime.sendMessage({ type: 'azr:entryCodes', items, entry });
+    } catch {
+      return null;
+    }
+  }
+
+  async function enterByButtons(entry, { component, suspect, onProgress }) {
+    const statusNow = () => (findEntryButtons({ component }).length ? 'entry' : alreadyEntered() ? 'already' : 'none');
+    let status = statusNow();
+    let entered = false;
+    if (status === 'entry' && entry) {
+      await entryAll(findEntryButtons({ component }), onProgress);
+      // 押しただけで「エントリーした」と言わない。表示が変わるのを確かめる。
+      await sleep(2000);
+      const after = statusNow();
+      entered = after === 'already';
+      status = entered ? 'entered' : after;
+    }
+    if (status === 'none' && suspect && looksEnterable()) status = 'suspect';
+    return { status, entered };
+  }
+
+  /**
+   * このページの状態を返す（entry なら エントリーもする）。
+   *   entered … いまエントリーした
+   *   entry   … 未エントリーのものがある
+   *   already … エントリー済み
+   *   suspect … エントリーできそうなのに判定できなかった（要確認）
+   *   none    … そもそもエントリーするものが無い（ただの特集ページ）
+   */
+  async function enterPage(entry, onProgress) {
+    const api = await enterByApi(entry);
+    AZR.log('エントリーAPI', api);
+    if (api && api.status !== 'none') return api;
+    // APIで判定できたコードは押し直さない。コード以外のボタンがあれば、それは押す。
+    return enterByButtons(entry, { component: !api, suspect: !api, onProgress });
+  }
+
+  const STATUS_TEXT = {
+    entered: 'エントリーしました',
+    entry: '未エントリーのキャンペーンがあります',
+    already: 'エントリー済みです',
+    suspect: 'エントリーできるか判定できませんでした（ログインを確認してください）',
+    none: 'エントリーするものは見つかりませんでした'
+  };
+
+  function render(first) {
+    const status = h('div.azr-coupon-status', { text: STATUS_TEXT[first.status] || '' });
 
     const panel = h('div.azr-panel.azr-campaign-panel', { id: 'azr-campaign-panel' },
       h('div.azr-panel-head',
@@ -85,13 +216,14 @@
         h('button.azr-btn-primary', {
           type: 'button',
           text: 'このページを一括エントリー',
-          disabled: buttons.length === 0,
+          disabled: first.status !== 'entry' && first.status !== 'suspect',
           onclick: async (e) => {
             e.currentTarget.disabled = true;
-            const ok = await entryAll(buttons, (done, total) => {
+            status.textContent = 'エントリー中…';
+            const r = await enterPage(true, (done, total) => {
               status.textContent = `エントリー中… ${done}/${total}`;
             });
-            status.textContent = `${ok}件エントリーしました`;
+            status.textContent = STATUS_TEXT[r.status] || '';
           }
         })
       )
@@ -114,34 +246,11 @@
     return name;
   }
 
-  /**
-   * このページの状態を返す。
-   *   entry   … 未エントリーのボタンがある
-   *   already … エントリー済みの表示がある
-   *   none    … そもそもエントリーするものが無い（ただの特集ページ）
-   */
-  function pageStatus() {
-    if (findEntryButtons().length) return 'entry';
-    if (alreadyEntered()) return 'already';
-    return 'none';
-  }
-
   /** 裏タブとしての仕事。エントリーして、結果を確かめてから返す。 */
   async function reportForScan(task) {
     await waitSettled({ quiet: 700, timeout: 9000 });
 
-    let status = pageStatus();
-    let entered = false;
-
-    if (status === 'entry' && task.entry) {
-      const buttons = findEntryButtons();
-      await entryAll(buttons);
-      // 押しただけで「エントリーした」と言わない。表示が変わるのを確かめる。
-      await sleep(2000);
-      const after = pageStatus();
-      entered = after === 'already';
-      status = entered ? 'entered' : after;
-    }
+    const { status, entered } = await enterPage(Boolean(task.entry));
 
     AZR.log('スキャン結果', { status, entered });
     try {
@@ -167,12 +276,12 @@
     if (!AZR.settings.campaignEntry) return;
 
     await waitSettled({ quiet: 700, timeout: 9000 });
-    const buttons = findEntryButtons();
+    const first = await enterPage(false);
 
     document.getElementById('azr-campaign-panel')?.remove();
-    document.body.append(render(buttons));
+    document.body.append(render(first));
 
-    if (!AZR.settings.campaignAutoEntry || !buttons.length) return;
+    if (!AZR.settings.campaignAutoEntry || first.status !== 'entry') return;
 
     // エントリーボタンを押すとページが再読み込みされることがある。
     // 何度も押し続けないよう、このURLで一度実行したことを記録しておく。
@@ -184,7 +293,9 @@
 
     if (alreadyRun) return;
     try { await chrome.storage.session.set({ [doneKey]: Date.now() }); } catch { /* noop */ }
-    AZR.log(`自動エントリー: ${buttons.length}件`);
-    await entryAll(buttons);
+    const r = await enterPage(true);
+    AZR.log('自動エントリー', r);
+    const statusEl = document.querySelector('#azr-campaign-panel .azr-coupon-status');
+    if (statusEl) statusEl.textContent = STATUS_TEXT[r.status] || '';
   });
 })();

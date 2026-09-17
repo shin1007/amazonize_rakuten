@@ -102,4 +102,5 @@ button:not(.primary) {
 .campaign.is-entered .campaign-state { color: #007600; font-weight: 700; }
 .campaign.is-already .campaign-state { color: #007600; }
 .campaign.is-entry .campaign-state { color: #b12704; }
+.campaign.is-suspect .campaign-state { color: #b12704; font-weight: 700; }
 .campaign .empty, .campaign-list .empty { color: #565959; }

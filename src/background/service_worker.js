@@ -588,8 +588,10 @@ const CAMPAIGN_HOST = 'event.rakuten.co.jp';
 const SCAN_CONCURRENCY = 3;        // 同時に開く裏タブの数
 const SCAN_TAB_TIMEOUT_MS = 45000; // 1ページあたりの待ち時間（裏タブは実行を絞られるので長め）
 const MAX_CAMPAIGNS = 80;
-// 「エントリーするものが無いページ」は何度も開き直さない
-const SKIP_NONE_MS = 7 * 24 * 60 * 60 * 1000;
+// 「エントリーするものが無いページ」は同じ日のうちは開き直さない。
+// 日ごとに開くキャンペーン（イーグルス・ヴィッセルが勝った翌日だけボタンが出る sports など）があり、
+// 以前の「7日間は開かない」では、ボタンの無い日に一度見ただけで勝った日を取り逃していた。
+const jstDay = (ms) => new Date(ms + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
 /** このタブに何をさせたいか。content script が起動時に聞きに来る。 */
 const scanTasks = new Map(); // tabId -> { task: 'links' | 'campaign', entry: boolean }
@@ -636,6 +638,72 @@ function runInTab(url, task, entry) {
       chrome.tabs.onRemoved.addListener(onRemoved);
     }).catch((e) => resolve({ status: 'error', error: String(e) }));
   });
+}
+
+/* エントリーAPI -------------------------------------------------------------
+ * 楽天共通のエントリーボタン（r.r10s.jp/com/js/c/common/entry_button）が呼んでいるのと同じAPI。
+ * ボタンの文言や形はページごとに違うが、コード（settings の campaignCode）で呼べば関係ない。
+ *   GET api.oubo.rakuten.co.jp/2.0/entry/check?code=<code>,<code>…（ボタンのスクリプトは20件ずつ）
+ *     → { message: 'ok', results: [{ campaign: { code, status, end_date, entry_date }, applied }] }
+ *       status: ongoing / before_start / closed / campaign_not_found
+ *   GET api.oubo.rakuten.co.jp/2.0/entry/apply?code=<code>[&ekey=…]
+ *     → { message: 'ok', results: [{ success, campaign }] }
+ * 未ログインだと 403 {"message":"not allowed"}。ログインしていれば拡張からの fetch でも通る（Braveで確認）。
+ * コードは /ic/marathon/… のような英数字と記号だけで、ボタンのスクリプトと同じくそのまま並べる。
+ */
+const OUBO_API = 'https://api.oubo.rakuten.co.jp/2.0/entry/';
+const OUBO_CHECK_CHUNK = 20;
+const ENTRY_CODE = /^\/[\w./-]{1,120}$/;
+
+async function ouboCall(pathAndQuery) {
+  const res = await fetch(OUBO_API + pathAndQuery, { credentials: 'include', cache: 'no-store' });
+  if (!res.ok) return null;
+  const data = await res.json().catch(() => null);
+  return data?.message === 'ok' && Array.isArray(data.results) ? data.results : null;
+}
+
+/** コードごとの状態。1つでも取れなければ null */
+async function checkEntryCodes(codes) {
+  const out = new Map();
+  for (let i = 0; i < codes.length; i += OUBO_CHECK_CHUNK) {
+    const results = await ouboCall(`check?code=${codes.slice(i, i + OUBO_CHECK_CHUNK).join(',')}`);
+    if (!results) return null;
+    for (const r of results) {
+      if (r?.campaign?.code) out.set(r.campaign.code, { status: r.campaign.status, applied: Boolean(r.applied) });
+    }
+  }
+  return out;
+}
+
+/**
+ * キャンペーンページで集めたコードを確かめて、entry なら未エントリーのものをエントリーする。
+ * 返す status はスキャンの記録と同じ語彙。APIが使えなければ null（ページ側でボタンを押す方式に戻る）。
+ */
+async function enterByCodes(items, entry) {
+  const ekeys = new Map();
+  for (const it of Array.isArray(items) ? items : []) {
+    const code = String(it?.code || '');
+    if (ENTRY_CODE.test(code) && !ekeys.has(code)) ekeys.set(code, typeof it.ekey === 'string' ? it.ekey : '');
+  }
+  const codes = [...ekeys.keys()];
+  if (!codes.length) return null;
+
+  const before = await checkEntryCodes(codes);
+  if (!before) return null;
+  const open = codes.filter((c) => before.get(c)?.status === 'ongoing' && !before.get(c).applied);
+  if (!open.length) {
+    return { status: codes.some((c) => before.get(c)?.applied) ? 'already' : 'none', entered: false };
+  }
+  if (!entry) return { status: 'entry', entered: false };
+
+  for (const code of open) {
+    const ekey = ekeys.get(code);
+    await ouboCall(`apply?code=${code}${ekey ? `&ekey=${encodeURIComponent(ekey)}` : ''}`).catch(() => null);
+  }
+  // 呼んだだけで「エントリーした」と言わない。状態を取り直して確かめる。
+  const after = await checkEntryCodes(open);
+  const done = open.filter((c) => after?.get(c)?.applied);
+  return { status: done.length === open.length ? 'entered' : 'entry', entered: done.length > 0 };
 }
 
 /** 保存してある結果（= エントリー済み一覧の元データ） */
@@ -727,6 +795,7 @@ async function checkCampaigns(targets, entry) {
     entered: count('entered'),
     alreadyEntered: count('already'),
     none: count('none'),
+    suspect: count('suspect'),
     failed: results.filter((r) => ['timeout', 'error', 'unknown', 'closed'].includes(r.status)).length
   };
 }
@@ -769,12 +838,12 @@ function scanCampaigns({ entry }) {
       urls.push(url);
     }
 
-    // 前回「エントリーするものが無い」と分かったページは、しばらく開き直さない
+    // 今日すでに「エントリーするものが無い」と分かったページは、開き直さない
     const stored = await loadCampaigns();
     const now = Date.now();
     const targets = urls.filter((u) => {
       const prev = stored.items[u];
-      return !(prev && prev.status === 'none' && now - (prev.checkedAt || 0) < SKIP_NONE_MS);
+      return !(prev && prev.status === 'none' && jstDay(now) === jstDay(prev.checkedAt || 0));
     }).slice(0, MAX_CAMPAIGNS);
 
     const summary = await checkCampaigns(targets.map((url) => ({ url, open: url })), entry);
@@ -945,6 +1014,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     const done = sender.tab?.id != null && couponWaiters.get(sender.tab.id);
     if (done) done({ ok: Boolean(msg.ok), status: msg.status || 'unknown', message: msg.message || '' });
     return false;
+  }
+
+  // キャンペーンページから: 集めたコードで判定（とエントリー）
+  if (msg?.type === 'azr:entryCodes') {
+    enterByCodes(msg.items, Boolean(msg.entry)).catch(() => null).then(sendResponse);
+    return true; // 非同期応答
   }
 
   // ポップアップから: 指定したURLでエントリーする
