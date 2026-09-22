@@ -9,7 +9,7 @@
     "48": "icons/icon-48.png",
     "128": "icons/icon-128.png"
   },
-  "permissions": ["storage", "alarms", "declarativeNetRequestWithHostAccess"],
+  "permissions": ["storage", "declarativeNetRequestWithHostAccess"],
   "host_permissions": [
     "https://*.rakuten.co.jp/*",
     "https://www.amazon.co.jp/*"

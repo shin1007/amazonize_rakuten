@@ -983,41 +983,26 @@ function scanCampaigns({ entry }) {
 }
 
 /**
- * 自動スキャン（トップページを開いたとき・アラームで定期的に）。
+ * 自動スキャン。楽天のページを開いたときに、その裏で走らせる（タブは開かないので画面は変わらない）。
  * 何度も走らせないよう、前回からの間隔をあける（キャンペーンは1日単位で入れ替わるので、これで足りる）。
- * flag は、その入口の設定キー（どちらもOFFにできる）。
  */
 const AUTO_SCAN_INTERVAL_MS = 12 * 60 * 60 * 1000;
 
-async function autoScan(flag) {
+async function autoScanOnVisit() {
   if (scanState.running) return { ok: false, skipped: 'running' };
 
   const cfg = await chrome.storage.sync.get({
-    enabled: true, campaignScanOnTop: true, campaignScanPeriodic: true, campaignScanEntry: true
+    enabled: true, campaignScanOnTop: true, campaignScanEntry: true
   });
-  if (!cfg.enabled || cfg[flag] === false) return { ok: false, skipped: 'off' };
+  if (!cfg.enabled || cfg.campaignScanOnTop === false) return { ok: false, skipped: 'off' };
 
   const { azrAutoScanAt = 0 } = await chrome.storage.local.get('azrAutoScanAt');
   if (Date.now() - azrAutoScanAt < AUTO_SCAN_INTERVAL_MS) return { ok: false, skipped: 'recent' };
 
-  // 走らせる前に印を立てる。トップページを複数のタブで開くと、ほぼ同時に頼まれる。
+  // 走らせる前に印を立てる。楽天のページを複数のタブで開くと、ほぼ同時に頼まれる。
   await chrome.storage.local.set({ azrAutoScanAt: Date.now() });
   return scanCampaigns({ entry: cfg.campaignScanEntry !== false });
 }
-
-const autoScanFromTop = () => autoScan('campaignScanOnTop');
-
-/* 定期実行 ------------------------------------------------------------------
- * タブを開かずに判定できるので、楽天を開いていなくても裏で走らせられる。
- * アラームは1時間おきに鳴らし、前回から12時間経ったかどうかは autoScan が見る。 */
-const SCAN_ALARM = 'azr-campaign-scan';
-const ensureScanAlarm = () => chrome.alarms.create(SCAN_ALARM, { periodInMinutes: 60, delayInMinutes: 1 });
-chrome.runtime.onInstalled.addListener(ensureScanAlarm);
-chrome.runtime.onStartup.addListener(ensureScanAlarm);
-chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name !== SCAN_ALARM) return;
-  autoScan('campaignScanPeriodic').then((r) => console.log('[AZR] 定期スキャン', r)).catch(() => {});
-});
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   // 裏タブから: 自分は何をすべきタブか
@@ -1048,9 +1033,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true; // 非同期応答
   }
 
-  // トップページから: 裏で探してエントリーする
+  // 楽天のページを開いたとき: 裏で探してエントリーする
   if (msg?.type === 'azr:autoScanCampaigns') {
-    autoScanFromTop().then(sendResponse);
+    autoScanOnVisit().then(sendResponse);
     return true; // 非同期応答
   }
 

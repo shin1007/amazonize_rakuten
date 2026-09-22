@@ -42,8 +42,7 @@ export function loadServiceWorker({ fetch = async () => { throw new Error("fetch
     URLSearchParams,
     AbortSignal: { timeout: () => null },
     chrome: {
-      runtime: { onInstalled: listener, onStartup: listener, onMessage: listener, getPlatformInfo: async () => ({}) },
-      alarms: { create: noop, onAlarm: listener },
+      runtime: { onInstalled: listener, onMessage: listener, getPlatformInfo: async () => ({}) },
       tabs: { onUpdated: listener, onRemoved: listener },
       action: {},
       declarativeNetRequest: { updateSessionRules: async () => {} },

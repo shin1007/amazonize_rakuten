@@ -50,6 +50,15 @@
     await runModules(kind);
     unhide();
 
+    // 楽天のページを開いたのを合図に、裏でキャンペーンを探してエントリーする。
+    // タブは開かないので、開いているページも画面も変わらない（以前はトップページ限定だった）。
+    // 走らせるかどうか（設定・前回からの間隔・実行中か）は service worker が決める。
+    if (AZR.settings.campaignScanOnTop) {
+      chrome.runtime.sendMessage({ type: 'azr:autoScanCampaigns' })
+        .then((r) => AZR.log('自動スキャン', r))
+        .catch(() => { /* service worker が落ちている */ });
+    }
+
     // かご→購入手続きはSPA内の経路変更で、ページは読み込み直されない。
     // 種別が変わったら自分のパネルを片付けて、その画面のモジュールを動かし直す。
     if (location.host === 'cart.step.rakuten.co.jp') {
