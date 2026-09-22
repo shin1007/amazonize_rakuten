@@ -14,6 +14,8 @@
     campaignAutoEntry: false,
     campaignScanEntry: true,      // 一括スキャンで見つけたものをエントリーする
     campaignScanOnTop: true,      // トップページを開いたら、裏で探してエントリーする
+    campaignScanPeriodic: true,   // 楽天を開いていなくても、12時間おきに裏で探してエントリーする
+    campaignTabFallback: false,   // fetchで判定できないページをタブで開き直す（タブが見える）
     campaignUrls: [               // ポップアップの一括エントリー対象（編集可）
       'https://event.rakuten.co.jp/card/pointday/',
       'https://event.rakuten.co.jp/campaign/sports/',
