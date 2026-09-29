@@ -173,5 +173,7 @@
   "確認中": "Đang kiểm tra",
   "トップページを読み込み中": "Đang tải trang chủ",
   "トップページからリンクを取れませんでした": "Không lấy được liên kết từ trang chủ",
-  "対象外のURLです": "URL này không được hỗ trợ"
+  "対象外のURLです": "URL này không được hỗ trợ",
+  "言語": "Ngôn ngữ",
+  "自動（ブラウザの言語）": "Tự động (ngôn ngữ trình duyệt)"
 }

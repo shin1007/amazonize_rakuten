@@ -173,5 +173,7 @@
   "確認中": "Memeriksa",
   "トップページを読み込み中": "Memuat halaman utama",
   "トップページからリンクを取れませんでした": "Tidak dapat mengambil tautan dari halaman utama",
-  "対象外のURLです": "URL tersebut tidak didukung"
+  "対象外のURLです": "URL tersebut tidak didukung",
+  "言語": "Bahasa",
+  "自動（ブラウザの言語）": "Otomatis (bahasa peramban)"
 }

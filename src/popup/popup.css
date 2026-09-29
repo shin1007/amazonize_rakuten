@@ -104,3 +104,5 @@ button:not(.primary) {
 .campaign.is-entry .campaign-state { color: #b12704; }
 .campaign.is-suspect .campaign-state { color: #b12704; font-weight: 700; }
 .campaign .empty, .campaign-list .empty { color: #565959; }
+footer label.lang { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+footer select { flex: 1; }

@@ -196,16 +196,16 @@
     return enterByButtons(entry, { component: !api, suspect: !api, onProgress });
   }
 
-  const STATUS_TEXT = {
+  const STATUS_TEXT = () => ({
     entered: tr('エントリーしました'),
     entry: tr('未エントリーのキャンペーンがあります'),
     already: tr('エントリー済みです'),
     suspect: tr('エントリーできるか判定できませんでした（ログインを確認してください）'),
     none: tr('エントリーするものは見つかりませんでした')
-  };
+  });
 
   function render(first) {
-    const status = h('div.azr-coupon-status', { text: STATUS_TEXT[first.status] || '' });
+    const status = h('div.azr-coupon-status', { text: STATUS_TEXT()[first.status] || '' });
 
     const panel = h('div.azr-panel.azr-campaign-panel', { id: 'azr-campaign-panel' },
       h('div.azr-panel-head',
@@ -224,7 +224,7 @@
             const r = await enterPage(true, (done, total) => {
               status.textContent = tr('エントリー中… {done}/{total}', { done, total });
             });
-            status.textContent = STATUS_TEXT[r.status] || '';
+            status.textContent = STATUS_TEXT()[r.status] || '';
           }
         })
       )
@@ -297,6 +297,6 @@
     const r = await enterPage(true);
     AZR.log('自動エントリー', r);
     const statusEl = document.querySelector('#azr-campaign-panel .azr-coupon-status');
-    if (statusEl) statusEl.textContent = STATUS_TEXT[r.status] || '';
+    if (statusEl) statusEl.textContent = STATUS_TEXT()[r.status] || '';
   });
 })();

@@ -80,7 +80,7 @@
   }
 
   // 獲得の結果を、そのまま行の文言にする
-  const GRAB_LABEL = {
+  const GRAB_LABEL = () => ({
     acquired: tr('獲得しました'),
     already: tr('獲得済みです'),
     login: tr('ログインしてください'),
@@ -89,17 +89,17 @@
     timeout: tr('結果を確認できません'),
     unknown: tr('結果を確認できません'),
     error: tr('獲得できません')
-  };
+  });
 
   // APIが返す理由コード。クーポン側の文言に寄せる。載っていないものは「獲得できません」。
-  const REJECT_LABEL = {
+  const REJECT_LABEL = () => ({
     COUPON_NOT_FOUND: tr('クーポンが見つかりません'),
     COUPON_VALIDITY_PERIOD_OVER: tr('期間が終了しています'),
     CAMPAIGN_VALIDITY_PERIOD_OVER: tr('期間が終了しています'),
     COUPON_STATUS_FINISHED: tr('配布が終了しています'),
     NOT_REGISTERED_MEMBER: tr('会員登録が必要です'),
     PURCHASE_HISTORY_EXISTS: tr('対象外です')
-  };
+  });
 
   const GRAB_TIMEOUT_MS = 50000; // service worker 側の打ち切りより必ず後にする
 
@@ -141,8 +141,8 @@
     // 失敗した行は押し直せるようにしておく（ログイン後にもう一度など）
     link.dataset.azrGrab = res?.ok ? 'done' : 'failed';
     status.textContent = res?.status === 'rejected'
-      ? (REJECT_LABEL[res.reason] || GRAB_LABEL.rejected)
-      : (GRAB_LABEL[res?.status] || GRAB_LABEL.error);
+      ? (REJECT_LABEL()[res.reason] || GRAB_LABEL().rejected)
+      : (GRAB_LABEL()[res?.status] || GRAB_LABEL().error);
     // 訳し切れない理由コードは、確認できるようにマウスオーバーへ逃がす
     if (res?.reason) link.title = res.reason;
   }

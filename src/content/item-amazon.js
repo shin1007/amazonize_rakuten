@@ -99,13 +99,13 @@
     );
   }
 
-  const MESSAGE = {
+  const MESSAGE = () => ({
     none: tr('Amazonでは見つかりませんでした'),
     // 検索結果が空で返った（読み直しても空）。無いとは限らないので、そう言い切らない。
     empty: tr('Amazonの検索結果を読めませんでした'),
     blocked: tr('Amazonが応答しませんでした'),
     error: tr('Amazonの価格を調べられませんでした')
-  };
+  });
 
   function paint(box, res, data) {
     box.dataset.state = res?.status || 'error';
@@ -136,7 +136,7 @@
     box.replaceChildren(
       h('div.azr-amazon-head',
         mark(),
-        h('span.azr-amazon-label', { text: (res?.empty ? MESSAGE.empty : MESSAGE[res?.status]) || MESSAGE.error }),
+        h('span.azr-amazon-label', { text: (res?.empty ? MESSAGE().empty : MESSAGE()[res?.status]) || MESSAGE().error }),
         searchLink(res?.searchUrl, tr('Amazonで探す'))
       )
     );

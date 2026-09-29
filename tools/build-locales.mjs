@@ -3,10 +3,9 @@
  *   node tools/build-locales.mjs          messages.json を作り直す
  *   node tools/build-locales.mjs split    _bulk.json（番号→訳）を言語ごとの <言語>.json に分ける（移行用の一回きり）
  *
- * 文言は日本語の原文がキー。ID は src/lib/i18n.js の messageId と同じ（FNV-1a）。
- * 訳が無い文言は、その言語の messages.json に入れない（拡張は原文の日本語を出す）ので、足りなければ警告する。
- * 日本語（既定の言語）には文言を入れず、名前と説明だけを置く。
- * 対応していない言語のブラウザ向けに、英語の訳を src/lib/i18n-en.js にも書き出す（i18n.js が最後の頼みにする）。
+ * 文言は日本語の原文がキー。訳が無い文言は原文（日本語）が出るので、足りなければ警告する。
+ * 拡張の実行時に使う訳は、言語を設定で選べるようにするため src/lib/i18n-data.js に全言語ぶん書き出す。
+ * _locales の messages.json はストアの名前・説明（manifest）のためのもの。
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -16,12 +15,6 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const TR = join(ROOT, 'tools/translations');
 const read = (p) => JSON.parse(readFileSync(p, 'utf8'));
 const write = (p, o) => writeFileSync(p, JSON.stringify(o, null, 2) + '\n');
-
-const messageId = (s) => {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193) >>> 0;
-  return 'm' + h.toString(16).padStart(8, '0');
-};
 
 /** 原文の前後の空白を訳にも付ける（「 ＋送料」のように、つなぎ目の空白も文言のうち） */
 const withEdges = (src, text) => src.match(/^\s*/)[0] + text.trim() + src.match(/\s*$/)[0];
@@ -45,37 +38,31 @@ if (cmd === 'split') {
   }
 } else {
   const app = read(join(TR, '_app.json'));
-  const ids = new Map();
-  for (const k of keys) {
-    const id = messageId(k);
-    if (ids.has(id)) throw new Error(`ID が衝突: ${k} / ${ids.get(id)}`);
-    ids.set(id, k);
-  }
-  const enJs = join(ROOT, 'src/lib/i18n-en.js');
-  writeFileSync(enJs, `/* 自動生成（node tools/build-locales.mjs）。i18n.js が、対応していない表示言語で英語を出すのに使う */
+  // 拡張の実行時に使う訳は、言語の選択に対応するため messages.json ではなくこのファイルから引く（i18n.js）
+  const langs = readdirSync(TR).filter((f) => /^[a-z]{2}(_[A-Z]{2})?\.json$/.test(f)).map((f) => f.replace('.json', ''));
+  const data = {};
+  for (const lang of langs) data[lang] = read(join(TR, `${lang}.json`));
+  writeFileSync(join(ROOT, 'src/lib/i18n-data.js'), `/* 自動生成（node tools/build-locales.mjs）。訳の一覧。使い方は i18n.js */
 (() => {
   const AZR = (window.AZR = window.AZR || {});
-  AZR.enFallback = ${JSON.stringify(source, null, 2).split('\n').join('\n  ')};
+  AZR.messages = ${JSON.stringify(data, null, 2).split(String.fromCharCode(10)).join(String.fromCharCode(10) + '  ')};
 })();
 `);
-  console.log('src/lib/i18n-en.js');
-  const langs = readdirSync(TR).filter((f) => /^[a-z]{2}(_[A-Z]{2})?\.json$/.test(f)).map((f) => f.replace('.json', ''));
+  console.log('src/lib/i18n-data.js');
+  for (const lang of langs) {
+    const dict = read(join(TR, `${lang}.json`));
+    const ph = (x) => (x.match(/\{\w+\}/g) || []).sort().join();
+    for (const k of keys) {
+      if (dict[k] == null) console.warn(`${lang}: 訳が無い: ${k}`);
+      else if (ph(k) !== ph(dict[k])) console.warn(`${lang}: {} が食い違う: ${k} -> ${dict[k]}`);
+    }
+  }
   for (const lang of Object.keys(app)) {
     const msgs = {};
     const a = app[lang];
     if (a.description.length > 132) throw new Error(`${lang}: 説明が132文字を超える (${a.description.length})`);
     msgs.appName = { message: a.name };
     msgs.appDescription = { message: a.description };
-    if (langs.includes(lang)) {
-      const dict = read(join(TR, `${lang}.json`));
-      for (const k of keys) {
-        if (dict[k] == null) { console.warn(`${lang}: 訳が無い: ${k}`); continue; }
-        // 差し込みの {名前} が原文と食い違うと、画面に {n} がそのまま出る
-        const ph = (s) => (s.match(/\{\w+\}/g) || []).sort().join();
-        if (ph(k) !== ph(dict[k])) console.warn(`${lang}: {} が食い違う: ${k} -> ${dict[k]}`);
-        msgs[messageId(k)] = { message: dict[k] };
-      }
-    }
     const dir = join(ROOT, '_locales', lang);
     mkdirSync(dir, { recursive: true });
     write(join(dir, 'messages.json'), msgs);

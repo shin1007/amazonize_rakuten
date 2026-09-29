@@ -30,7 +30,7 @@
   "content_scripts": [
     {
       "matches": ["https://www.amazon.co.jp/*"],
-      "js": ["src/lib/settings.js", "src/lib/i18n-en.js", "src/lib/i18n.js", "src/content/amazon-link.js"],
+      "js": ["src/lib/settings.js", "src/lib/i18n-data.js", "src/lib/i18n.js", "src/content/amazon-link.js"],
       "run_at": "document_idle"
     },
     {
@@ -48,7 +48,7 @@
       ],
       "js": [
         "src/lib/settings.js",
-        "src/lib/i18n-en.js",
+        "src/lib/i18n-data.js",
         "src/lib/i18n.js",
         "src/lib/dom.js",
         "src/lib/coupon-model.js",

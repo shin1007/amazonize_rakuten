@@ -1,38 +1,54 @@
 /* Amazonize Rakuten - 表示文言の切り替え
  *
  * 文言は日本語の原文をそのままキーにして呼ぶ: AZR.t('かごの合計')。
- * 日本語以外のブラウザでは、原文から決まるID（下の messageId）で _locales/<言語>/messages.json を引く。
- * 訳が無ければ、英語の訳（i18n-en.js）、それも無ければ原文が出る。差し込みは {名前} で書く: AZR.t('{n}件', { n: 3 })。
- * 訳は tools/translations/<言語>.json に置き、node tools/build-locales.mjs で messages.json にする。
+ * 訳は i18n-data.js の AZR.messages[言語][原文]。無ければ原文（日本語）が出る。
+ * 差し込みは {名前} で書く: AZR.t('{n}件', { n: 3 })。
+ *
+ * 言語は設定（language）で選べる。'auto' のときはブラウザの表示言語から選び、
+ * 対応していない言語なら英語にする。設定を読み込んだ後に AZR.setLanguage を呼ぶ
+ * （settings.js の loadSettings がやる）。それまでは自動選択の言語。
+ * 訳は tools/translations/<言語>.json に置き、node tools/build-locales.mjs で i18n-data.js と _locales にする。
  * 表示言語の取得に失敗したとき（テストなど）は日本語のまま。
  */
 (() => {
   const AZR = (window.AZR = window.AZR || {});
   if (AZR.t) return;
 
-  let ui = 'ja';
-  try {
-    ui = chrome.i18n.getUILanguage() || 'ja';
-  } catch { /* chrome API が無い */ }
+  // 設定に出す言語。名前は各言語での自称
+  AZR.LANGUAGES = [
+    ['ja', '日本語'], ['en', 'English'], ['zh_CN', '简体中文'], ['zh_TW', '繁體中文'],
+    ['ko', '한국어'], ['vi', 'Tiếng Việt'], ['id', 'Bahasa Indonesia']
+  ];
 
-  AZR.isJa = /^ja/i.test(ui);
-  AZR.lang = ui.split('-')[0].toLowerCase();
-  AZR.numberLocale = AZR.isJa ? 'ja-JP' : ui;
+  /** ブラウザの表示言語 → 対応している言語 */
+  function detect() {
+    let ui = 'ja';
+    try {
+      ui = chrome.i18n.getUILanguage() || 'ja';
+    } catch { /* chrome API が無い */ }
+    const l = ui.toLowerCase().replace('_', '-');
+    if (l.startsWith('ja')) return 'ja';
+    if (l.startsWith('zh')) return /^zh-(tw|hk|mo|hant)/.test(l) ? 'zh_TW' : 'zh_CN';
+    if (l.startsWith('ko')) return 'ko';
+    if (l.startsWith('vi')) return 'vi';
+    if (l.startsWith('id') || l.startsWith('in')) return 'id';
+    return 'en';
+  }
 
-  // tools/build-locales.mjs と同じ計算（FNV-1a）。変えるなら両方
-  const messageId = (s) => {
-    let h = 0x811c9dc5;
-    for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193) >>> 0;
-    return 'm' + h.toString(16).padStart(8, '0');
+  const NUMBER_LOCALE = { ja: 'ja-JP', en: 'en-US', zh_CN: 'zh-CN', zh_TW: 'zh-TW', ko: 'ko-KR', vi: 'vi-VN', id: 'id-ID' };
+
+  AZR.setLanguage = (choice) => {
+    const code = AZR.LANGUAGES.some(([c]) => c === choice) ? choice : detect();
+    AZR.lang = code;
+    AZR.isJa = code === 'ja';
+    AZR.numberLocale = NUMBER_LOCALE[code];
+    return code;
   };
+  AZR.setLanguage('auto');
 
   AZR.t = (ja, params) => {
     let s = ja;
-    if (!AZR.isJa) {
-      try {
-        s = chrome.i18n.getMessage(messageId(ja)) || (AZR.enFallback && AZR.enFallback[ja]) || ja;
-      } catch { /* extension context invalidated */ }
-    }
+    if (!AZR.isJa) s = AZR.messages?.[AZR.lang]?.[ja] ?? AZR.messages?.en?.[ja] ?? ja;
     if (params) s = s.replace(/\{(\w+)\}/g, (m, k) => (params[k] != null ? params[k] : m));
     return s;
   };

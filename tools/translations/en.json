@@ -173,5 +173,7 @@
   "確認中": "Checking",
   "トップページを読み込み中": "Loading the top page",
   "トップページからリンクを取れませんでした": "Couldn't get links from the top page",
-  "対象外のURLです": "That URL isn't supported"
+  "対象外のURLです": "That URL isn't supported",
+  "言語": "Language",
+  "自動（ブラウザの言語）": "Auto (browser language)"
 }

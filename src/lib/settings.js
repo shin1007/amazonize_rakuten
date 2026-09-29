@@ -2,6 +2,7 @@
 (() => {
   const DEFAULTS = {
     enabled: true,
+    language: 'auto',         // 表示言語（'auto' はブラウザの言語に合わせる）
     simplifyItem: true,       // 商品ページをAmazon風に再構成
     simplifySearch: true,     // 検索結果を整理
     cartTotal: true,          // カゴの合計金額パネル
@@ -32,6 +33,7 @@
     try {
       const stored = await chrome.storage.sync.get(DEFAULTS);
       AZR.settings = { ...DEFAULTS, ...stored };
+      AZR.setLanguage?.(AZR.settings.language);
     } catch {
       AZR.settings = { ...DEFAULTS };
     }
@@ -43,6 +45,7 @@
       chrome.storage.onChanged.addListener((changes, area) => {
         if (area !== 'sync') return;
         for (const [k, v] of Object.entries(changes)) AZR.settings[k] = v.newValue;
+        if (changes.language) AZR.setLanguage?.(AZR.settings.language);
         cb(AZR.settings, changes);
       });
     } catch { /* extension context invalidated */ }

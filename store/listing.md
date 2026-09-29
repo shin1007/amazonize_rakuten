@@ -26,7 +26,7 @@ Amazonize Rakuten
 
 ### 画像
 
-`node tools/store-images.mjs` で日本語版と英語版のスクリーンショット（`store/assets/locales/<言語>/screenshots/`） を作る（`STORE_LANG=en` で片方だけ）。日英以外の言語は英語版の画像を使う。
+`node tools/store-images.mjs` でスクリーンショット（`store/assets/locales/<言語>/screenshots/`） を作る（`STORE_LANG=ko` のように1言語だけも作れる）。スクリーンショットは7言語すべてに用意する（文言は `tools/store-images.mjs` の `TEXT`）。プロモーションタイルは日本語の1組だけ。
 
 | 欄 | ファイル | サイズ |
 |---|---|---|

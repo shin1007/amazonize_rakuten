@@ -18,13 +18,22 @@ function translateStatic() {
     el.placeholder = el.placeholder.split('\n').map((line) => tr(line)).join('\n');
   }
 }
-translateStatic();
 
 const $ = (sel) => document.querySelector(sel);
 const status = $('#status');
 
 async function init() {
   const s = await chrome.storage.sync.get(DEFAULTS);
+  AZR.setLanguage(s.language);
+  translateStatic();
+
+  const langSelect = $('#language');
+  langSelect.append(new Option(tr('自動（ブラウザの言語）'), 'auto'), ...AZR.LANGUAGES.map(([code, name]) => new Option(name, code)));
+  langSelect.value = AZR.LANGUAGES.some(([code]) => code === s.language) ? s.language : 'auto';
+  langSelect.addEventListener('change', async () => {
+    await chrome.storage.sync.set({ language: langSelect.value });
+    location.reload(); // 静的な文言は日本語の原文から置き直すので、開き直す
+  });
 
   $('#enabled').checked = s.enabled;
   $('#enabled').addEventListener('change', (e) =>
