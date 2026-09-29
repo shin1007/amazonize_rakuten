@@ -1,0 +1,42 @@
+# ch-uploader 入稿設定。パスはこのファイルのあるディレクトリ基準。
+# 文面の正は listing.md（説明は description.txt に書き出したもの）。
+privacy:
+  singlePurpose: "楽天市場でのお買い物を快適にするための拡張機能です。楽天市場の商品ページを見やすく組み直し、かごの合計金額の表示、クーポンの獲得と適用、キャンペーンへのエントリー、同じ商品のAmazonでの価格の表示を、楽天市場のページ上で行います。また、Amazon.co.jp の商品ページに、同じ商品の楽天市場へのリンクと価格を表示します。"
+
+  permissionJustifications:
+    storage: "機能ごとのON/OFF設定と、キャンペーンのエントリー結果（エントリー済み一覧）、キャンペーンの自動スキャンを最後に実行した時刻、商品ページで獲得したクーポンの一覧（クーポン名・ショップ名・商品名・商品ページのURL）、レビュー評価の一時的なキャッシュ、楽天市場の店舗が営業中かどうかの判定結果（24時間）を保存するために使います。保存先はユーザーのブラウザ内だけです。"
+    declarativeNetRequestWithHostAccess: "楽天市場のクーポンAPI（api.coupon.rakuten.co.jp）は、Referer が商品ページでないとログイン中でも未ログインとして応答します。拡張機能のバックグラウンドから商品ページのクーポンを取得・獲得するとき、その通信に限って Referer を商品ページのURLに設定するために使います。タブに属さない通信（拡張機能自身の通信）だけが対象で、ユーザーが開いているページの通信は変更しません。"
+    host permission: "(1) 楽天市場（*.rakuten.co.jp）の商品ページ・検索結果・かご・注文確認・キャンペーンの各ページで、表示を組み直し、クーポンとキャンペーンの処理を行い、店舗の営業状況を確認します。(2) www.amazon.co.jp は、楽天の商品ページで同じ商品のAmazonでの価格を出すために検索結果ページを1回読むこと（Cookieは送りません）と、Amazonの商品ページから商品名・JAN・ISBN・型番・価格を読み取り、楽天の同じ商品へのリンクを表示するために使います。(3) amazon-rakuten-link.shin1007.workers.dev は、Amazonの商品ページで楽天市場の同じ商品を探すため、楽天市場商品検索APIの中継サーバー（開発者が運営）へ検索語だけを送り、商品名・価格・URLを受け取るために使います。APIキーを拡張機能に含めないための中継で、Cookieやログイン情報は送りません。"
+
+  usesRemoteCode: false
+
+  dataUsage:
+    collects:
+      - websiteContent
+    certifications:
+      noSellingToThirdParties: true
+      noUseUnrelatedToSinglePurpose: true
+      noUseForCreditworthinessOrLending: true
+
+  privacyPolicyUrl: "https://amazon-rakuten-link.shin1007.workers.dev/privacy"
+
+storeListing:
+  category: "ショッピング"
+  defaultLocale: "ja"
+  icon: "images/store-icon-128.png"
+  promoTileSmall: "images/promo-small.jpg"
+  marqueeTile: "images/promo-marquee.jpg"
+  homepageUrl: "https://github.com/shin1007/ch-amazonize-rakuten"
+  adultContent: false
+  locales:
+    ja:
+      description: "description.txt"
+      screenshots:
+        - "images/screenshot-1.jpg"
+        - "images/screenshot-2.jpg"
+        - "images/screenshot-3.jpg"
+        - "images/screenshot-4.jpg"
+        - "images/screenshot-5.jpg"
+
+package:
+  zip: "package.zip"

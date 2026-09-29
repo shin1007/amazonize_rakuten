@@ -1161,3 +1161,50 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
   return false;
 });
+
+// ---- Amazon商品ページ用: 楽天検索（中継Worker経由）と閉店店舗の判定（旧 楽天比較リンク） ----
+// 楽天検索は中継Worker経由（APIキーは拡張機能に含めない）
+const RL_PROXY = 'https://amazon-rakuten-link.shin1007.workers.dev/search';
+
+async function rlSearch(keyword) {
+    const r = await fetch(`${RL_PROXY}?keyword=${encodeURIComponent(keyword)}`, { credentials: 'omit' });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) return { error: j.error || `HTTP ${r.status}`, searchUrl: j.searchUrl };
+    return { count: j.count ?? 0, items: j.items || [], searchUrl: j.searchUrl };
+}
+
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    if (msg?.type !== 'azr:rakutenSearch' || typeof msg.keyword !== 'string' || msg.keyword.length < 2) return;
+    rlSearch(msg.keyword).then(sendResponse).catch(e => sendResponse({ error: String(e) }));
+    return true;
+});
+
+// 閉店・休止店舗の判定。改装中の店舗はトップ https://www.rakuten.co.jp/<店舗>/ が kaiso.html へリダイレクトされる
+// （商品ページより応答が速いのでトップを見る）。結果は24時間キャッシュ
+const RL_SHOP_TTL = 24 * 60 * 60 * 1000;
+
+async function rlIsShopOpen(shop) {
+    const key = 'shop:' + shop;
+    const cached = (await chrome.storage.local.get(key))[key];
+    if (cached && Date.now() - cached.at < RL_SHOP_TTL) return cached.open;
+    let open;
+    try {
+        const r = await fetch(`https://www.rakuten.co.jp/${encodeURIComponent(shop)}/`, { credentials: 'omit', redirect: 'manual' });
+        if (r.type === 'opaqueredirect') open = false;
+        else if (r.ok) open = true;
+        else return null;
+    } catch {
+        return null;
+    }
+    await chrome.storage.local.set({ [key]: { open, at: Date.now() } });
+    return open;
+}
+
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    if (msg?.type !== 'azr:rakutenCheckShops' || !Array.isArray(msg.shops)) return;
+    const shops = msg.shops.filter(s => typeof s === 'string' && /^[\w-]+$/.test(s)).slice(0, 10);
+    Promise.all(shops.map(async s => [s, await rlIsShopOpen(s)]))
+        .then(entries => sendResponse(Object.fromEntries(entries)))
+        .catch(() => sendResponse({}));
+    return true;
+});
