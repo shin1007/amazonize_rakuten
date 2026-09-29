@@ -948,11 +948,13 @@ function enterCampaignUrls(rawUrls) {
   return runScan('エントリー中', async () => ({ ...(await checkCampaigns(targets, true)), skipped }));
 }
 
-function scanCampaigns({ entry }) {
+function scanCampaigns({ entry, extraLinks = [] }) {
   return runScan('トップページを読み込み中', async () => {
     // トップページもタブを開かずに読む。下へ送らないと見えない枠も、リンクはHTMLの中にある。
     const topHtml = await fetchPage(TOP_PAGE);
     let rawLinks = topHtml == null ? [] : extractCampaignLinks(topHtml);
+    // 開いているトップページのDOMにだけあるリンク（フラッシュバナー等）も足す
+    rawLinks = rawLinks.concat(extraLinks);
     if (!rawLinks.length) {
       const { campaignTabFallback } = await chrome.storage.sync.get({ campaignTabFallback: false });
       const found = campaignTabFallback ? await runInTab(TOP_PAGE, 'links', false) : null;
@@ -988,7 +990,7 @@ function scanCampaigns({ entry }) {
  */
 const AUTO_SCAN_INTERVAL_MS = 12 * 60 * 60 * 1000;
 
-async function autoScanOnVisit() {
+async function autoScanOnVisit(extraLinks = []) {
   if (scanState.running) return { ok: false, skipped: 'running' };
 
   const cfg = await chrome.storage.sync.get({
@@ -997,11 +999,16 @@ async function autoScanOnVisit() {
   if (!cfg.enabled || cfg.campaignScanOnTop === false) return { ok: false, skipped: 'off' };
 
   const { azrAutoScanAt = 0 } = await chrome.storage.local.get('azrAutoScanAt');
-  if (Date.now() - azrAutoScanAt < AUTO_SCAN_INTERVAL_MS) return { ok: false, skipped: 'recent' };
+  // 開いたトップページに、今日まだ確かめていないキャンペーンのリンクがあれば、間隔に関わらず走らせる
+  // （HTMLだけを読む前回のスキャンでは、DOMにだけあるバナーを拾えていなかった）
+  const stored = await loadCampaigns();
+  const today = jstDay(Date.now());
+  const fresh = extraLinks.map(normalizeCampaignUrl).some((u) => u && jstDay(stored.items[u]?.checkedAt || 0) !== today);
+  if (!fresh && Date.now() - azrAutoScanAt < AUTO_SCAN_INTERVAL_MS) return { ok: false, skipped: 'recent' };
 
   // 走らせる前に印を立てる。楽天のページを複数のタブで開くと、ほぼ同時に頼まれる。
   await chrome.storage.local.set({ azrAutoScanAt: Date.now() });
-  return scanCampaigns({ entry: cfg.campaignScanEntry !== false });
+  return scanCampaigns({ entry: cfg.campaignScanEntry !== false, extraLinks });
 }
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
@@ -1035,7 +1042,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
   // 楽天のページを開いたとき: 裏で探してエントリーする
   if (msg?.type === 'azr:autoScanCampaigns') {
-    autoScanOnVisit().then(sendResponse);
+    autoScanOnVisit(Array.isArray(msg.links) ? msg.links.filter((l) => typeof l === 'string') : []).then(sendResponse);
     return true; // 非同期応答
   }
 

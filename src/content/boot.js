@@ -54,7 +54,8 @@
     // タブは開かないので、開いているページも画面も変わらない（以前はトップページ限定だった）。
     // 走らせるかどうか（設定・前回からの間隔・実行中か）は service worker が決める。
     if (AZR.settings.campaignScanOnTop) {
-      chrome.runtime.sendMessage({ type: 'azr:autoScanCampaigns' })
+      const links = kind === 'top' ? await AZR.collectCampaignLinks?.().catch(() => []) : [];
+      chrome.runtime.sendMessage({ type: 'azr:autoScanCampaigns', links })
         .then((r) => AZR.log('自動スキャン', r))
         .catch(() => { /* service worker が落ちている */ });
     }
