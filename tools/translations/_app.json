@@ -1,0 +1,30 @@
+{
+  "ja": {
+    "name": "Amazonize Rakuten",
+    "description": "楽天市場をAmazon風のシンプルなUIに。楽天の商品ページにAmazonの価格、Amazonの商品ページに楽天のリンクと価格を表示。クーポン獲得・かご合計・キャンペーン自動エントリー。"
+  },
+  "en": {
+    "name": "Amazonize Rakuten",
+    "description": "Rakuten made simple like Amazon. Amazon prices on Rakuten, Rakuten links on Amazon. Coupons, cart total, campaign auto-entry."
+  },
+  "zh_CN": {
+    "name": "Amazonize Rakuten",
+    "description": "让乐天市场像亚马逊一样简洁。乐天商品页显示亚马逊价格，亚马逊商品页显示乐天链接和价格。优惠券、购物车合计、活动自动报名。"
+  },
+  "zh_TW": {
+    "name": "Amazonize Rakuten",
+    "description": "讓樂天市場像亞馬遜一樣簡潔。樂天商品頁顯示亞馬遜價格，亞馬遜商品頁顯示樂天連結和價格。優惠券、購物車合計、活動自動報名。"
+  },
+  "ko": {
+    "name": "Amazonize Rakuten",
+    "description": "라쿠텐 이치바를 아마존처럼 깔끔하게. 라쿠텐 상품 페이지에 아마존 가격을, 아마존 상품 페이지에 라쿠텐 링크와 가격을 표시. 쿠폰·장바구니 합계·캠페인 자동 응모."
+  },
+  "vi": {
+    "name": "Amazonize Rakuten",
+    "description": "Rakuten gọn như Amazon. Giá Amazon trên Rakuten, liên kết Rakuten trên Amazon. Phiếu giảm giá, tổng giỏ hàng, tự đăng ký chiến dịch."
+  },
+  "id": {
+    "name": "Amazonize Rakuten",
+    "description": "Rakuten sesederhana Amazon. Harga Amazon di Rakuten, tautan Rakuten di Amazon. Kupon, total keranjang, kampanye otomatis."
+  }
+}

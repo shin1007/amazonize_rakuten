@@ -1,6 +1,7 @@
 /* Amazonize Rakuten - 買い物かごの合計金額パネル */
 (() => {
   const AZR = window.AZR;
+  const tr = AZR.t;
   const { h, yen, onState, waitForState } = AZR;
 
   const PANEL_ID = 'azr-cart-panel';
@@ -23,7 +24,7 @@
       if (!t) continue;
       shops.push({
         id,
-        name: state.shops?.[id]?.shopName || `ショップ${shops.length + 1}`,
+        name: state.shops?.[id]?.shopName || tr('ショップ{n}', { n: shops.length + 1 }),
         url: state.shops?.[id]?.shopUrl || '',
         itemCount: t.itemCount,
         itemTotal: t.itemTotalPrice,
@@ -60,50 +61,50 @@
   function render(data) {
     const panel = h('div.azr-panel.azr-cart-panel', { id: PANEL_ID },
       h('div.azr-panel-head',
-        h('span.azr-panel-title', { text: 'かご合計' }),
+        h('span.azr-panel-title', { text: tr('かご合計') }),
         h('button.azr-panel-close', {
-          type: 'button', text: '×', title: '閉じる',
+          type: 'button', text: '×', title: tr('閉じる'),
           onclick: () => { closed = true; panel.remove(); }
         })
       ),
       h('div.azr-panel-body',
         h('div.azr-total-row.is-main',
-          h('span', { text: `商品合計（${data.itemCount}点 / ${data.shops.length}ショップ）` }),
+          h('span', { text: tr('商品合計（{items}点 / {shops}ショップ）', { items: data.itemCount, shops: data.shops.length }) }),
           h('strong', { text: yen(data.itemTotal) })
         ),
         data.fee ? h('div.azr-total-row',
-          h('span', { text: '送料' }), h('span', { text: yen(data.fee) })
+          h('span', { text: tr('送料') }), h('span', { text: yen(data.fee) })
         ) : h('div.azr-total-row',
-          h('span', { text: '送料' }),
-          h('span', { text: data.feeUnknown ? '購入手続きで確定' : '無料' })
+          h('span', { text: tr('送料') }),
+          h('span', { text: data.feeUnknown ? tr('購入手続きで確定') : tr('無料') })
         ),
         data.coupon ? h('div.azr-total-row',
-          h('span', { text: 'クーポン割引' }),
+          h('span', { text: tr('クーポン割引') }),
           h('span.azr-discount', { text: `-${yen(data.coupon)}` })
         ) : '',
         h('div.azr-total-row.is-grand',
           h('span',
-            'お支払い予定',
-            data.feeUnknown ? h('small.azr-fee-note', { text: '（送料がある場合は別）' }) : ''
+            tr('お支払い予定'),
+            data.feeUnknown ? h('small.azr-fee-note', { text: tr('（送料がある場合は別）') }) : ''
           ),
           h('strong', { text: yen(data.payment) })
         ),
         data.points ? h('div.azr-total-row.is-point',
-          h('span', { text: '獲得予定ポイント' }),
-          h('span', { text: `${data.points.toLocaleString('ja-JP')}pt` })
+          h('span', { text: tr('獲得予定ポイント') }),
+          h('span', { text: `${data.points.toLocaleString(AZR.numberLocale)}pt` })
         ) : '',
         data.points ? h('div.azr-total-row.is-effective',
-          h('span', { text: 'ポイント差引後' }),
+          h('span', { text: tr('ポイント差引後') }),
           h('strong', { text: yen(data.effective) })
         ) : '',
         data.shops.length > 1 || data.shops[0].itemCount > 1
           ? h('details.azr-breakdown',
-              h('summary', { text: 'ショップ別内訳' }),
+              h('summary', { text: tr('ショップ別内訳') }),
               h('ul', data.shops.map((s) => h('li',
                 h('span.azr-shop-name', { text: s.name, title: s.name }),
                 h('span.azr-shop-amount', {
-                  text: (s.points ? `${yen(s.payment)} / ${s.points.toLocaleString('ja-JP')}pt` : yen(s.payment))
-                    + (s.shippingFree || s.fee ? '' : ' ＋送料')
+                  text: (s.points ? `${yen(s.payment)} / ${s.points.toLocaleString(AZR.numberLocale)}pt` : yen(s.payment))
+                    + (s.shippingFree || s.fee ? '' : tr(' ＋送料'))
                 })
               )))
             )

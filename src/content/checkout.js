@@ -1,6 +1,7 @@
 /* Amazonize Rakuten - 注文確認画面で最良クーポンを自動適用 */
 (() => {
   const AZR = window.AZR;
+  const tr = AZR.t;
   const { h, yen, onState, waitForState, waitFor } = AZR;
 
   const PANEL_ID = 'azr-checkout-panel';
@@ -218,44 +219,44 @@
 
     const panel = h('div.azr-panel.azr-checkout-panel', { id: PANEL_ID },
       h('div.azr-panel-head',
-        h('span.azr-panel-title', { text: 'クーポン最適化' }),
+        h('span.azr-panel-title', { text: tr('クーポン最適化') }),
         h('button.azr-panel-close', {
-          type: 'button', text: '×', title: '閉じる', onclick: () => panel.remove()
+          type: 'button', text: '×', title: tr('閉じる'), onclick: () => panel.remove()
         })
       ),
       h('div.azr-panel-body',
         total ? h('div.azr-total-row.is-grand',
-          h('span', { text: '適用中の割引' }),
+          h('span', { text: tr('適用中の割引') }),
           h('strong', { text: `-${yen(total)}` })
         ) : '',
-        !found ? h('div.azr-empty', { text: 'この注文に使えるクーポンはありません' }) : '',
+        !found ? h('div.azr-empty', { text: tr('この注文に使えるクーポンはありません') }) : '',
         note ? h('div.azr-coupon-status', { text: note }) : '',
         // best は「今より得なもの」だけが来る。楽天が先に選んだものがあれば「切り替え」と言う。
         best ? h('button.azr-btn-primary', {
           type: 'button',
-          text: `${applied ? '最良クーポンに切り替え' : '最良クーポンを適用'}（-${yen(best.discount)}）`,
+          text: `${applied ? tr('最良クーポンに切り替え') : tr('最良クーポンを適用')}（-${yen(best.discount)}）`,
           onclick: async (e) => {
             const button = e.currentTarget;
             button.disabled = true;
-            button.textContent = '適用中…';
+            button.textContent = tr('適用中…');
             const r = await onApply(best.coupon);
-            if (r.ok) button.textContent = '適用しました';
+            if (r.ok) button.textContent = tr('適用しました');
             if (!r.ok) {
               button.disabled = false;
-              button.textContent = '最良クーポンを適用';
+              button.textContent = tr('最良クーポンを適用');
               panel.querySelector('.azr-coupon-status')?.remove();
               panel.querySelector('.azr-panel-body')
-                .append(h('div.azr-coupon-status', { text: `適用できなかった: ${r.reason}` }));
+                .append(h('div.azr-coupon-status', { text: tr('適用できなかった: {reason}', { reason: tr(r.reason) }) }));
             }
           }
         }) : '',
         found ? h('details.azr-breakdown', { open: best ? 'open' : null },
-          h('summary', { text: `使えるクーポン ${found}件` }),
+          h('summary', { text: tr('使えるクーポン {n}件', { n: found }) }),
           h('ul', groups.flatMap((g) => AZR.coupons
             .rank(g.coupons, g.subtotal, g.shipping)
             .map(({ coupon, discount }) => h('li',
               h('span.azr-shop-name', { text: coupon.label.slice(0, 40), title: coupon.label }),
-              h('span', { text: discount ? `-${yen(discount)}` : '条件未達' })
+              h('span', { text: discount ? `-${yen(discount)}` : tr('条件未達') })
             ))))
         ) : ''
       )
@@ -310,10 +311,10 @@
       selectedNow = selected;
 
       const note = better
-        ? (appliedTotal ? `今のクーポン（-${yen(appliedTotal)}）より得なクーポンがあります` : null)
+        ? (appliedTotal ? tr('今のクーポン（-{y}）より得なクーポンがあります', { y: yen(appliedTotal) }) : null)
         : appliedTotal
-          ? '最良のクーポンが適用されています'
-          : (groups.some((g) => g.coupons.length) ? '条件を満たすクーポンがありません' : null);
+          ? tr('最良のクーポンが適用されています')
+          : (groups.some((g) => g.coupons.length) ? tr('条件を満たすクーポンがありません') : null);
 
       const signature = JSON.stringify([
         appliedTotal,

@@ -109,7 +109,11 @@
     return Number.isFinite(n) ? n : null;
   }
 
-  const yen = (n) => (Number.isFinite(n) ? `${Math.round(n).toLocaleString('ja-JP')}円` : '—');
+  const yen = (n) => {
+    if (!Number.isFinite(n)) return '—';
+    const v = Math.round(n).toLocaleString(AZR.numberLocale);
+    return !AZR.isJa ? `¥${v}` : `${v}円`;
+  };
 
   /** DOMContentLoaded。ページの同期スクリプトがすべて走り終わった時点。 */
   const domReady = new Promise((resolve) => {

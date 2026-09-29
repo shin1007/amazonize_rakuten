@@ -13,12 +13,13 @@
  */
 (() => {
   const AZR = window.AZR;
+  const tr = AZR.t;
   const { h, yen } = AZR;
 
   // 見出し（「同じJANコードの商品」か「似た商品」か）の判断は amazon-match.js にある
   const { matchLabel } = AZR.amazon;
 
-  const mark = () => h('span.azr-amazon-mark', { text: 'amazon', title: 'Amazonでの価格' });
+  const mark = () => h('span.azr-amazon-mark', { text: 'amazon', title: tr('Amazonでの価格') });
 
   /**
    * 検索結果への導線。
@@ -28,13 +29,13 @@
    * 拡張が読むHTMLには無い広告が10件以上差し込まれる（同じURLで、拡張側48件・ブラウザ側60件のうち広告12件）。
    * 商品そのものへはカードの行から飛べるので、こちらは「他の候補」と書いて期待をずらす。
    */
-  function searchLink(searchUrl, text = '他の候補') {
+  function searchLink(searchUrl, text = tr('他の候補')) {
     if (!searchUrl) return '';
     return h('a.azr-amazon-search', {
       href: searchUrl,
       target: '_blank',
       rel: 'noopener noreferrer',
-      title: 'この検索語でAmazonを検索します（上の商品が上位に出るとは限りません）',
+      title: tr('この検索語でAmazonを検索します（上の商品が上位に出るとは限りません）'),
       text
     });
   }
@@ -57,19 +58,19 @@
     const pricing = AZR.itemPricing?.value || null;
     const rakuten = pricing ? pricing.min : data.minPrice;
     const high = pricing ? pricing.max : (data.maxPrice > data.minPrice ? data.maxPrice : null);
-    const applied = pricing ? 'クーポン適用後、' : '';
+    const applied = pricing ? tr('クーポン適用後、') : '';
     if (!(rakuten > 0) || !(amazon > 0)) return '';
-    if (high > rakuten) return note(`${applied}楽天は選択によって ${yen(rakuten)}〜${yen(high)}`);
-    if (!sure) return note('同じ商品とは限らないので、値段は比べていません');
+    if (high > rakuten) return note(tr('{applied}楽天は選択によって {lo}〜{hi}', { applied, lo: yen(rakuten), hi: yen(high) }));
+    if (!sure) return note(tr('同じ商品とは限らないので、値段は比べていません'));
     const d = Math.abs(rakuten - amazon);
-    if (d === 0) return h('div.azr-amazon-diff.same', { text: `${applied}楽天と同じ価格` });
+    if (d === 0) return h('div.azr-amazon-diff.same', { text: tr('{applied}楽天と同じ価格', { applied }) });
     const cheaper = amazon < rakuten ? 'amazon' : 'rakuten';
     return h('div.azr-amazon-diff', { 'data-cheaper': cheaper },
-      h('strong', { text: `${cheaper === 'amazon' ? 'Amazon' : '楽天'}が${yen(d)}安い` }),
+      h('strong', { text: tr('{who}が{d}安い', { who: cheaper === 'amazon' ? 'Amazon' : tr('楽天'), d: yen(d) }) }),
       h('span.azr-amazon-note', {
         text: pricing
-          ? '（楽天はクーポン適用後の価格。ポイント還元は含みません）'
-          : '（表示価格の比較。楽天のポイント還元は含みません）'
+          ? tr('（楽天はクーポン適用後の価格。ポイント還元は含みません）')
+          : tr('（表示価格の比較。楽天のポイント還元は含みません）')
       })
     );
   }
@@ -84,7 +85,7 @@
     // 行そのものがAmazonの商品ページへのリンク。押せると分かるよう「Amazonで見る」を添える
     return h('a.azr-amazon-item', {
       href: item.url, target: '_blank', rel: 'noopener noreferrer',
-      title: `${item.title}\nAmazonの商品ページを開く`
+      title: `${item.title}\n${tr('Amazonの商品ページを開く')}`
     },
       item.image ? h('img.azr-amazon-thumb', { src: item.image, alt: '', loading: 'lazy' }) : '',
       h('span.azr-amazon-body',
@@ -92,18 +93,18 @@
         meta.length ? h('span.azr-amazon-meta', meta) : ''
       ),
       h('span.azr-amazon-buy',
-        h('span.azr-amazon-price', { text: item.price ? yen(item.price) : '価格不明' }),
-        h('span.azr-amazon-open', { text: 'Amazonで見る ›' })
+        h('span.azr-amazon-price', { text: item.price ? yen(item.price) : tr('価格不明') }),
+        h('span.azr-amazon-open', { text: tr('Amazonで見る ›') })
       )
     );
   }
 
   const MESSAGE = {
-    none: 'Amazonでは見つかりませんでした',
+    none: tr('Amazonでは見つかりませんでした'),
     // 検索結果が空で返った（読み直しても空）。無いとは限らないので、そう言い切らない。
-    empty: 'Amazonの検索結果を読めませんでした',
-    blocked: 'Amazonが応答しませんでした',
-    error: 'Amazonの価格を調べられませんでした'
+    empty: tr('Amazonの検索結果を読めませんでした'),
+    blocked: tr('Amazonが応答しませんでした'),
+    error: tr('Amazonの価格を調べられませんでした')
   };
 
   function paint(box, res, data) {
@@ -116,13 +117,13 @@
         variants: data.variants?.length || 0
       });
       const how = res.byJan
-        ? `JANコード ${data.jan} で検索した結果`
-        : `商品名「${res.query}」で検索した結果（商品名の一致度 ${res.item.score}）`;
+        ? tr('JANコード {jan} で検索した結果', { jan: data.jan })
+        : tr('商品名「{q}」で検索した結果（商品名の一致度 {score}）', { q: res.query, score: res.item.score });
       box.replaceChildren(
         h('div.azr-amazon-head',
           mark(),
-          h('span.azr-amazon-label', { text: label, title: how }),
-          badge ? h('span.azr-amazon-badge', { 'data-kind': res.byJan ? 'jan' : 'guess', text: badge, title: how }) : '',
+          h('span.azr-amazon-label', { text: tr(label), title: how }),
+          badge ? h('span.azr-amazon-badge', { 'data-kind': res.byJan ? 'jan' : 'guess', text: tr(badge), title: how }) : '',
           searchLink(res.searchUrl)
         ),
         itemRow(res.item),
@@ -136,7 +137,7 @@
       h('div.azr-amazon-head',
         mark(),
         h('span.azr-amazon-label', { text: (res?.empty ? MESSAGE.empty : MESSAGE[res?.status]) || MESSAGE.error }),
-        searchLink(res?.searchUrl, 'Amazonで探す')
+        searchLink(res?.searchUrl, tr('Amazonで探す'))
       )
     );
   }
@@ -148,7 +149,7 @@
     if (!data?.title || !anchor) return;
 
     const box = h('section.azr-amazon', { 'data-state': 'loading' },
-      h('div.azr-amazon-head', mark(), h('span.azr-amazon-label', { text: 'での価格を調べています…' }))
+      h('div.azr-amazon-head', mark(), h('span.azr-amazon-label', { text: tr('での価格を調べています…') }))
     );
     anchor.after(box);
 

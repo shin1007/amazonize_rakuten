@@ -1,6 +1,7 @@
 /* Amazonize Rakuten - ポイントアップキャンペーンの自動エントリー */
 (() => {
   const AZR = window.AZR;
+  const tr = AZR.t;
   const { h, waitSettled } = AZR;
 
   const ENTRY_TEXT = /^(エントリー(する)?|今すぐエントリー|エントリーはこちら)$/;
@@ -196,11 +197,11 @@
   }
 
   const STATUS_TEXT = {
-    entered: 'エントリーしました',
-    entry: '未エントリーのキャンペーンがあります',
-    already: 'エントリー済みです',
-    suspect: 'エントリーできるか判定できませんでした（ログインを確認してください）',
-    none: 'エントリーするものは見つかりませんでした'
+    entered: tr('エントリーしました'),
+    entry: tr('未エントリーのキャンペーンがあります'),
+    already: tr('エントリー済みです'),
+    suspect: tr('エントリーできるか判定できませんでした（ログインを確認してください）'),
+    none: tr('エントリーするものは見つかりませんでした')
   };
 
   function render(first) {
@@ -208,20 +209,20 @@
 
     const panel = h('div.azr-panel.azr-campaign-panel', { id: 'azr-campaign-panel' },
       h('div.azr-panel-head',
-        h('span.azr-panel-title', { text: 'キャンペーン' }),
+        h('span.azr-panel-title', { text: tr('キャンペーン') }),
         h('button.azr-panel-close', { type: 'button', text: '×', onclick: () => panel.remove() })
       ),
       h('div.azr-panel-body',
         status,
         h('button.azr-btn-primary', {
           type: 'button',
-          text: 'このページを一括エントリー',
+          text: tr('このページを一括エントリー'),
           disabled: first.status !== 'entry' && first.status !== 'suspect',
           onclick: async (e) => {
             e.currentTarget.disabled = true;
-            status.textContent = 'エントリー中…';
+            status.textContent = tr('エントリー中…');
             const r = await enterPage(true, (done, total) => {
-              status.textContent = `エントリー中… ${done}/${total}`;
+              status.textContent = tr('エントリー中… {done}/{total}', { done, total });
             });
             status.textContent = STATUS_TEXT[r.status] || '';
           }

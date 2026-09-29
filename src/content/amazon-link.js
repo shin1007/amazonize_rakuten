@@ -5,6 +5,7 @@
     const AZR = (window.AZR = window.AZR || {});
     await AZR.loadSettings();
     if (!AZR.settings.enabled || !AZR.settings.rakutenLink) return;
+  const tr = AZR.t;
     
     const title = document.getElementById('productTitle').innerText.trim();
     const detailText = [...document.querySelectorAll(
@@ -185,20 +186,20 @@
         wrap.id = 'rakuten-link-btn';
         Object.assign(wrap.style, { display: 'inline-flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap', margin: '8px 0' });
 
-        const via = code?.type ? ` (${code.type})` : '';
+        const via = code?.type ? ` (${tr(code.type)})` : '';
         const best = ranked[0];
         if (best) {
-            const main = link(best.affiliateUrl || best.itemUrl, `楽天 ￥${best.itemPrice.toLocaleString()}${via}`, { background: '#bf0000' });
+            const main = link(best.affiliateUrl || best.itemUrl, tr('楽天 ￥{p}{via}', { p: best.itemPrice.toLocaleString(), via }), { background: '#bf0000' });
             main.title = `${best.itemName}
 ${best.shopName}`;
             wrap.appendChild(main);
             // 一致商品があっても他の出品と比べられるよう検索結果へのリンクも出す
-            wrap.appendChild(link(searchUrl(keyword), '検索結果', {
+            wrap.appendChild(link(searchUrl(keyword), tr('検索結果'), {
                 color: '#bf0000', background: '#fff', border: '1px solid #bf0000', padding: '7px 12px'
             }));
         } else {
-            const main = link(searchUrl(keyword), `楽天市場で探す${via}`, { background: '#bf0000' });
-            if (apiError) main.title = `楽天API エラー: ${apiError}`;
+            const main = link(searchUrl(keyword), tr('楽天市場で探す{via}', { via }), { background: '#bf0000' });
+            if (apiError) main.title = tr('楽天API エラー: {e}', { e: apiError });
             wrap.appendChild(main);
         }
 

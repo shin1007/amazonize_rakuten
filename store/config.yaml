@@ -23,20 +23,70 @@ privacy:
 storeListing:
   category: "ショッピング"
   defaultLocale: "ja"
-  icon: "images/store-icon-128.png"
-  promoTileSmall: "images/promo-small.jpg"
-  marqueeTile: "images/promo-marquee.jpg"
+  icon: "assets/icon.png"
+  promoTileSmall: "assets/promo-tile-440x280.jpg"
+  marqueeTile: "assets/marquee-1400x560.jpg"
   homepageUrl: "https://github.com/shin1007/ch-amazonize-rakuten"
   adultContent: false
+  # 説明は assets/locales/<言語>/description.txt。画像は日本語版と英語版があり、
+  # それ以外の言語は英語版の画像を使う（言語は _locales にあるものだけ書ける）
   locales:
     ja:
-      description: "description.txt"
+      description: "assets/locales/ja/description.txt"
       screenshots:
-        - "images/screenshot-1.jpg"
-        - "images/screenshot-2.jpg"
-        - "images/screenshot-3.jpg"
-        - "images/screenshot-4.jpg"
-        - "images/screenshot-5.jpg"
+        - "assets/locales/ja/screenshots/01.jpg"
+        - "assets/locales/ja/screenshots/02.jpg"
+        - "assets/locales/ja/screenshots/03.jpg"
+        - "assets/locales/ja/screenshots/04.jpg"
+        - "assets/locales/ja/screenshots/05.jpg"
+    en:
+      description: "assets/locales/en/description.txt"
+      screenshots:
+        - "assets/locales/en/screenshots/01.jpg"
+        - "assets/locales/en/screenshots/02.jpg"
+        - "assets/locales/en/screenshots/03.jpg"
+        - "assets/locales/en/screenshots/04.jpg"
+        - "assets/locales/en/screenshots/05.jpg"
+    zh_CN:
+      description: "assets/locales/zh_CN/description.txt"
+      screenshots:
+        - "assets/locales/en/screenshots/01.jpg"
+        - "assets/locales/en/screenshots/02.jpg"
+        - "assets/locales/en/screenshots/03.jpg"
+        - "assets/locales/en/screenshots/04.jpg"
+        - "assets/locales/en/screenshots/05.jpg"
+    zh_TW:
+      description: "assets/locales/zh_TW/description.txt"
+      screenshots:
+        - "assets/locales/en/screenshots/01.jpg"
+        - "assets/locales/en/screenshots/02.jpg"
+        - "assets/locales/en/screenshots/03.jpg"
+        - "assets/locales/en/screenshots/04.jpg"
+        - "assets/locales/en/screenshots/05.jpg"
+    ko:
+      description: "assets/locales/ko/description.txt"
+      screenshots:
+        - "assets/locales/en/screenshots/01.jpg"
+        - "assets/locales/en/screenshots/02.jpg"
+        - "assets/locales/en/screenshots/03.jpg"
+        - "assets/locales/en/screenshots/04.jpg"
+        - "assets/locales/en/screenshots/05.jpg"
+    vi:
+      description: "assets/locales/vi/description.txt"
+      screenshots:
+        - "assets/locales/en/screenshots/01.jpg"
+        - "assets/locales/en/screenshots/02.jpg"
+        - "assets/locales/en/screenshots/03.jpg"
+        - "assets/locales/en/screenshots/04.jpg"
+        - "assets/locales/en/screenshots/05.jpg"
+    id:
+      description: "assets/locales/id/description.txt"
+      screenshots:
+        - "assets/locales/en/screenshots/01.jpg"
+        - "assets/locales/en/screenshots/02.jpg"
+        - "assets/locales/en/screenshots/03.jpg"
+        - "assets/locales/en/screenshots/04.jpg"
+        - "assets/locales/en/screenshots/05.jpg"
 
 package:
   zip: "package.zip"

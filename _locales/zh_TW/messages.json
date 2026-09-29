@@ -1,0 +1,533 @@
+{
+  "appName": {
+    "message": "Amazonize Rakuten"
+  },
+  "appDescription": {
+    "message": "讓樂天市場像亞馬遜一樣簡潔。樂天商品頁顯示亞馬遜價格，亞馬遜商品頁顯示樂天連結和價格。優惠券、購物車合計、活動自動報名。"
+  },
+  "m92ae9f38": {
+    "message": "樂天 ¥{p}{via}"
+  },
+  "mac657817": {
+    "message": "搜尋結果"
+  },
+  "m3c4ed063": {
+    "message": "在樂天市場搜尋{via}"
+  },
+  "m4a356581": {
+    "message": "樂天API錯誤：{e}"
+  },
+  "mab2b72e0": {
+    "message": "型號"
+  },
+  "ma9624b21": {
+    "message": "已報名"
+  },
+  "m5405c585": {
+    "message": "還有尚未報名的活動"
+  },
+  "m8afef6d7": {
+    "message": "已報名"
+  },
+  "m6da2376c": {
+    "message": "無法判斷能否報名（請確認是否已登入）"
+  },
+  "m38848246": {
+    "message": "沒有找到可報名的活動"
+  },
+  "mf1b74e81": {
+    "message": "活動"
+  },
+  "mcaad31cd": {
+    "message": "一鍵報名本頁活動"
+  },
+  "m08f88b39": {
+    "message": "報名中…"
+  },
+  "m8310eb7c": {
+    "message": "報名中… {done}/{total}"
+  },
+  "mf0499443": {
+    "message": "店鋪{n}"
+  },
+  "m8e6f605a": {
+    "message": "購物車合計"
+  },
+  "m5bcd0e2d": {
+    "message": "關閉"
+  },
+  "m66bb0648": {
+    "message": "商品合計（{items}件 / {shops}家店鋪）"
+  },
+  "m0fcf6b0f": {
+    "message": "運費"
+  },
+  "maef6419f": {
+    "message": "結帳時確定"
+  },
+  "mf7f9d52f": {
+    "message": "免費"
+  },
+  "mb80c785b": {
+    "message": "優惠券折扣"
+  },
+  "m6b74eb25": {
+    "message": "應付金額"
+  },
+  "m46445c13": {
+    "message": "（如有運費另計）"
+  },
+  "m73e4d412": {
+    "message": "預計獲得點數"
+  },
+  "m7098f062": {
+    "message": "扣除點數後"
+  },
+  "maaaebb94": {
+    "message": "各店鋪明細"
+  },
+  "mcff85f1a": {
+    "message": " ＋運費"
+  },
+  "m7e464c25": {
+    "message": "優惠券最佳化"
+  },
+  "ma0283ec6": {
+    "message": "已使用的折扣"
+  },
+  "mb6a9737e": {
+    "message": "沒有可用於此訂單的優惠券"
+  },
+  "m3b93490a": {
+    "message": "切換為最優惠的優惠券"
+  },
+  "m8e5eda5a": {
+    "message": "使用最優惠的優惠券"
+  },
+  "mef82b9d7": {
+    "message": "使用中…"
+  },
+  "mae1b381b": {
+    "message": "已使用"
+  },
+  "m028840bf": {
+    "message": "無法使用：{reason}"
+  },
+  "mbe60c5fe": {
+    "message": "可用優惠券 {n}張"
+  },
+  "m6037edc8": {
+    "message": "未達條件"
+  },
+  "m9cdbec70": {
+    "message": "有比目前優惠券（-{y}）更划算的優惠券"
+  },
+  "m505173d4": {
+    "message": "已使用最優惠的優惠券"
+  },
+  "mf8c3435f": {
+    "message": "沒有符合條件的優惠券"
+  },
+  "mef64a979": {
+    "message": "在優惠券欄中找不到「變更」"
+  },
+  "m84c4e92e": {
+    "message": "對話框中沒有出現該優惠券"
+  },
+  "m0730907e": {
+    "message": "無法取消目前的優惠券選擇"
+  },
+  "m618cdc05": {
+    "message": "取消選擇後找不到該優惠券"
+  },
+  "mc45a6b9b": {
+    "message": "無法選擇該優惠券"
+  },
+  "m43d5d502": {
+    "message": "找不到「變更」按鈕"
+  },
+  "ma945ece9": {
+    "message": "已按下「變更」，但優惠券欄沒有變化"
+  },
+  "mc3ad344d": {
+    "message": "亞馬遜價格"
+  },
+  "ma3dc6e58": {
+    "message": "其他結果"
+  },
+  "m03fd07f7": {
+    "message": "用此關鍵字在亞馬遜搜尋（上面的商品不一定排在前面）"
+  },
+  "me3557e58": {
+    "message": "使用優惠券後："
+  },
+  "m75e0cbb1": {
+    "message": "{applied}樂天價格因所選規格而異：{lo}～{hi}"
+  },
+  "m5b1a9231": {
+    "message": "不一定是同一商品，因此未比較價格"
+  },
+  "m61069aad": {
+    "message": "{applied}與樂天價格相同"
+  },
+  "md42d3713": {
+    "message": "樂天"
+  },
+  "m2c67fa0a": {
+    "message": "{who}便宜{d}"
+  },
+  "mfd919f14": {
+    "message": "（樂天價格為使用優惠券後的價格，不含點數回饋）"
+  },
+  "mb8805ea2": {
+    "message": "（標價比較，不含樂天點數回饋）"
+  },
+  "mc915cdf6": {
+    "message": "開啟亞馬遜商品頁面"
+  },
+  "maa759aeb": {
+    "message": "價格不明"
+  },
+  "m9e22e65a": {
+    "message": "在亞馬遜查看 ›"
+  },
+  "m2677625e": {
+    "message": "在亞馬遜上找不到"
+  },
+  "m876d65c2": {
+    "message": "無法讀取亞馬遜的搜尋結果"
+  },
+  "m37ed8a4f": {
+    "message": "亞馬遜沒有回應"
+  },
+  "md4363d28": {
+    "message": "無法查詢亞馬遜價格"
+  },
+  "mb1663734": {
+    "message": "以JAN碼 {jan} 搜尋的結果"
+  },
+  "mce955be7": {
+    "message": "以商品名稱「{q}」搜尋的結果（名稱相符度 {score}）"
+  },
+  "m9dbc6ef0": {
+    "message": "的同款商品"
+  },
+  "mb4b30925": {
+    "message": "的價格"
+  },
+  "mb25addc1": {
+    "message": "的相似商品"
+  },
+  "m4038d234": {
+    "message": "JAN碼一致"
+  },
+  "m56d75872": {
+    "message": "參考"
+  },
+  "m63084997": {
+    "message": "在亞馬遜搜尋"
+  },
+  "m644ca260": {
+    "message": "的價格：查詢中…"
+  },
+  "m08f7251d": {
+    "message": "已領取"
+  },
+  "m9171d9b3": {
+    "message": "已領取過"
+  },
+  "m5b4e6706": {
+    "message": "請登入"
+  },
+  "mc17f1c12": {
+    "message": "無法領取"
+  },
+  "m8dc65745": {
+    "message": "已取消"
+  },
+  "m681cec5c": {
+    "message": "無法確認結果"
+  },
+  "md1cf263c": {
+    "message": "找不到該優惠券"
+  },
+  "m8cb52db5": {
+    "message": "活動期限已結束"
+  },
+  "m9aa3fa53": {
+    "message": "發放已結束"
+  },
+  "m6c55b7b9": {
+    "message": "需要註冊會員"
+  },
+  "madb119b2": {
+    "message": "不適用"
+  },
+  "m0cf99f38": {
+    "message": "{n}% OFF優惠券"
+  },
+  "m57a9b03f": {
+    "message": "{n}日圓OFF優惠券"
+  },
+  "m45ca0997": {
+    "message": "領取優惠券"
+  },
+  "m644cefd5": {
+    "message": "領取中…"
+  },
+  "mc60a2012": {
+    "message": "領取"
+  },
+  "m39e67f09": {
+    "message": "無需離開本頁即可領取"
+  },
+  "mc9f5c1be": {
+    "message": "滿{y}可用"
+  },
+  "medab71b3": {
+    "message": "滿{y}"
+  },
+  "m733cd987": {
+    "message": "{n}件以上"
+  },
+  "ma3b470b2": {
+    "message": "僅限一般購買"
+  },
+  "m2424a4fb": {
+    "message": "僅限定期購買"
+  },
+  "m03994136": {
+    "message": "優惠券"
+  },
+  "m2a4834ae": {
+    "message": "查看詳情"
+  },
+  "m749a882d": {
+    "message": "關閉 (Esc)"
+  },
+  "m61ac8fff": {
+    "message": "上一張圖片 (←)"
+  },
+  "m10802f4d": {
+    "message": "下一張圖片 (→)"
+  },
+  "m0c60607e": {
+    "message": "點擊返回影片"
+  },
+  "m927b4d8f": {
+    "message": "放大圖片"
+  },
+  "me56e3de3": {
+    "message": "點擊放大"
+  },
+  "m9069aa83": {
+    "message": "影片載入中…"
+  },
+  "m87e94a51": {
+    "message": "影片"
+  },
+  "m8ff2ef49": {
+    "message": "使用優惠券後"
+  },
+  "m57f8c1da": {
+    "message": "評分 {score}（滿分5分）"
+  },
+  "mce1aeb53": {
+    "message": "店鋪評分"
+  },
+  "m2e4cb98c": {
+    "message": "{count}則評論"
+  },
+  "ma0846057": {
+    "message": "查看店鋪評論"
+  },
+  "m1dc225d4": {
+    "message": "前往 {name} 首頁"
+  },
+  "mf7f5a2f8": {
+    "message": "已選：{v}（請在右側選擇）"
+  },
+  "mb229666e": {
+    "message": "正在載入購買選項…"
+  },
+  "m46b8fca6": {
+    "message": "商品說明"
+  },
+  "m0d0c6b9e": {
+    "message": "點擊切換到原頁面"
+  },
+  "m36958bd5": {
+    "message": "樂天市場"
+  },
+  "mb7e70792": {
+    "message": "購物車"
+  },
+  "m5bde3215": {
+    "message": "無法載入影片"
+  },
+  "m7ab21e27": {
+    "message": "啟用"
+  },
+  "m46a33d97": {
+    "message": "顯示"
+  },
+  "m20e470ad": {
+    "message": "把商品頁面改成亞馬遜風格"
+  },
+  "m4dcd47e7": {
+    "message": "弱化搜尋結果中的廣告"
+  },
+  "m4bbb220a": {
+    "message": "在商品頁面顯示亞馬遜價格"
+  },
+  "mb5d69e73": {
+    "message": "在亞馬遜商品頁面顯示樂天連結和價格"
+  },
+  "m0d4f7f04": {
+    "message": "購物車與優惠券"
+  },
+  "m53eb972a": {
+    "message": "顯示購物車合計金額"
+  },
+  "m67a432b4": {
+    "message": "在商品頁面顯示優惠券"
+  },
+  "m080a28ae": {
+    "message": "開啟時自動領取"
+  },
+  "m6237d108": {
+    "message": "結帳時使用最優惠的優惠券"
+  },
+  "m3cf7bbf1": {
+    "message": "使用前先確認"
+  },
+  "m21900ae7": {
+    "message": "已領取的優惠券"
+  },
+  "m8f1bfe4f": {
+    "message": "顯示報名面板"
+  },
+  "m9c0620ca": {
+    "message": "在開啟的頁面自動報名"
+  },
+  "m8d2c204d": {
+    "message": "找到後直接報名"
+  },
+  "md4b9b3eb": {
+    "message": "開啟樂天頁面時自動搜尋（每12小時）"
+  },
+  "mc43fe04d": {
+    "message": "無法判斷的頁面在分頁中重新開啟（會顯示分頁）"
+  },
+  "m223eb53d": {
+    "message": "從首頁搜尋並報名"
+  },
+  "m000ed412": {
+    "message": "已報名清單"
+  },
+  "m58fa71b7": {
+    "message": "指定URL執行"
+  },
+  "m396fc81b": {
+    "message": "依此清單報名"
+  },
+  "m599a7144": {
+    "message": "除錯記錄"
+  },
+  "mcabb6a4d": {
+    "message": "變更設定後，重新載入頁面即可生效。"
+  },
+  "mda65eda1": {
+    "message": "每行一個URL"
+  },
+  "m0a513a3d": {
+    "message": "尚無"
+  },
+  "m089e4629": {
+    "message": "（無名稱）"
+  },
+  "m6bd949e8": {
+    "message": "店鋪：{s}"
+  },
+  "m56e931b1": {
+    "message": "商品：{i}"
+  },
+  "mf693dfae": {
+    "message": " 自動"
+  },
+  "m7bbc23e8": {
+    "message": "已報名"
+  },
+  "mae6bc65b": {
+    "message": "已報名過"
+  },
+  "m6ff06b72": {
+    "message": "未報名"
+  },
+  "m3b6e4a9d": {
+    "message": "需確認"
+  },
+  "mea33308c": {
+    "message": "無需報名"
+  },
+  "mfd770949": {
+    "message": "逾時"
+  },
+  "m9c23c111": {
+    "message": "失敗"
+  },
+  "m2732738f": {
+    "message": "已中斷"
+  },
+  "m06bc2fe2": {
+    "message": "未知"
+  },
+  "mbcb54737": {
+    "message": "尚未檢查"
+  },
+  "m8061e20b": {
+    "message": "失敗：{e}"
+  },
+  "mc4cbbe05": {
+    "message": "未知錯誤"
+  },
+  "m1d644a80": {
+    "message": "已檢查{n}項 / 新報名{e}項 / 已報名過{a}項"
+  },
+  "m0ac97120": {
+    "message": " / 需確認{n}項"
+  },
+  "mdfb0f73e": {
+    "message": " / 無法判斷{n}項"
+  },
+  "m3cd9925c": {
+    "message": " / 不支援的URL {n}個"
+  },
+  "mbb036bfa": {
+    "message": "上次（{time}）： "
+  },
+  "m91a084b7": {
+    "message": "正在載入首頁…"
+  },
+  "m6b460745": {
+    "message": "請至少輸入一行URL"
+  },
+  "mb3b93cec": {
+    "message": "正在執行中"
+  },
+  "m17334fa5": {
+    "message": "報名中"
+  },
+  "m4419c377": {
+    "message": "檢查中"
+  },
+  "m91f4d6eb": {
+    "message": "正在載入首頁"
+  },
+  "mbcf496aa": {
+    "message": "無法從首頁取得連結"
+  },
+  "m249edb55": {
+    "message": "不支援該URL"
+  }
+}
