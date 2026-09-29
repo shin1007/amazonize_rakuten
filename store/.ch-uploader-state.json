@@ -52,6 +52,120 @@
           "b6924400f323c47e2f44ffe406aff61507cbcfca4c2990cfcef7682c3db2d86e",
           "34bdb5abd017526396092dcf5f21b46bbe1490d1f67ab0727b1347204eb207aa"
         ]
+      },
+      "fields": {
+        "package.zip": {
+          "hash": "26c64f1c8ecb5c019f00f19fc6104489182fb2dcc067acd581212c2583bf23a6",
+          "appliedAt": "2026-09-29T15:11:08.293Z"
+        },
+        "privacy.singlePurpose": {
+          "hash": "2fea92fcfe0756ed799226d9a5b0a0f46282c91d5f656193398b97b22af9d3bd",
+          "appliedAt": "2026-09-29T15:11:13.738Z"
+        },
+        "privacy.usesRemoteCode": {
+          "hash": "fcbcf165908dd18a9e49f7ff27810176db8e9f63b4352213741664245224f8aa",
+          "appliedAt": "2026-09-29T15:11:13.738Z"
+        },
+        "privacy.dataUsage": {
+          "hash": "cdbf323b8756f1740bbacd28cc2f288cb6856d462c05ef59e0c4afa4c1164153",
+          "appliedAt": "2026-09-29T15:11:13.738Z"
+        },
+        "privacy.privacyPolicyUrl": {
+          "hash": "f7222c18add86175091ecff2cab5020d80af08e7af0f746e1d16c6be7f680da6",
+          "appliedAt": "2026-09-29T15:11:13.738Z"
+        },
+        "privacy.permission.storage": {
+          "hash": "bf7bf4662d13715f2d5cecd10e821a6dd08fa5c922fc2252c2ed5e0a868b8102",
+          "appliedAt": "2026-09-29T15:11:13.738Z"
+        },
+        "privacy.permission.declarativeNetRequestWithHostAccess": {
+          "hash": "06e0e3c489c038b4f871948842fca5714da9e50d4d944154f3c1eb91df98db94",
+          "appliedAt": "2026-09-29T15:11:13.738Z"
+        },
+        "privacy.permission.host permission": {
+          "hash": "fd682c2a62851ef2e6c3361de663b4a18a2d26b25bc1d250e7ca68e8e368b5b5",
+          "appliedAt": "2026-09-29T15:11:13.738Z"
+        },
+        "storeListing.category": {
+          "hash": "156877b5b3ddee5bc23709d7e50ca9a29e8874d3d507255e455e92adf9b31358",
+          "appliedAt": "2026-09-29T15:11:34.587Z"
+        },
+        "storeListing.icon": {
+          "hash": "4bd0806aabbef9dfcf3c43f75c9e40dfa8497e1fa57fe2889e7f966c7d862803",
+          "appliedAt": "2026-09-29T15:11:34.587Z"
+        },
+        "storeListing.adultContent": {
+          "hash": "fcbcf165908dd18a9e49f7ff27810176db8e9f63b4352213741664245224f8aa",
+          "appliedAt": "2026-09-29T15:11:34.587Z"
+        },
+        "storeListing.promoTileSmall": {
+          "hash": "41b508b54f47194fb5fea9da1bbf52641c26d5c56f1637ee93b591c451f1fc83",
+          "appliedAt": "2026-09-29T15:11:34.587Z"
+        },
+        "storeListing.marqueeTile": {
+          "hash": "73136835337be20b4391a5606959e9e3e0c88e38d342c3b6739531e6b437028b",
+          "appliedAt": "2026-09-29T15:11:34.587Z"
+        },
+        "storeListing.homepageUrl": {
+          "hash": "ae2dbf39ea6ddf426b03ec3999bfe6da890ed4056b0f7a5d918307250f342475",
+          "appliedAt": "2026-09-29T15:11:34.587Z"
+        },
+        "storeListing.locale.ja.description": {
+          "hash": "bdaf600a763b4652efad66b74053cec39754dbead70410655865bc2092cf68b3",
+          "appliedAt": "2026-09-29T15:11:34.587Z"
+        },
+        "storeListing.locale.ja.screenshots": {
+          "hash": "1988be37b978c30067b930c7be11beff6a195b90949da080801783cdfee843ef",
+          "appliedAt": "2026-09-29T15:11:34.587Z"
+        },
+        "storeListing.locale.en.description": {
+          "hash": "190181b6562245be68d85fe7592b1e60688d52e2ac3523fdd7516b1df3235241",
+          "appliedAt": "2026-09-29T15:11:34.587Z"
+        },
+        "storeListing.locale.en.screenshots": {
+          "hash": "97f00216bcc4016e697b01bd27659933bc3a68c2b208a2bf88acbb4d85384168",
+          "appliedAt": "2026-09-29T15:11:34.587Z"
+        },
+        "storeListing.locale.zh_CN.description": {
+          "hash": "89694d4d7c9def0eb51dadce289ae52f15cc970d0bdcca9c565cf85c3bc9edbb",
+          "appliedAt": "2026-09-29T15:11:34.587Z"
+        },
+        "storeListing.locale.zh_CN.screenshots": {
+          "hash": "41401442727f4344899d9ce38269a38b5f6ebd247c0f06cd92fa66e9b77f4adc",
+          "appliedAt": "2026-09-29T15:11:34.587Z"
+        },
+        "storeListing.locale.zh_TW.description": {
+          "hash": "9b149e52e087b2570fb6eaa44c26454c970b902538d90b76364f3691088f8ec7",
+          "appliedAt": "2026-09-29T15:11:34.587Z"
+        },
+        "storeListing.locale.zh_TW.screenshots": {
+          "hash": "b38d344b0fc9f365c7af54a954553c5c8ceec3d6f838eb4791965deb84cf538d",
+          "appliedAt": "2026-09-29T15:11:34.587Z"
+        },
+        "storeListing.locale.ko.description": {
+          "hash": "e759ac85c6e8eecf0ce5a4033546f089d602bbaf9d9c90025dfb7b3d04f169bb",
+          "appliedAt": "2026-09-29T15:11:34.587Z"
+        },
+        "storeListing.locale.ko.screenshots": {
+          "hash": "7594ce871e66323dc7d53b5422990c6334779984a0a8ce5a4943ca0b4027ae44",
+          "appliedAt": "2026-09-29T15:11:34.587Z"
+        },
+        "storeListing.locale.vi.description": {
+          "hash": "16f1ad9802574a2ec3db0e802fd87949160534821fccb58b04f1ea8a2da3015f",
+          "appliedAt": "2026-09-29T15:11:34.587Z"
+        },
+        "storeListing.locale.vi.screenshots": {
+          "hash": "0fe2580d4f42e5cb38f66780cec7df3001e971a251c3d923b74ffd641425c497",
+          "appliedAt": "2026-09-29T15:11:34.587Z"
+        },
+        "storeListing.locale.id.description": {
+          "hash": "d913214c5ba4d6b4b56add18b8771d755118329ef756240b6d8d08453fb272fd",
+          "appliedAt": "2026-09-29T15:11:34.587Z"
+        },
+        "storeListing.locale.id.screenshots": {
+          "hash": "aa6644914451a4bfad9ad7b2d3139a60c37ae7e745fafea65b946864c73ac803",
+          "appliedAt": "2026-09-29T15:11:34.587Z"
+        }
       }
     }
   }
