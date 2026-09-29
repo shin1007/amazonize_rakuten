@@ -84,6 +84,7 @@
    * 応答には状態と同じ形（shopItemSubtotals など）で最新の金額が入っている。
    */
   const OVERLAY_KEYS = ['shops', 'shopItems', 'shopItemSubtotals', 'shopCoupons', 'shopDisplayOrder', 'pointsUsage'];
+  const MAP_KEYS = ['shops', 'shopItems', 'shopItemSubtotals', 'shopCoupons'];
   let overlay = {};
   let overlayVersion = 0; // 重ねた応答が変わるたびに増やす（見張りの空回りを省くため）
 
@@ -96,7 +97,9 @@
     for (const c of candidates) {
       for (const k of OVERLAY_KEYS) {
         if (c[k] && typeof c[k] === 'object') {
-          overlay[k] = c[k];
+          // 店舗ごとの表は、応答に載った店舗だけ差し替える。丸ごと置くと、
+          // 1店舗ぶんだけの応答で他店舗が消え、合計が欠ける。
+          overlay[k] = MAP_KEYS.includes(k) ? { ...overlay[k], ...c[k] } : c[k];
           changed = true;
         }
       }
@@ -113,7 +116,13 @@
     if (!window.__INITIAL_STATE__ && !Object.keys(overlay).length) return;
     let data = null;
     try {
-      data = slim({ ...(window.__INITIAL_STATE__ || {}), ...overlay });
+      const base = window.__INITIAL_STATE__ || {};
+      const merged = { ...base, ...overlay };
+      // 店舗ごとの表は初期状態に重ねる（応答が一部の店舗だけでも他店舗を残す）
+      for (const k of MAP_KEYS) {
+        if (overlay[k]) merged[k] = { ...base[k], ...overlay[k] };
+      }
+      data = slim(merged);
     } catch {
       return; // 状態の形が変わっても、ページ側を壊さない
     }
