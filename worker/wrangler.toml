@@ -1,0 +1,25 @@
+name = "amazon-rakuten-link"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+[vars]
+# 楽天アプリ登録の「許可されたWebサイト」と同じ値（https:// 付き）
+ALLOWED_ORIGIN = "https://amazon-rakuten-link.shin1007.workers.dev"
+
+# Secret（wrangler secret put で登録）:
+#   RAKUTEN_APP_ID, RAKUTEN_ACCESS_KEY, RAKUTEN_AFFILIATE_ID(任意)
+
+# プライバシーポリシーHTMLを文字列としてimport
+[[rules]]
+type = "Text"
+globs = ["**/*.html"]
+fallthrough = true
+
+# 接続元IPごとのレート制限（公開後の濫用対策）
+[[ratelimits]]
+name = "LIMITER"
+namespace_id = "1001"
+
+  [ratelimits.simple]
+  limit = 60
+  period = 60
