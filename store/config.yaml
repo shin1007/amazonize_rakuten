@@ -26,7 +26,7 @@ storeListing:
   icon: "images/store-icon-128.png"
   promoTileSmall: "images/promo-small.jpg"
   marqueeTile: "images/promo-marquee.jpg"
-  homepageUrl: "https://github.com/shin1007/amazonize_rakuten"
+  homepageUrl: "https://github.com/shin1007/ch-amazonize-rakuten"
   adultContent: false
   locales:
     ja:
