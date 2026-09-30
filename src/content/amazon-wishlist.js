@@ -7,7 +7,7 @@
     if (!AZR.settings.enabled || !AZR.settings.nesagePromo) return;
     const tr = AZR.t;
 
-    const LIST_PATH = /\/hz\/wishlist\/(?:ls|genericItemsPage)(?:\/([A-Z0-9]{8,20}))?(?=[/?#]|$)/i;
+    const LIST_PATH = /\/(?:hz\/wishlist\/(?:ls|genericItemsPage)|(?:gp\/)?registry\/wishlist)(?:\/([A-Z0-9]{8,20}))?(?=[/?#]|$)/i;
     const listIdOf = (href) => {
         try { return new URL(href, location.href).pathname.match(LIST_PATH)?.[1] || null; } catch { return null; }
     };
@@ -62,23 +62,32 @@
     if (LIST_PATH.test(location.pathname)) {
         const id = listIdOf(location.href)
             || listIdOf(document.querySelector('link[rel="canonical"]')?.href || '')
-            || document.querySelector('input[name="listId"]')?.value?.match(/^[A-Z0-9]{8,20}$/i)?.[0]
+            || document.querySelector('input#listId, input[name="listId"]')?.value?.match(/^[A-Z0-9]{8,20}$/i)?.[0]
             || null;
         show(id, false);
+        // 左の一覧で選んでいるリストが非公開なら、公開の設定が要ることを目立たせる
+        if (/非公開|Private/i.test(document.querySelector('.wl-list.selected')?.innerText || '')) {
+            const note = document.querySelector('#azr-nesage > div:nth-last-child(2)');
+            if (note) Object.assign(note.style, { color: '#c40000', fontWeight: 'bold' });
+        }
         return;
     }
 
-    // 商品ページ: ほしい物リストのボタンが押されてから少しの間に、追加完了のポップオーバー（リストへのリンク付き）が出たら案内する
+    // 商品ページ: ほしい物リストのボタンが押されてから少しの間に、追加完了の表示（リストへのリンク付き）が出たら案内する。
+    // ボタンの下に出る「次に追加されました: <リスト>」（#atwl-inline。最初からあって、追加すると a-hidden が外れリンク先が入る）と、
+    // リストを選んだときのポップオーバーの両方を見る
     let armedUntil = 0;
     document.addEventListener('click', (e) => {
         if (e.target.closest?.('[id*="wishlist" i], [id^="atwl"], [id^="huc-"]')) armedUntil = Date.now() + 15000;
     }, true);
+    // ポップオーバーのリンクは a#huc-list-link のように自分も id が huc- で始まるので、親から探す
+    const DONE = '#atwl-inline, .a-popover, [id^="huc-atwl"], [id^="WLHUC"]';
     let shownFor = null;
     new MutationObserver(() => {
         if (Date.now() > armedUntil) return;
-        for (const a of document.querySelectorAll('.a-popover a[href*="/hz/wishlist/"], [id^="huc-"] a[href*="/hz/wishlist/"], [id^="WLHUC"] a[href*="/hz/wishlist/"]')) {
-            const pop = a.closest('.a-popover, [id^="huc-"], [id^="WLHUC"]');
-            if (!/追加|added/i.test(pop.textContent)) continue;
+        for (const a of document.querySelectorAll('a[href*="wishlist"]')) {
+            const box = a.parentElement?.closest(DONE);
+            if (!box || !box.getClientRects().length || !/追加|added/i.test(box.textContent)) continue;
             const id = listIdOf(a.href);
             if (!id || id === shownFor) continue;
             shownFor = id;
@@ -86,5 +95,5 @@
             show(id, true);
             return;
         }
-    }).observe(document.body, { childList: true, subtree: true });
+    }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'href', 'style'] });
 })();
