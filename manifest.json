@@ -30,8 +30,13 @@
   "content_scripts": [
     {
       "matches": ["https://www.amazon.co.jp/*"],
-      "js": ["src/lib/settings.js", "src/lib/i18n-data.js", "src/lib/i18n.js", "src/content/amazon-link.js"],
-      "run_at": "document_idle"
+      "js": ["src/lib/settings.js", "src/lib/i18n-data.js", "src/lib/i18n.js", "src/lib/amazon-slot.js", "src/content/amazon-link-early.js"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["https://www.amazon.co.jp/*"],
+      "js": ["src/lib/settings.js", "src/lib/i18n-data.js", "src/lib/i18n.js", "src/lib/amazon-slot.js", "src/content/amazon-link.js"],
+      "run_at": "document_end"
     },
     {
       "matches": [

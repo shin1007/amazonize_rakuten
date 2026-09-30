@@ -28,8 +28,8 @@ async function callRakuten(keyword, env) {
         const j = await r.json();
         return {
             count: j.count ?? 0,
-            items: (j.Items || j.items || []).map(x => x.Item || x.item || x).map(({ itemName, itemPrice, itemUrl, affiliateUrl, shopName, shopCode }) =>
-                ({ itemName, itemPrice, itemUrl, affiliateUrl, shopName, shopCode }))
+            items: (j.Items || j.items || []).map(x => x.Item || x.item || x).map(({ itemName, itemPrice, itemUrl, affiliateUrl, shopName, shopCode, mediumImageUrls }) =>
+                ({ itemName, itemPrice, itemUrl, affiliateUrl, shopName, shopCode, imageUrl: mediumImageUrls?.[0]?.imageUrl || mediumImageUrls?.[0] || '' }))
         };
     }
     return { error: 'too_many_requests' };
@@ -60,7 +60,7 @@ export default {
         if (keyword.length < 2 || keyword.length > 128) return json({ error: 'bad_keyword' }, 400);
 
         // 正規化したキーワードでキャッシュ
-        const cacheKey = new Request(`${url.origin}/search?v=6&keyword=${encodeURIComponent(keyword)}`);
+        const cacheKey = new Request(`${url.origin}/search?v=7&keyword=${encodeURIComponent(keyword)}`);
         const cached = await caches.default.match(cacheKey);
         if (cached) return cached;
 
