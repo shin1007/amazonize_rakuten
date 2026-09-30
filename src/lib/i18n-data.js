@@ -189,7 +189,14 @@
       "商品名": "Item name",
       "楽天の商品情報を取得中…": "Loading Rakuten item info…",
       "※ Amazonアソシエイトのリンクを含みます": "* Includes Amazon Associates links",
-      "※ 楽天アフィリエイトのリンクを含みます": "* Includes Rakuten Affiliate links"
+      "※ 楽天アフィリエイトのリンクを含みます": "* Includes Rakuten Affiliate links",
+      "Amazonのほしい物リストで値下げ通知（nesage.party）を案内する": "Suggest price-drop alerts (nesage.party) on Amazon wish lists",
+      "ほしい物リストに追加しました": "Added to your wish list",
+      "このリストの値下げをメールで受け取る": "Get price-drop emails for this list",
+      "nesage.party に登録すると、リストの商品が値下げされたときに毎朝メールでお知らせします（無料）。": "Sign up on nesage.party and get a morning email when items on your list drop in price (free, Japanese only).",
+      "nesage.party で値下げ通知を受け取る": "Get price-drop alerts on nesage.party",
+      "リストを「公開」か「共有」にすると登録できます。": "Set the list to \"Public\" or \"Shared\" to sign up.",
+      "今後表示しない": "Don't show again"
     },
     "id": {
       "楽天 ￥{p}{via}": "Rakuten ¥{p}{via}",
@@ -378,7 +385,14 @@
       "商品名": "Nama produk",
       "楽天の商品情報を取得中…": "Memuat info produk Rakuten…",
       "※ Amazonアソシエイトのリンクを含みます": "※ Berisi tautan Amazon Associates",
-      "※ 楽天アフィリエイトのリンクを含みます": "※ Berisi tautan afiliasi Rakuten"
+      "※ 楽天アフィリエイトのリンクを含みます": "※ Berisi tautan afiliasi Rakuten",
+      "Amazonのほしい物リストで値下げ通知（nesage.party）を案内する": "Sarankan notifikasi turun harga (nesage.party) di daftar keinginan Amazon",
+      "ほしい物リストに追加しました": "Ditambahkan ke daftar keinginan",
+      "このリストの値下げをメールで受け取る": "Terima email saat harga di daftar ini turun",
+      "nesage.party に登録すると、リストの商品が値下げされたときに毎朝メールでお知らせします（無料）。": "Daftar di nesage.party untuk menerima email setiap pagi saat harga barang di daftar Anda turun (gratis, hanya bahasa Jepang).",
+      "nesage.party で値下げ通知を受け取る": "Terima notifikasi turun harga di nesage.party",
+      "リストを「公開」か「共有」にすると登録できます。": "Atur daftar menjadi \"Publik\" atau \"Dibagikan\" untuk mendaftar.",
+      "今後表示しない": "Jangan tampilkan lagi"
     },
     "ko": {
       "楽天 ￥{p}{via}": "라쿠텐 ¥{p}{via}",
@@ -567,7 +581,14 @@
       "商品名": "상품명",
       "楽天の商品情報を取得中…": "라쿠텐 상품 정보를 불러오는 중…",
       "※ Amazonアソシエイトのリンクを含みます": "※ 아마존 어소시에이트 링크를 포함합니다",
-      "※ 楽天アフィリエイトのリンクを含みます": "※ 라쿠텐 제휴(어필리에이트) 링크를 포함합니다"
+      "※ 楽天アフィリエイトのリンクを含みます": "※ 라쿠텐 제휴(어필리에이트) 링크를 포함합니다",
+      "Amazonのほしい物リストで値下げ通知（nesage.party）を案内する": "아마존 위시리스트에서 가격 인하 알림(nesage.party) 안내",
+      "ほしい物リストに追加しました": "위시리스트에 추가했습니다",
+      "このリストの値下げをメールで受け取る": "이 리스트의 가격 인하를 메일로 받기",
+      "nesage.party に登録すると、リストの商品が値下げされたときに毎朝メールでお知らせします（無料）。": "nesage.party에 등록하면 리스트의 상품 가격이 내려갔을 때 매일 아침 메일로 알려 드립니다(무료, 일본어만).",
+      "nesage.party で値下げ通知を受け取る": "nesage.party에서 가격 인하 알림 받기",
+      "リストを「公開」か「共有」にすると登録できます。": "리스트를 \"공개\" 또는 \"공유\"로 설정하면 등록할 수 있습니다.",
+      "今後表示しない": "다시 표시하지 않기"
     },
     "vi": {
       "楽天 ￥{p}{via}": "Rakuten ¥{p}{via}",
@@ -756,7 +777,14 @@
       "商品名": "Tên sản phẩm",
       "楽天の商品情報を取得中…": "Đang tải thông tin sản phẩm Rakuten…",
       "※ Amazonアソシエイトのリンクを含みます": "※ Có chứa liên kết Amazon Associates",
-      "※ 楽天アフィリエイトのリンクを含みます": "※ Có chứa liên kết tiếp thị liên kết Rakuten"
+      "※ 楽天アフィリエイトのリンクを含みます": "※ Có chứa liên kết tiếp thị liên kết Rakuten",
+      "Amazonのほしい物リストで値下げ通知（nesage.party）を案内する": "Gợi ý thông báo giảm giá (nesage.party) trên danh sách mong muốn của Amazon",
+      "ほしい物リストに追加しました": "Đã thêm vào danh sách mong muốn",
+      "このリストの値下げをメールで受け取る": "Nhận email khi sản phẩm trong danh sách này giảm giá",
+      "nesage.party に登録すると、リストの商品が値下げされたときに毎朝メールでお知らせします（無料）。": "Đăng ký nesage.party để nhận email mỗi sáng khi sản phẩm trong danh sách giảm giá (miễn phí, chỉ tiếng Nhật).",
+      "nesage.party で値下げ通知を受け取る": "Nhận thông báo giảm giá trên nesage.party",
+      "リストを「公開」か「共有」にすると登録できます。": "Đặt danh sách ở chế độ \"Công khai\" hoặc \"Chia sẻ\" để đăng ký.",
+      "今後表示しない": "Không hiện lại"
     },
     "zh_CN": {
       "楽天 ￥{p}{via}": "乐天 ¥{p}{via}",
@@ -945,7 +973,14 @@
       "商品名": "商品名称",
       "楽天の商品情報を取得中…": "正在获取乐天商品信息…",
       "※ Amazonアソシエイトのリンクを含みます": "※ 含亚马逊联盟链接",
-      "※ 楽天アフィリエイトのリンクを含みます": "※ 含乐天联盟链接"
+      "※ 楽天アフィリエイトのリンクを含みます": "※ 含乐天联盟链接",
+      "Amazonのほしい物リストで値下げ通知（nesage.party）を案内する": "在亚马逊心愿单页面推荐降价通知（nesage.party）",
+      "ほしい物リストに追加しました": "已添加到心愿单",
+      "このリストの値下げをメールで受け取る": "通过邮件接收此心愿单的降价信息",
+      "nesage.party に登録すると、リストの商品が値下げされたときに毎朝メールでお知らせします（無料）。": "在 nesage.party 注册后，心愿单中的商品降价时会在每天早上发邮件通知您（免费，仅日语）。",
+      "nesage.party で値下げ通知を受け取る": "在 nesage.party 接收降价通知",
+      "リストを「公開」か「共有」にすると登録できます。": "将心愿单设为“公开”或“共享”即可注册。",
+      "今後表示しない": "不再显示"
     },
     "zh_TW": {
       "楽天 ￥{p}{via}": "樂天 ¥{p}{via}",
@@ -1134,7 +1169,14 @@
       "商品名": "商品名稱",
       "楽天の商品情報を取得中…": "正在取得樂天商品資訊…",
       "※ Amazonアソシエイトのリンクを含みます": "※ 含亞馬遜聯盟連結",
-      "※ 楽天アフィリエイトのリンクを含みます": "※ 含樂天聯盟連結"
+      "※ 楽天アフィリエイトのリンクを含みます": "※ 含樂天聯盟連結",
+      "Amazonのほしい物リストで値下げ通知（nesage.party）を案内する": "在亞馬遜願望清單頁面推薦降價通知（nesage.party）",
+      "ほしい物リストに追加しました": "已加入願望清單",
+      "このリストの値下げをメールで受け取る": "透過電子郵件接收此清單的降價資訊",
+      "nesage.party に登録すると、リストの商品が値下げされたときに毎朝メールでお知らせします（無料）。": "在 nesage.party 註冊後，清單中的商品降價時會在每天早上寄信通知您（免費，僅日文）。",
+      "nesage.party で値下げ通知を受け取る": "在 nesage.party 接收降價通知",
+      "リストを「公開」か「共有」にすると登録できます。": "將清單設為「公開」或「共用」即可註冊。",
+      "今後表示しない": "不再顯示"
     }
   };
 })();
