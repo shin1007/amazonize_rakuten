@@ -209,7 +209,7 @@
         const rows = [];
         // 結果が揃ったあとに他の要素が動かないよう、2行は常に確保する（見つからないときも同じ高さの行を出す）
         const codeCand = candidates.find(c => c.type);
-        rows.push({ label: tr(codeCand?.type || '型番'), it: code?.type ? ranked[0] : null, kw: codeCand?.value, done: phase !== 'search', none: codeCand ? null : tr('この商品は型番・JANが取得できません') });
+        rows.push({ label: tr(codeCand?.type || '型番'), hit: codeCand?.type === '型番' ? tr('型番が一致') : null, it: code?.type ? ranked[0] : null, kw: codeCand?.value, done: phase !== 'search', none: codeCand ? null : tr('この商品は型番・JANが取得できません') });
         rows.push({ label: tr('商品名'), it: code?.type ? titleTop : ranked[0], kw: titleKw, done: phase === 'done' || (!code?.type && phase !== 'search') });
         for (const r of rows) {
             const row = document.createElement('div');
@@ -221,7 +221,7 @@
                 wrap.appendChild(row);
                 continue;
             }
-            const tag = ` (${r.label})`;
+            const tag = ` (${r.it && r.hit || r.label})`;
             const it = r.it;
             const box = document.createElement(it ? 'a' : 'div');
             Object.assign(box.style, { display: 'flex', gap: '8px', alignItems: 'center', flex: '1', minWidth: '0', color: '#333', textDecoration: 'none', fontSize: '12px' });

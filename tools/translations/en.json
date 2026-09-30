@@ -4,6 +4,7 @@
   "楽天市場で探す{via}": "Search on Rakuten{via}",
   "楽天API エラー: {e}": "Rakuten API error: {e}",
   "型番": "Model no.",
+  "型番が一致": "Model no. matches",
   "エントリーしました": "Entered",
   "未エントリーのキャンペーンがあります": "There are campaigns you haven't entered",
   "エントリー済みです": "Already entered",
