@@ -33,6 +33,7 @@ function stageExtension() {
   cpSync(join(ROOT, 'manifest.json'), join(dir, 'manifest.json'));
   cpSync(join(ROOT, 'src'), join(dir, 'src'), { recursive: true });
   cpSync(join(ROOT, 'icons'), join(dir, 'icons'), { recursive: true });
+  cpSync(join(ROOT, '_locales'), join(dir, '_locales'), { recursive: true });
   return dir;
 }
 

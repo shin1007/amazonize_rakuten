@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="ja">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>プライバシーポリシー - Amazonize Rakuten</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f9f9f9;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 720px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 40px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border-radius: 8px;
+        }
+        h1 {
+            font-size: 1.8rem;
+            margin-bottom: 0.5em;
+            color: #1a1a1a;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+        .meta {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 2em;
+        }
+        h2 {
+            font-size: 1.3rem;
+            margin-top: 2em;
+            margin-bottom: 0.8em;
+            color: #444;
+        }
+        p, ul {
+            margin-bottom: 1em;
+        }
+        ul {
+            padding-left: 20px;
+        }
+        a {
+            color: #0066cc;
+            text-decoration: underline;
+        }
+        a:hover {
+            text-decoration: none;
+            opacity: 0.85;
+        }
+        footer {
+            margin-top: 3em;
+            padding-top: 1em;
+            border-top: 1px solid #eee;
+            font-size: 0.85rem;
+            color: #888;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>プライバシーポリシー</h1>
+    <div class="meta">
+        制定日: 2026年9月17日<br>
+        改定日: 2026年9月29日（「楽天比較リンク for Amazon」を統合）
+        運営者: shin1007
+    </div>
+
+    <p>本拡張機能「Amazonize Rakuten」（旧「楽天比較リンク for Amazon」を統合）は、ユーザーのプライバシー保護を重視し、必要な情報以外は一切収集・保存いたしません。以下の通りポリシーを定めます。</p>
+
+    <h2>1. 動作環境と機能</h2>
+    <ul>
+        <li>本拡張機能は、楽天市場（rakuten.co.jp）のページと、www.amazon.co.jp の商品ページで動作します。</li>
+        <li>楽天市場のページでは、表示の組み直し、かごの合計金額の表示、クーポンの獲得と適用、キャンペーンへのエントリー、同じ商品のAmazonでの価格の表示を行います。これらは、ユーザーのブラウザから楽天市場およびAmazonへ直接通信して行い、開発者のサーバーは経由しません。Amazonへの通信にCookieは含めません。</li>
+        <li>Amazonの商品ページでは、表示されている商品情報を基に、楽天市場の同じ商品を検索し、リンクと価格を表示します。この機能だけが、下記2・3のとおり開発者の中継サーバーを使います。</li>
+    </ul>
+
+    <h2>2. 取得・処理する情報</h2>
+    <p>Amazonの商品ページでは、表示中の商品ページに記載されている以下の情報を読み取ります。</p>
+    <ul>
+        <li>商品名</li>
+        <li>ブランド名</li>
+        <li>JANコード / ISBN / 型番</li>
+        <li>価格（候補商品の並べ替えにのみ使用し、送信しません）</li>
+    </ul>
+    <p>拡張機能は上記の情報から生成した「検索キーワードのみ」を、運営者が管理する中継サーバー（Cloudflare Workers: amazon-rakuten-link.shin1007.workers.dev）へ送信します。</p>
+    
+    <h2>3. 情報の利用目的</h2>
+    <ul>
+        <li><strong>商品検索:</strong> 送信されたキーワードを用いて、楽天ウェブサービスの「楽天市場商品検索API」に問い合わせを行い、結果をユーザーに表示するため。</li>
+        <li><strong>閉店確認:</strong> 検索結果候補となる楽天市場の店舗が現在営業中かどうかを確認するため、該当店舗のトップページ（www.rakuten.co.jp）へブラウザから直接アクセスするため。送信するのは店舗コードのみで、Cookieは送信しません。ただし通信の性質上、IPアドレスやブラウザの種類（User-Agent）は楽天グループ株式会社のサーバーに届きます。</li>
+    </ul>
+
+    <h2>4. 収集しない情報</h2>
+    <p>以下の情報は一切収集しません。</p>
+    <ul>
+        <li>氏名、メールアドレスなどの個人を特定できる情報</li>
+        <li>Amazonのアカウント情報</li>
+        <li>購入履歴</li>
+        <li>閲覧中のページのURL、閲覧履歴</li>
+        <li>楽天市場のページで扱うかごの内容・注文内容・クーポン・キャンペーンの情報（ブラウザの外へ送りません）</li>
+        <li>Cookie</li>
+    </ul>
+
+    <h2>5. ローカルストレージとキャッシュについて</h2>
+    <ul>
+        <li><strong>ブラウザ内保存:</strong> chrome.storage（デバイス内）に、機能ごとのON/OFF設定、キャンペーンのエントリー結果、獲得したクーポンの一覧、楽天市場店舗の営業状況（店舗コードと判定結果、最大24時間）などを保存します。氏名・住所などの個人を特定する情報は含みません。</li>
+        <li><strong>サーバー側のキャッシュ:</strong> 中継サーバーでは検索キーワードとその結果を最大1時間キャッシュします。検索キーワードをログとして保存・分析することはありません。</li>
+        <li><strong>レート制限:</strong> 中継サーバーの濫用を防ぐため、接続元IPアドレスを1分あたりのリクエスト数の計数にのみ使用します。IPアドレスを保存することはありません。</li>
+        <li><strong>データの削除:</strong> 拡張機能をアンインストールすると、ブラウザ内に保存したデータは削除されます。サーバー側のキャッシュは最大1時間で自動的に消去されます。</li>
+    </ul>
+
+    <h2>6. Cloudflareインフラについて</h2>
+    <p>中継サーバーの運用に伴い、Cloudflareのサービスを利用しています。これにより、IPアドレス等の標準的なアクセス情報がCloudflare側で処理される場合があります。<br>
+    この点については、<a href="https://www.cloudflare.com/ja-jp/privacypolicy/" target="_blank" rel="noopener noreferrer">Cloudflare プライバシーポリシー</a> を参照ください。</p>
+
+    <h2>7. 第三者提供と広告・解析について</h2>
+    <ul>
+        <li>上記の楽天APIへの問い合わせ（中継処理）以外に、収集情報を第三者へ提供または販売することはありません。</li>
+        <li>中継サーバーから楽天市場商品検索APIへ送るのは検索キーワードのみで、ユーザーのIPアドレス等は送りません。</li>
+        <li>アクセス解析や広告トラッキングは使用していません。</li>
+        <li>取得した情報の利用は、Chrome ウェブストアのユーザーデータに関するポリシー（限定的使用の要件を含む）に従います。</li>
+    </ul>
+
+    <h2>8. 外部リンクに関する注意事項</h2>
+    <p>本拡張機能が表示するリンクには、楽天アフィリエイトのリンクが含まれる場合があります。リンクをクリックすると、成果計測のため楽天グループ株式会社によりCookieが設定されることがあります。これらのリンクをクリックし、楽天市場へ移動した後の情報の取り扱いについては、<a href="https://privacy.rakuten.co.jp/" target="_blank" rel="noopener noreferrer">楽天グループのプライバシーポリシー</a> に準拠します。</p>
+
+    <h2>9. 免責事項</h2>
+    <p>本拡張機能は Amazon.com, Inc. および 楽天グループ株式会社 とは一切関係のない、非公式のツールです。</p>
+
+    <h2>10. お問い合わせ</h2>
+    <p>ご質問やご意見は GitHub Issues よりお問い合わせください。<br>
+    <a href="https://github.com/shin1007/ch-amazonize-rakuten/issues" target="_blank" rel="noopener noreferrer">https://github.com/shin1007/ch-amazonize-rakuten/issues</a></p>
+
+    <h2>11. プライバシーポリシーの変更</h2>
+    <p>ポリシーを変更する場合は、このページで告知いたします。</p>
+
+    <footer>
+        &copy; 2026 shin1007
+    </footer>
+</div>
+
+</body>
+</html>

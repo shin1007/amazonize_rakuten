@@ -1,0 +1,172 @@
+{
+  "version": 1,
+  "items": {
+    "bfnpicbamjmpdcldjmmonlflgjgibemp": {
+      "screenshots": {
+        "ja": [
+          "437efe33574fdcfab96cffa138d269a8cea469ee25e711bdd0abad9779e15741",
+          "fc7e74dc14e48eb1e8baa5c147d27112ea8937eaf98c8b4692c121fd5e25e8e8",
+          "a6e7b7734e8589002e2b09c777a4d670e64463deb0e0037d60fe1402fd552e13",
+          "f98ab05dbb9eeeabf9e593f9e47a34341f5e5582a5523edeb12db38913096135",
+          "96cf1767c19e7db4fd4f8e9bf5bbee9d003c2f0d851dd968e4982ac5b2108641"
+        ],
+        "en": [
+          "264d8d8864d832076f821cf67c45860ec5d8a35e4d48630fc39b63c08d776e19",
+          "e3f664d29cd51587acf281afdbb645cb8c1cee0691f5a8b93cb3fec74dc9be2d",
+          "f3c786a2872baa2ffd1b24f2dfd7ea36ee7f16ab88c96dd3c0ef787f8faf7d50",
+          "f4a92747bc90c32fca4818e1c40587afc35bda78817872c62383d09489ee48f4",
+          "e072159772460695bb0898721e394fecc6aa69a971572231aaac0ff224133aa0"
+        ],
+        "zh_CN": [
+          "a4b501c61e04d7894a7b8b55e4e17fcba0d59327b95875cb418ba039cea05796",
+          "db65a665c656372179844b0d970fb04e41bc6e92718ed3d78f2d27220de4f729",
+          "03b894b23811483998d1bc699c5124484325c7c5a3580d60d38463ef1a686b52",
+          "5dbd20ca050c66cc267f774daba8b04f25abefeb93d5a9cc0af48f25c6cf719f",
+          "a76a1f3b7a9a2467be4554191d56e89fc8d4bb2c66e6b8139c0ef2761d368609"
+        ],
+        "zh_TW": [
+          "6ab6e27cf66064f17440dd76214c83f8e7493cb149868f768e7d1aa6e41c5147",
+          "f508dd101994dc7ef8311a8665eb9b30b20de2904ee7f187e0bc706cc6186b51",
+          "163f10124834e52befcd955c0dfd3971bec01c3c488072b92a98c30e240826be",
+          "2bbae3786367fb000d02301c127f0c4674a799b61cc819eabf339cc13a5cb479",
+          "c342f23c8eea4fe1dd4c412facba40b6d106bf05c40ce24ef2dcfd7b840277a1"
+        ],
+        "ko": [
+          "e87c2eeb6f1ca07f64bc04e6e078037afb3060e2a27b4b606364d9c205f7144c",
+          "61901972fc02c57071b2c05402a06bd0dbbc46bff237acb39538690fdf649ba9",
+          "6b38e88c88b3056c873e3ba61f71543d2753b252b902534b0f5953000d368f63",
+          "1c571da9b04143593d2ae6794195f842245f31d0bab3c43ff37e23bbb14ade0c",
+          "fc300fff7a6b3b0f97f636d1828442bb1543533e57c5e1d30ea289b4d4520abd"
+        ],
+        "vi": [
+          "ab177e5ebe3757585887d55ca8b0871d842909de144192b23848ae3b342dfeea",
+          "01682901d2a0ab43fe289d39ef28f20e899f0ccef69716590ae3074bf4eebec8",
+          "5df7a362c0916a58b4c0ddfa89298871f37275ce8da04fcb97e9590b394aecb2",
+          "d7e19cd35186ffc2206cd230131ee015f39270ab58af33532b69427795cd9078",
+          "248e8dd4a3ece8420650e503b1f2219f03214d4b4255335ebe2c06711b520bba"
+        ],
+        "id": [
+          "9b4c871fa804236348b6d7fc6e006d6808e8415062be33c3eeefe9cc7094113c",
+          "a1985a03b11777803bbbb96733faa372d1ee01054403cc8d69695feffed137f9",
+          "14724a857443805b03d3485bb1cdc0d6c165ea8341a3683b9b80324cedf41602",
+          "b6924400f323c47e2f44ffe406aff61507cbcfca4c2990cfcef7682c3db2d86e",
+          "34bdb5abd017526396092dcf5f21b46bbe1490d1f67ab0727b1347204eb207aa"
+        ]
+      },
+      "fields": {
+        "package.zip": {
+          "hash": "26c64f1c8ecb5c019f00f19fc6104489182fb2dcc067acd581212c2583bf23a6",
+          "appliedAt": "2026-09-29T15:11:08.293Z"
+        },
+        "privacy.singlePurpose": {
+          "hash": "2fea92fcfe0756ed799226d9a5b0a0f46282c91d5f656193398b97b22af9d3bd",
+          "appliedAt": "2026-09-29T15:11:13.738Z"
+        },
+        "privacy.usesRemoteCode": {
+          "hash": "fcbcf165908dd18a9e49f7ff27810176db8e9f63b4352213741664245224f8aa",
+          "appliedAt": "2026-09-29T15:11:13.738Z"
+        },
+        "privacy.dataUsage": {
+          "hash": "cdbf323b8756f1740bbacd28cc2f288cb6856d462c05ef59e0c4afa4c1164153",
+          "appliedAt": "2026-09-29T15:11:13.738Z"
+        },
+        "privacy.privacyPolicyUrl": {
+          "hash": "f7222c18add86175091ecff2cab5020d80af08e7af0f746e1d16c6be7f680da6",
+          "appliedAt": "2026-09-29T15:11:13.738Z"
+        },
+        "privacy.permission.storage": {
+          "hash": "bf7bf4662d13715f2d5cecd10e821a6dd08fa5c922fc2252c2ed5e0a868b8102",
+          "appliedAt": "2026-09-29T15:11:13.738Z"
+        },
+        "privacy.permission.declarativeNetRequestWithHostAccess": {
+          "hash": "06e0e3c489c038b4f871948842fca5714da9e50d4d944154f3c1eb91df98db94",
+          "appliedAt": "2026-09-29T15:11:13.738Z"
+        },
+        "privacy.permission.host permission": {
+          "hash": "fd682c2a62851ef2e6c3361de663b4a18a2d26b25bc1d250e7ca68e8e368b5b5",
+          "appliedAt": "2026-09-29T15:11:13.738Z"
+        },
+        "storeListing.category": {
+          "hash": "156877b5b3ddee5bc23709d7e50ca9a29e8874d3d507255e455e92adf9b31358",
+          "appliedAt": "2026-09-29T15:11:34.587Z"
+        },
+        "storeListing.icon": {
+          "hash": "4bd0806aabbef9dfcf3c43f75c9e40dfa8497e1fa57fe2889e7f966c7d862803",
+          "appliedAt": "2026-09-29T15:11:34.587Z"
+        },
+        "storeListing.adultContent": {
+          "hash": "fcbcf165908dd18a9e49f7ff27810176db8e9f63b4352213741664245224f8aa",
+          "appliedAt": "2026-09-29T15:11:34.587Z"
+        },
+        "storeListing.promoTileSmall": {
+          "hash": "41b508b54f47194fb5fea9da1bbf52641c26d5c56f1637ee93b591c451f1fc83",
+          "appliedAt": "2026-09-29T15:11:34.587Z"
+        },
+        "storeListing.marqueeTile": {
+          "hash": "73136835337be20b4391a5606959e9e3e0c88e38d342c3b6739531e6b437028b",
+          "appliedAt": "2026-09-29T15:11:34.587Z"
+        },
+        "storeListing.homepageUrl": {
+          "hash": "ae2dbf39ea6ddf426b03ec3999bfe6da890ed4056b0f7a5d918307250f342475",
+          "appliedAt": "2026-09-29T15:11:34.587Z"
+        },
+        "storeListing.locale.ja.description": {
+          "hash": "bdaf600a763b4652efad66b74053cec39754dbead70410655865bc2092cf68b3",
+          "appliedAt": "2026-09-29T15:11:34.587Z"
+        },
+        "storeListing.locale.ja.screenshots": {
+          "hash": "1988be37b978c30067b930c7be11beff6a195b90949da080801783cdfee843ef",
+          "appliedAt": "2026-09-29T15:11:34.587Z"
+        },
+        "storeListing.locale.en.description": {
+          "hash": "190181b6562245be68d85fe7592b1e60688d52e2ac3523fdd7516b1df3235241",
+          "appliedAt": "2026-09-29T15:11:34.587Z"
+        },
+        "storeListing.locale.en.screenshots": {
+          "hash": "97f00216bcc4016e697b01bd27659933bc3a68c2b208a2bf88acbb4d85384168",
+          "appliedAt": "2026-09-29T15:11:34.587Z"
+        },
+        "storeListing.locale.zh_CN.description": {
+          "hash": "89694d4d7c9def0eb51dadce289ae52f15cc970d0bdcca9c565cf85c3bc9edbb",
+          "appliedAt": "2026-09-29T15:11:34.587Z"
+        },
+        "storeListing.locale.zh_CN.screenshots": {
+          "hash": "41401442727f4344899d9ce38269a38b5f6ebd247c0f06cd92fa66e9b77f4adc",
+          "appliedAt": "2026-09-29T15:11:34.587Z"
+        },
+        "storeListing.locale.zh_TW.description": {
+          "hash": "9b149e52e087b2570fb6eaa44c26454c970b902538d90b76364f3691088f8ec7",
+          "appliedAt": "2026-09-29T15:11:34.587Z"
+        },
+        "storeListing.locale.zh_TW.screenshots": {
+          "hash": "b38d344b0fc9f365c7af54a954553c5c8ceec3d6f838eb4791965deb84cf538d",
+          "appliedAt": "2026-09-29T15:11:34.587Z"
+        },
+        "storeListing.locale.ko.description": {
+          "hash": "e759ac85c6e8eecf0ce5a4033546f089d602bbaf9d9c90025dfb7b3d04f169bb",
+          "appliedAt": "2026-09-29T15:11:34.587Z"
+        },
+        "storeListing.locale.ko.screenshots": {
+          "hash": "7594ce871e66323dc7d53b5422990c6334779984a0a8ce5a4943ca0b4027ae44",
+          "appliedAt": "2026-09-29T15:11:34.587Z"
+        },
+        "storeListing.locale.vi.description": {
+          "hash": "16f1ad9802574a2ec3db0e802fd87949160534821fccb58b04f1ea8a2da3015f",
+          "appliedAt": "2026-09-29T15:11:34.587Z"
+        },
+        "storeListing.locale.vi.screenshots": {
+          "hash": "0fe2580d4f42e5cb38f66780cec7df3001e971a251c3d923b74ffd641425c497",
+          "appliedAt": "2026-09-29T15:11:34.587Z"
+        },
+        "storeListing.locale.id.description": {
+          "hash": "d913214c5ba4d6b4b56add18b8771d755118329ef756240b6d8d08453fb272fd",
+          "appliedAt": "2026-09-29T15:11:34.587Z"
+        },
+        "storeListing.locale.id.screenshots": {
+          "hash": "aa6644914451a4bfad9ad7b2d3139a60c37ae7e745fafea65b946864c73ac803",
+          "appliedAt": "2026-09-29T15:11:34.587Z"
+        }
+      }
+    }
+  }
+}

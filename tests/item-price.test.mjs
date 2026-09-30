@@ -11,7 +11,7 @@ import assert from 'node:assert/strict';
 import { loadAZR } from './load.mjs';
 
 const AZR = loadAZR([
-  'src/lib/settings.js', 'src/lib/dom.js', 'src/lib/coupon-model.js', 'src/content/item-coupons.js'
+  'src/lib/settings.js', 'src/lib/i18n.js', 'src/lib/dom.js', 'src/lib/coupon-model.js', 'src/content/item-coupons.js'
 ]);
 const { itemPrice } = AZR.coupons;
 const { fromFloating, affectsPrice } = AZR.itemCoupons;

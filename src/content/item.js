@@ -16,6 +16,7 @@
  */
 (() => {
   const AZR = window.AZR;
+  const tr = AZR.t;
   const { pick, pickAll, h, waitFor, parseYen, yen } = AZR;
   const {
     imageAt, isPlaceholder, galleryItem, takeCandidates, restore, sortDescriptionImages, isEmptyDescription
@@ -263,7 +264,7 @@
     return [
       h(nowSpec, { text: priceLabel(pricing.min, pricing.max) }),
       h('span.azr-price-was', { text: priceLabel(data.minPrice, data.maxPrice) }),
-      h('span.azr-price-note', { text: 'クーポン適用後', title: pricing.coupon.label })
+      h('span.azr-price-note', { text: tr('クーポン適用後'), title: pricing.coupon.label })
     ];
   }
 
@@ -271,7 +272,7 @@
   function stars(score) {
     if (!score) return null;
     const pct = Math.max(0, Math.min(100, (score / 5) * 100));
-    return h('span.azr-stars', { title: `5段階評価で ${score.toFixed(2)}` },
+    return h('span.azr-stars', { title: tr('5段階評価で {score}', { score: score.toFixed(2) }) },
       h('span.azr-stars-fill', { style: { width: `${pct}%` }, text: '★★★★★' })
     );
   }
@@ -312,10 +313,10 @@
   function fillShopRating(link, r) {
     if (!r?.score) return;
     link.append(
-      h('span.azr-shop-rating-label', { text: 'ショップ評価' }),
+      h('span.azr-shop-rating-label', { text: tr('ショップ評価') }),
       stars(r.score),
       h('span.azr-score', { text: r.score.toFixed(2) }),
-      r.count ? h('span.azr-count', { text: `(${r.count.toLocaleString('ja-JP')})` }) : ''
+      r.count ? h('span.azr-count', { text: `(${r.count.toLocaleString(AZR.numberLocale)})` }) : ''
     );
     link.hidden = false;
   }
@@ -327,7 +328,7 @@
     link.prepend(stars(r.score), h('span.azr-score', { text: r.score.toFixed(2) }));
     // JSONの件数が無いページでも、件数は出す
     if (!link.querySelector('.azr-count') && r.count) {
-      link.append(h('span.azr-count', { text: `${r.count.toLocaleString('ja-JP')}件のレビュー` }));
+      link.append(h('span.azr-count', { text: tr('{count}件のレビュー', { count: r.count.toLocaleString(AZR.numberLocale) }) }));
     }
   }
 
@@ -339,13 +340,13 @@
       href: shop.id ? shopReviewUrl(shop.id) : null,
       target: '_blank',
       rel: 'noopener',
-      title: 'ショップレビューを見る',
+      title: tr('ショップレビューを見る'),
       hidden: 'hidden'
     });
     const card = h('div.azr-shop-card',
       // アイコンとロゴは同じ行き先。読み上げでは1つのリンクに見えるよう、アイコン側は隠す。
       h('a.azr-shop-icon-link', { href: shop.url, tabindex: '-1', 'aria-hidden': 'true' }, icon),
-      h('a.azr-shop-card-main', { href: shop.url, title: `${shop.name} のトップへ` }, logo, name),
+      h('a.azr-shop-card-main', { href: shop.url, title: tr('{name} のトップへ', { name: shop.name }) }, logo, name),
       rating
     );
 
@@ -368,19 +369,19 @@
       data.review && h('a.azr-review', { href: data.review.href, target: '_blank', rel: 'noopener' },
         stars(data.review.score),
         data.review.score ? h('span.azr-score', { text: data.review.score.toFixed(2) }) : '',
-        data.review.count ? h('span.azr-count', { text: `${data.review.count.toLocaleString('ja-JP')}件のレビュー` }) : ''
+        data.review.count ? h('span.azr-count', { text: tr('{count}件のレビュー', { count: data.review.count.toLocaleString(AZR.numberLocale) }) }) : ''
       ),
       // 価格とクーポンは、拾い直しやAPIの応答のたびに出し直す（paintCoupons）
       h('div.azr-price-block'),
       h('div.azr-coupons-slot'),
       data.variants.length ? h('div.azr-variants', {
-        text: `選択項目: ${data.variants.join(' / ')}（右のボックスで選択）`
+        text: tr('選択項目: {v}（右のボックスで選択）', { v: data.variants.join(' / ') })
       }) : ''
     );
 
     const buybox = h('aside.azr-buybox',
       h('div.azr-buybox-price'),
-      h('div.azr-buybox-slot', h('div.azr-buybox-loading', { text: '購入エリアを読み込み中…' }))
+      h('div.azr-buybox-slot', h('div.azr-buybox-loading', { text: tr('購入エリアを読み込み中…') }))
     );
 
     // 右ペインはショップ欄と購入ボックス。購入エリアはお届け先や販売期間まで入って縦に長く、
@@ -390,7 +391,7 @@
     // 商品説明は真ん中のペイン（商品情報）の末尾に置く
     if (data.descriptionNodes.length) {
       info.append(h('section.azr-detail',
-        h('h2.azr-h2', { text: '商品説明' }),
+        h('h2.azr-h2', { text: tr('商品説明') }),
         h('div.azr-detail-body')
       ));
     }
@@ -404,7 +405,7 @@
   /** 「Amazonized」の印。押すと元のページと切り替わる。 */
   const brandBadge = () => h('button.azr-brand', {
     type: 'button',
-    title: 'クリックで元のページと切り替え',
+    title: tr('クリックで元のページと切り替え'),
     onclick: () => document.documentElement.classList.toggle('azr-simplified')
   }, h('span', { text: 'Amazon' }), 'ized');
 
@@ -424,8 +425,8 @@
     root.prepend(h('div.azr-topbar',
       brandBadge(),
       h('span.azr-topbar-links',
-        h('a', { href: 'https://www.rakuten.co.jp/', text: '楽天市場' }),
-        h('a', { href: 'https://basket.step.rakuten.co.jp/rms/mall/bs/cartall/', text: '買い物かご' })
+        h('a', { href: 'https://www.rakuten.co.jp/', text: tr('楽天市場') }),
+        h('a', { href: 'https://basket.step.rakuten.co.jp/rms/mall/bs/cartall/', text: tr('買い物かご') })
       )
     ));
   }
@@ -462,7 +463,7 @@
     );
     if (!slot.isConnected) return; // 待つあいだに元のページへ戻した
     if (!player) {
-      slot.querySelector('.azr-gallery-video-status').textContent = '動画を読み込めませんでした';
+      slot.querySelector('.azr-gallery-video-status').textContent = tr('動画を読み込めませんでした');
       document.documentElement.dataset.azrVideo = 'failed'; // 検証用の目印
       return;
     }

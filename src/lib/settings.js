@@ -2,10 +2,12 @@
 (() => {
   const DEFAULTS = {
     enabled: true,
+    language: 'auto',         // 表示言語（'auto' はブラウザの言語に合わせる）
     simplifyItem: true,       // 商品ページをAmazon風に再構成
     simplifySearch: true,     // 検索結果を整理
     cartTotal: true,          // カゴの合計金額パネル
     amazonPrice: true,        // 商品ページにAmazonでの価格を出す
+    rakutenLink: true,        // Amazonの商品ページに、楽天の同じ商品へのリンクと価格を出す
     couponList: true,         // 商品ページにクーポンを並べる（その場で獲得できる）
     couponAutoGrab: true,     // 商品ページを開いた時点で、押さずに獲得する
     couponAutoApply: true,    // 購入手続きで最良クーポンを自動適用
@@ -13,7 +15,8 @@
     campaignEntry: true,          // キャンペーンページにエントリーパネルを出す
     campaignAutoEntry: false,
     campaignScanEntry: true,      // 一括スキャンで見つけたものをエントリーする
-    campaignScanOnTop: true,      // トップページを開いたら、裏で探してエントリーする
+    campaignScanOnTop: true,      // 楽天のページを開いたら、裏で探してエントリーする（12時間おき）
+    campaignTabFallback: false,   // fetchで判定できないページをタブで開き直す（タブが見える）
     campaignUrls: [               // ポップアップの一括エントリー対象（編集可）
       'https://event.rakuten.co.jp/card/pointday/',
       'https://event.rakuten.co.jp/campaign/sports/',
@@ -30,6 +33,7 @@
     try {
       const stored = await chrome.storage.sync.get(DEFAULTS);
       AZR.settings = { ...DEFAULTS, ...stored };
+      AZR.setLanguage?.(AZR.settings.language);
     } catch {
       AZR.settings = { ...DEFAULTS };
     }
@@ -41,6 +45,7 @@
       chrome.storage.onChanged.addListener((changes, area) => {
         if (area !== 'sync') return;
         for (const [k, v] of Object.entries(changes)) AZR.settings[k] = v.newValue;
+        if (changes.language) AZR.setLanguage?.(AZR.settings.language);
         cb(AZR.settings, changes);
       });
     } catch { /* extension context invalidated */ }

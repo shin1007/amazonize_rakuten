@@ -1,0 +1,51 @@
+Ekstensi peramban yang menyusun ulang halaman produk Rakuten Ichiba menjadi tata letak 3 kolom yang jelas ala Amazon. Bandingkan harga Rakuten dan Amazon tanpa bolak-balik, lihat total keranjang, terapkan kupon terbaik secara otomatis, dan ikuti kampanye sekaligus — mengurangi "repotnya" berbelanja di Rakuten. (Rakuten Ichiba dan Amazon.co.jp adalah situs Jepang; ekstensi ini bekerja di situs-situs tersebut.)
+
+■ Halaman produk yang lebih jelas
+・Disusun ulang menjadi 3 kolom: gambar / info produk / area pembelian. Masukkan ke keranjang tanpa menggulir deskripsi yang panjang
+・Mengumpulkan gambar produk yang terselip di deskripsi ke galeri di kiri; gambar yang sama digabung menjadi satu
+・Klik gambar untuk memperbesar, gunakan tombol ←→ untuk ke gambar berikutnya
+・Video produk juga ditaruh di galeri. Tidak diputar otomatis — hanya saat Anda menekan tombol putar
+・Menampilkan penilaian produk dan toko di bawah nama produk
+・Menampilkan harga produk yang sama di Amazon tepat di bawah harga Rakuten (lengkap dengan nama produk, penilaian di Amazon, dan tautan ke hasil pencarian)
+・Produk yang cocok berdasarkan kode JAN diberi label "Kode JAN cocok", produk yang dicari lewat nama diberi label "Referensi"
+
+■ Harga dan tautan Rakuten di halaman produk Amazon
+・Menampilkan tautan dan harga produk yang sama di Rakuten Ichiba pada halaman produk Amazon.co.jp
+・Mencocokkan berdasarkan kode JAN, ISBN, nomor model, lalu nama produk, dan menyingkirkan produk yang spesifikasi atau jumlahnya berbeda
+・Toko yang sudah tutup atau sedang direnovasi dikeluarkan dari kandidat
+・Jika tidak ada yang cocok, ditampilkan tautan ke hasil pencarian Rakuten Ichiba
+
+■ Total keranjang
+・Menggabungkan total barang, ongkos kirim, dan poin yang akan didapat dari beberapa toko dalam satu panel
+・Juga menampilkan "harga sebenarnya" setelah dikurangi poin
+・Langsung menyesuaikan saat jumlah diubah, dengan rincian per toko
+
+■ Kupon
+・Ambil kupon yang tampil di halaman produk langsung di tempat, tanpa pindah ke halaman kupon
+・Kupon yang sudah didapat dapat dilihat dalam daftar lewat tombol di bilah alat
+・Di halaman konfirmasi pesanan, otomatis beralih ke kupon yang "memberi potongan terbesar untuk pesanan ini" di antara kupon yang bisa dipakai (dibandingkan berdasarkan jumlah potongan, bukan persentase)
+・Bisa juga diatur agar meminta konfirmasi sebelum diterapkan
+・Tidak pernah menekan tombol konfirmasi pesanan. Anda selalu memesan sendiri
+
+■ Ikut kampanye sekaligus
+・Dari tombol di bilah alat, memeriksa kampanye di halaman utama Rakuten dan mengikuti sekaligus yang belum diikuti
+・Saat Anda membuka halaman Rakuten, ekstensi juga memeriksa dan mengikuti secara otomatis di latar belakang (setiap 12 jam; bisa dimatikan di pengaturan)
+・Tidak membuka tab saat memeriksa — layar dan bilah tab tidak berubah sehingga tidak mengganggu pekerjaan Anda
+・Mengikuti dengan cara yang sama seperti tombol ikut Rakuten, dan mencatat hanya setelah memastikan statusnya berubah menjadi "Sudah diikuti"
+・Kampanye yang tidak bisa dinilai secara otomatis disorot dalam daftar sebagai "Perlu diperiksa"
+・Anda bisa melihat "daftar yang sudah diikuti" belakangan — sesuatu yang tidak disediakan Rakuten
+
+■ Pengaturan
+Setiap fitur dapat diaktifkan atau dimatikan dari ikon di bilah alat.
+
+■ Privasi
+・Yang diubah tampilannya hanya halaman Rakuten Ichiba (rakuten.co.jp) dan halaman produk Amazon.co.jp
+・Harga Amazon ditampilkan dengan membaca hasil pencarian Amazon berdasarkan nama produk atau kode JAN. Informasi login (cookie) tidak dikirim ke Amazon
+・Hanya saat menampilkan harga Rakuten di halaman produk Amazon, kata kunci pencarian produk itu (kode JAN, ISBN, nomor model, nama produk) dikirim ke server perantara untuk API pencarian produk Rakuten Ichiba yang dioperasikan oleh pengembang. Server perantara hanya meneruskannya ke API Rakuten dan mengembalikan hasilnya; server tidak menerima informasi login, riwayat penelusuran, isi pembelian, maupun data pribadi, dan tidak menyimpan apa pun selain cache hasil (maksimal 1 jam)
+・Selain kata kunci pencarian tersebut, tidak ada riwayat penelusuran, isi pembelian, atau data pribadi yang dikirim ke pengembang maupun pihak ketiga
+・Pengaturan, catatan kampanye, dan daftar kupon yang sudah didapat hanya disimpan di dalam peramban (chrome.storage)
+・Pengambilan kupon dan penilaian hanya dilakukan antara peramban Anda dan server Rakuten Ichiba
+
+■ Catatan
+・Ekstensi ini dikembangkan oleh individu dan tidak berafiliasi dengan Rakuten Group, Inc., Amazon.com, Inc., maupun perusahaan afiliasinya
+・Jika struktur halaman Rakuten Ichiba berubah, sebagian fitur mungkin berhenti bekerja. Matikan fitur terkait di pengaturan untuk kembali ke tampilan semula

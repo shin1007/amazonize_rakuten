@@ -587,7 +587,8 @@ const TOP_PAGE = 'https://www.rakuten.co.jp/';
 const CAMPAIGN_HOST = 'event.rakuten.co.jp';
 const SCAN_CONCURRENCY = 3;        // 同時に開く裏タブの数
 const SCAN_TAB_TIMEOUT_MS = 45000; // 1ページあたりの待ち時間（裏タブは実行を絞られるので長め）
-const MAX_CAMPAIGNS = 80;
+// タブを開かず fetch で判定するので、以前（裏タブ3枚で80ページ）より多く見て回れる。
+const MAX_CAMPAIGNS = 200;
 // 「エントリーするものが無いページ」は同じ日のうちは開き直さない。
 // 日ごとに開くキャンペーン（イーグルス・ヴィッセルが勝った翌日だけボタンが出る sports など）があり、
 // 以前の「7日間は開かない」では、ボタンの無い日に一度見ただけで勝った日を取り逃していた。
@@ -638,6 +639,126 @@ function runInTab(url, task, entry) {
       chrome.tabs.onRemoved.addListener(onRemoved);
     }).catch((e) => resolve({ status: 'error', error: String(e) }));
   });
+}
+
+/* タブを開かない判定 ---------------------------------------------------------
+ * 裏タブは非アクティブでもタブ欄に並ぶので、本人の作業の邪魔になる。
+ * キャンペーンページはエントリーのコードをHTMLにそのまま書いているので、
+ * service worker から fetch して取り出せば、タブを1枚も開かずに判定・エントリーできる。
+ * （自分で開いたページ用の content script 側の仕組みはそのまま残す。ここは一括スキャン専用の道。）
+ */
+const SCAN_FETCH_CONCURRENCY = 6; // fetchだけなので裏タブより多く走らせられる
+
+/** ログイン済みのcookieを付けてHTMLを取る。取れなければ null */
+async function fetchPage(url) {
+  try {
+    const res = await fetch(url, { credentials: 'include', cache: 'no-store', redirect: 'follow' });
+    if (!res.ok) return null;
+    return await res.text();
+  } catch {
+    return null;
+  }
+}
+
+/** HTMLからエントリーのコードを拾う（共通ボタンの settings も、ページに書かれたJSONも） */
+function extractEntryItems(html) {
+  const map = new Map();
+  const add = (raw, ekey) => {
+    let code = String(raw || '').trim();
+    if (!code) return;
+    if (!code.startsWith('/')) code = '/' + code;
+    if (!map.has(code)) map.set(code, { code, ekey: ekey || '' });
+  };
+  // settings='{"campaignCode": "/ic/…", "ekey": "…"}' も、ページのJSONで \" と逃がした形も
+  // 同じに拾えるよう、引用符は見ずに「campaignCode のすぐ後ろのコードらしい文字列」を取る。
+  const re = /campaignCode[^A-Za-z0-9]{1,12}([\w./-]{1,120})/g;
+  for (const m of html.matchAll(re)) {
+    // ekey は同じ settings の中にある。次の campaignCode までの範囲だけ見る。
+    const from = m.index + m[0].length;
+    const tail = html.slice(from, from + 250).split('campaignCode')[0];
+    const e = tail.match(/ekey[^A-Za-z0-9]{0,12}([\w.%-]{1,120})/);
+    add(m[1], e ? e[1] : '');
+  }
+  // 応募ページへのリンク（買いまわりの事前エントリーなど）
+  const re2 = /oubo\.rakuten\.co\.jp\/apply(\/[\w./-]{1,120})(?:\?[^"'\s<>]*?ekey=([\w.%-]+))?/g;
+  for (const m of html.matchAll(re2)) {
+    let ekey = '';
+    try { ekey = m[2] ? decodeURIComponent(m[2]) : ''; } catch { /* 壊れたekey */ }
+    add(m[1], ekey);
+  }
+  return [...map.values()];
+}
+
+/** 一覧に出すページ名 */
+function extractTitle(html, url) {
+  const m = html.match(/<title[^>]*>([\s\S]{0,300}?)<\/title>/i);
+  const name = (m ? m[1] : '')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .replace(/\s*[|｜]\s*楽天市場.*$/, '').replace(/\s+/g, ' ').trim().slice(0, 60);
+  // エラーページの見出しを名前にしない（一覧で見分けが付かない）
+  if (!name || /^\d{3}\s|Bad Request|Not Found|Forbidden/i.test(name)) {
+    try { return new URL(url).pathname.replace(/^\/|\/$/g, '') || CAMPAIGN_HOST; } catch { return CAMPAIGN_HOST; }
+  }
+  return name;
+}
+
+/** トップページのHTMLからキャンペーンのリンクを拾う（rd.rakuten の包みも、%2F で包まれたものも） */
+function extractCampaignLinks(html) {
+  // JSONの中のURLは \/ や \u002F で書かれている。素の文字に直してから拾う。
+  const text = html.split('\\u002F').join('/').split('\\u002f').join('/')
+    .split('\\/').join('/').split('&amp;').join('&');
+  const out = new Set();
+  for (const m of text.matchAll(/https:\/\/(?:event|rd)\.rakuten\.co\.jp\/[^"'\s<>\\]*/g)) {
+    out.add(m[0].replace(/[),.]+$/, ''));
+  }
+  for (const m of text.matchAll(/https?%3A%2F%2Fevent\.rakuten\.co\.jp%2F[^"'\s<>&]*/gi)) {
+    try { out.add(decodeURIComponent(m[0])); } catch { /* 壊れたURL */ }
+  }
+  return [...out];
+}
+
+/**
+ * コードが取れなかったページを「エントリー不要」と黙って記録してよいか。
+ * 文言だけで見ると、説明文（「キャンペーンページからエントリーすると参加できます」）や
+ * ほかのページへの案内ボタン（SPUから楽天モバイルへ、ラグジュアリービューティの特集など）まで
+ * 「要確認」になり、毎日7件ほど鳴りっぱなしになった。content script と同じく、
+ * 「このページで押せるエントリーのボタン」に見えるものだけを手がかりにする。
+ */
+function looksEnterable(html, url) {
+  if (/rcEntryButton|oubo\.rakuten\.co\.jp\/apply/.test(html)) return true;
+  for (const m of html.matchAll(/<(a|button)\b([^>]*)>([\s\S]{0,300}?)<\/\1>/gi)) {
+    const text = m[3].replace(/<[^>]*>/g, ' ').replace(/\s+/g, '');
+    if (!/エントリー(する|はこちら)/.test(text)) continue;
+    if (/履歴|期間|終了|開始前|詳細|方法|について/.test(text)) continue;
+    if (m[1].toLowerCase() === 'button') return true;
+    // 別のサイト・別のページへのリンクは、ほかのキャンペーンへの案内であってこのページのエントリーではない
+    const href = (m[2].match(/href\s*=\s*["']([^"']*)["']/i) || [])[1] || '';
+    if (!href || href.startsWith('#') || /^javascript:/i.test(href)) return true;
+    try {
+      const u = new URL(href, url);
+      const same = (a) => a.replace(/\/$/, '');
+      if (u.host === new URL(url).host && same(u.pathname) === same(new URL(url).pathname)) return true;
+    } catch { /* 壊れたURL */ }
+  }
+  return false;
+}
+
+/**
+ * fetchしたHTMLだけで判定（entry なら エントリーまで）。
+ * 判定しきれなければ null を返し、呼び側でタブ方式に落とすか「要確認」にする。
+ */
+async function checkCampaignByFetch(open, entry) {
+  const html = await fetchPage(open);
+  if (html == null) return null;
+  const title = extractTitle(html, open);
+  const items = extractEntryItems(html);
+  if (items.length) {
+    const r = await enterByCodes(items, entry).catch(() => null);
+    // コードはあるのにAPIが答えない＝未ログイン等。判定できていないので null。
+    return r ? { ...r, title } : null;
+  }
+  return { status: looksEnterable(html, open) ? 'suspect' : 'none', entered: false, title };
 }
 
 /* エントリーAPI -------------------------------------------------------------
@@ -772,9 +893,13 @@ async function checkCampaigns(targets, entry) {
   scanState.phase = entry ? 'エントリー中' : '確認中';
   scanState.total = targets.length;
 
+  // 既定ではタブを1枚も開かない。fetchで判定しきれないページをタブで開き直すかは設定で選ぶ。
+  const { campaignTabFallback } = await chrome.storage.sync.get({ campaignTabFallback: false });
+
   const results = [];
-  await eachLimited(targets, SCAN_CONCURRENCY, async ({ url, open }) => {
-    const r = await runInTab(open, 'campaign', entry);
+  await eachLimited(targets, campaignTabFallback ? SCAN_CONCURRENCY : SCAN_FETCH_CONCURRENCY, async ({ url, open }) => {
+    let r = await checkCampaignByFetch(open, entry);
+    if (!r) r = campaignTabFallback ? await runInTab(open, 'campaign', entry) : { status: 'suspect' };
     const item = {
       url,
       title: r?.title || '',
@@ -823,10 +948,18 @@ function enterCampaignUrls(rawUrls) {
   return runScan('エントリー中', async () => ({ ...(await checkCampaigns(targets, true)), skipped }));
 }
 
-function scanCampaigns({ entry }) {
+function scanCampaigns({ entry, extraLinks = [] }) {
   return runScan('トップページを読み込み中', async () => {
-    const found = await runInTab(TOP_PAGE, 'links', false);
-    const rawLinks = Array.isArray(found?.links) ? found.links : [];
+    // トップページもタブを開かずに読む。下へ送らないと見えない枠も、リンクはHTMLの中にある。
+    const topHtml = await fetchPage(TOP_PAGE);
+    let rawLinks = topHtml == null ? [] : extractCampaignLinks(topHtml);
+    // 開いているトップページのDOMにだけあるリンク（フラッシュバナー等）も足す
+    rawLinks = rawLinks.concat(extraLinks);
+    if (!rawLinks.length) {
+      const { campaignTabFallback } = await chrome.storage.sync.get({ campaignTabFallback: false });
+      const found = campaignTabFallback ? await runInTab(TOP_PAGE, 'links', false) : null;
+      rawLinks = Array.isArray(found?.links) ? found.links : [];
+    }
     if (!rawLinks.length) return { ok: false, error: 'トップページからリンクを取れませんでした' };
 
     const urls = [];
@@ -852,25 +985,30 @@ function scanCampaigns({ entry }) {
 }
 
 /**
- * トップページを開いたときの自動スキャン。開くたびに裏タブを何十枚も走らせないよう、
- * 前回からの間隔をあける（キャンペーンは1日単位で入れ替わるので、これで足りる）。
+ * 自動スキャン。楽天のページを開いたときに、その裏で走らせる（タブは開かないので画面は変わらない）。
+ * 何度も走らせないよう、前回からの間隔をあける（キャンペーンは1日単位で入れ替わるので、これで足りる）。
  */
 const AUTO_SCAN_INTERVAL_MS = 12 * 60 * 60 * 1000;
 
-async function autoScanFromTop() {
+async function autoScanOnVisit(extraLinks = []) {
   if (scanState.running) return { ok: false, skipped: 'running' };
 
   const cfg = await chrome.storage.sync.get({
     enabled: true, campaignScanOnTop: true, campaignScanEntry: true
   });
-  if (!cfg.enabled || !cfg.campaignScanOnTop) return { ok: false, skipped: 'off' };
+  if (!cfg.enabled || cfg.campaignScanOnTop === false) return { ok: false, skipped: 'off' };
 
   const { azrAutoScanAt = 0 } = await chrome.storage.local.get('azrAutoScanAt');
-  if (Date.now() - azrAutoScanAt < AUTO_SCAN_INTERVAL_MS) return { ok: false, skipped: 'recent' };
+  // 開いたトップページに、今日まだ確かめていないキャンペーンのリンクがあれば、間隔に関わらず走らせる
+  // （HTMLだけを読む前回のスキャンでは、DOMにだけあるバナーを拾えていなかった）
+  const stored = await loadCampaigns();
+  const today = jstDay(Date.now());
+  const fresh = extraLinks.map(normalizeCampaignUrl).some((u) => u && jstDay(stored.items[u]?.checkedAt || 0) !== today);
+  if (!fresh && Date.now() - azrAutoScanAt < AUTO_SCAN_INTERVAL_MS) return { ok: false, skipped: 'recent' };
 
-  // 走らせる前に印を立てる。トップページを複数のタブで開くと、ほぼ同時に頼まれる。
+  // 走らせる前に印を立てる。楽天のページを複数のタブで開くと、ほぼ同時に頼まれる。
   await chrome.storage.local.set({ azrAutoScanAt: Date.now() });
-  return scanCampaigns({ entry: cfg.campaignScanEntry !== false });
+  return scanCampaigns({ entry: cfg.campaignScanEntry !== false, extraLinks });
 }
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
@@ -902,9 +1040,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true; // 非同期応答
   }
 
-  // トップページから: 裏で探してエントリーする
+  // 楽天のページを開いたとき: 裏で探してエントリーする
   if (msg?.type === 'azr:autoScanCampaigns') {
-    autoScanFromTop().then(sendResponse);
+    autoScanOnVisit(Array.isArray(msg.links) ? msg.links.filter((l) => typeof l === 'string') : []).then(sendResponse);
     return true; // 非同期応答
   }
 
@@ -1029,4 +1167,51 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 
   return false;
+});
+
+// ---- Amazon商品ページ用: 楽天検索（中継Worker経由）と閉店店舗の判定（旧 楽天比較リンク） ----
+// 楽天検索は中継Worker経由（APIキーは拡張機能に含めない）
+const RL_PROXY = 'https://amazon-rakuten-link.shin1007.workers.dev/search';
+
+async function rlSearch(keyword) {
+    const r = await fetch(`${RL_PROXY}?keyword=${encodeURIComponent(keyword)}`, { credentials: 'omit' });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) return { error: j.error || `HTTP ${r.status}`, searchUrl: j.searchUrl };
+    return { count: j.count ?? 0, items: j.items || [], searchUrl: j.searchUrl };
+}
+
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    if (msg?.type !== 'azr:rakutenSearch' || typeof msg.keyword !== 'string' || msg.keyword.length < 2) return;
+    rlSearch(msg.keyword).then(sendResponse).catch(e => sendResponse({ error: String(e) }));
+    return true;
+});
+
+// 閉店・休止店舗の判定。改装中の店舗はトップ https://www.rakuten.co.jp/<店舗>/ が kaiso.html へリダイレクトされる
+// （商品ページより応答が速いのでトップを見る）。結果は24時間キャッシュ
+const RL_SHOP_TTL = 24 * 60 * 60 * 1000;
+
+async function rlIsShopOpen(shop) {
+    const key = 'shop:' + shop;
+    const cached = (await chrome.storage.local.get(key))[key];
+    if (cached && Date.now() - cached.at < RL_SHOP_TTL) return cached.open;
+    let open;
+    try {
+        const r = await fetch(`https://www.rakuten.co.jp/${encodeURIComponent(shop)}/`, { credentials: 'omit', redirect: 'manual' });
+        if (r.type === 'opaqueredirect') open = false;
+        else if (r.ok) open = true;
+        else return null;
+    } catch {
+        return null;
+    }
+    await chrome.storage.local.set({ [key]: { open, at: Date.now() } });
+    return open;
+}
+
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    if (msg?.type !== 'azr:rakutenCheckShops' || !Array.isArray(msg.shops)) return;
+    const shops = msg.shops.filter(s => typeof s === 'string' && /^[\w-]+$/.test(s)).slice(0, 10);
+    Promise.all(shops.map(async s => [s, await rlIsShopOpen(s)]))
+        .then(entries => sendResponse(Object.fromEntries(entries)))
+        .catch(() => sendResponse({}));
+    return true;
 });

@@ -1,6 +1,7 @@
 /* Amazonize Rakuten - 商品ページの左ペイン: ギャラリーと拡大表示 */
 (() => {
   const AZR = window.AZR;
+  const tr = AZR.t;
   const { h } = AZR;
   const { setSrc, imageAt, mainUrl, fullUrl } = AZR.itemImages;
 
@@ -31,11 +32,11 @@
 
     const root = h('div.azr-lightbox', { hidden: 'hidden', role: 'dialog', 'aria-modal': 'true' },
       h('button.azr-lb-close', {
-        type: 'button', 'aria-label': '閉じる', title: '閉じる (Esc)', text: '✕', onclick: () => close()
+        type: 'button', 'aria-label': tr('閉じる'), title: tr('閉じる (Esc)'), text: '✕', onclick: () => close()
       }),
-      nav('is-prev', '前の画像 (←)', -1),
+      nav('is-prev', tr('前の画像 (←)'), -1),
       stage,
-      nav('is-next', '次の画像 (→)', 1),
+      nav('is-next', tr('次の画像 (→)'), 1),
       counter
     );
 
@@ -47,7 +48,7 @@
       img.classList.toggle('is-tall', it.tall);
       stage.classList.toggle('is-tall', it.tall);
       stage.classList.toggle('is-video', Boolean(it.video));
-      img.title = it.video ? 'クリックで動画に戻る' : '';
+      img.title = it.video ? tr('クリックで動画に戻る') : '';
       stage.scrollTop = 0;
       counter.textContent = `${index + 1} / ${items.length}`;
       root.classList.toggle('is-single', items.length < 2);
@@ -135,15 +136,15 @@
     const main = h('img.azr-gallery-main', { alt: title, loading: 'eager' });
     const frame = h('button.azr-gallery-frame', {
       type: 'button',
-      'aria-label': '画像を拡大',
-      title: 'クリックで拡大',
+      'aria-label': tr('画像を拡大'),
+      title: tr('クリックで拡大'),
       onclick: () => lightbox.open(index)
-    }, main, h('span.azr-zoom-hint', { text: 'クリックで拡大' }));
+    }, main, h('span.azr-zoom-hint', { text: tr('クリックで拡大') }));
     const video = items.find((it) => it.video)?.video;
     const videoSlot = video
       ? h('div.azr-gallery-video', { hidden: 'hidden' },
         h('img.azr-gallery-video-still', { src: video.still, alt: video.name }),
-        h('span.azr-gallery-video-status', { text: '動画を読み込み中…' }))
+        h('span.azr-gallery-video-status', { text: tr('動画を読み込み中…') }))
       : null;
     // カスタムプロパティは style への代入では入らない
     videoSlot?.style.setProperty('--azr-video-ratio', video.ratio);
@@ -156,7 +157,7 @@
 
     function thumb(it, i) {
       if (it.video) {
-        return h('span.azr-thumb.is-video', { title: it.video.name || '動画', onclick: () => select(i) },
+        return h('span.azr-thumb.is-video', { title: it.video.name || tr('動画'), onclick: () => select(i) },
           h('img', { src: it.src, alt: '', loading: 'lazy' }));
       }
       const t = h('img.azr-thumb', { alt: '', loading: 'lazy', onclick: () => select(i) });

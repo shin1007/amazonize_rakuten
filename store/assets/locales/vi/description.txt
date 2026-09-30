@@ -1,0 +1,51 @@
+Tiện ích mở rộng này sắp xếp lại trang sản phẩm của Rakuten Ichiba thành bố cục 3 cột rõ ràng theo kiểu Amazon. Bạn có thể so sánh giá Rakuten và Amazon mà không phải chuyển qua lại, xem tổng giỏ hàng, tự động áp dụng phiếu giảm giá có lợi nhất và đăng ký hàng loạt các chiến dịch — giúp việc mua sắm trên Rakuten bớt rắc rối. (Rakuten Ichiba và Amazon.co.jp là các trang của Nhật Bản; tiện ích hoạt động trên các trang này.)
+
+■ Trang sản phẩm dễ nhìn hơn
+・Sắp xếp lại thành 3 cột: hình ảnh / thông tin sản phẩm / khu vực mua hàng. Thêm vào giỏ ngay mà không cần cuộn qua phần mô tả dài
+・Gom các hình ảnh sản phẩm nằm lẫn trong phần mô tả vào thư viện bên trái; những hình giống nhau được gộp thành một
+・Nhấp vào hình để phóng to, dùng phím ←→ để chuyển sang hình tiếp theo
+・Video sản phẩm cũng nằm trong thư viện. Không tự phát, chỉ phát khi bạn bấm nút phát
+・Hiển thị đánh giá của sản phẩm và cửa hàng ngay dưới tên sản phẩm
+・Hiển thị giá của cùng sản phẩm trên Amazon ngay dưới giá Rakuten (kèm tên sản phẩm, điểm đánh giá trên Amazon và liên kết đến kết quả tìm kiếm)
+・Sản phẩm khớp theo mã JAN được ghi "Khớp mã JAN", sản phẩm tìm theo tên được ghi "Tham khảo"
+
+■ Giá và liên kết Rakuten trên trang sản phẩm Amazon
+・Hiển thị liên kết và giá của cùng sản phẩm trên Rakuten Ichiba ngay trên trang sản phẩm của Amazon.co.jp
+・Đối chiếu lần lượt theo mã JAN, ISBN, mã model, tên sản phẩm và loại bỏ sản phẩm khác quy cách hoặc số lượng
+・Các cửa hàng đã đóng cửa hoặc đang sửa chữa sẽ bị loại khỏi danh sách gợi ý
+・Nếu không có sản phẩm khớp, hiển thị liên kết đến kết quả tìm kiếm trên Rakuten Ichiba
+
+■ Tổng giỏ hàng
+・Gom tổng tiền sản phẩm, phí vận chuyển và điểm dự kiến nhận từ nhiều cửa hàng vào một bảng duy nhất
+・Hiển thị cả "giá thực tế" sau khi trừ điểm
+・Cập nhật ngay khi bạn đổi số lượng, có chi tiết theo từng cửa hàng
+
+■ Phiếu giảm giá
+・Nhận phiếu giảm giá hiển thị trên trang sản phẩm ngay tại chỗ, không cần chuyển sang trang phiếu giảm giá
+・Có thể xem danh sách phiếu đã nhận từ nút trên thanh công cụ
+・Ở màn hình xác nhận đơn hàng, tự động chuyển sang phiếu "giảm được nhiều nhất cho đơn này" trong số các phiếu dùng được (so sánh theo số tiền giảm, không theo phần trăm)
+・Cũng có thể đặt để xác nhận trước khi áp dụng
+・Tuyệt đối không bấm nút xác nhận đặt hàng. Bạn luôn tự mình đặt hàng
+
+■ Đăng ký hàng loạt chiến dịch
+・Từ nút trên thanh công cụ, kiểm tra các chiến dịch trên trang chủ Rakuten và đăng ký cùng lúc những chiến dịch chưa đăng ký
+・Khi mở trang Rakuten, tiện ích cũng tự động kiểm tra và đăng ký ở chế độ nền (12 giờ một lần, có thể tắt trong cài đặt)
+・Khi kiểm tra không mở tab nào — màn hình và thanh tab không thay đổi nên không làm phiền công việc của bạn
+・Đăng ký theo cùng cách với nút đăng ký của Rakuten và chỉ ghi lại sau khi xác nhận đã chuyển sang "Đã đăng ký"
+・Các chiến dịch không thể tự động xác định được sẽ nổi bật trong danh sách với nhãn "Cần xem lại"
+・Có thể xem lại "danh sách đã đăng ký" — thứ mà Rakuten không cung cấp
+
+■ Cài đặt
+Bật hoặc tắt từng tính năng từ biểu tượng trên thanh công cụ.
+
+■ Quyền riêng tư
+・Chỉ thay đổi hiển thị của các trang Rakuten Ichiba (rakuten.co.jp) và trang sản phẩm Amazon.co.jp
+・Giá Amazon được hiển thị bằng cách đọc kết quả tìm kiếm của Amazon theo tên sản phẩm hoặc mã JAN. Không gửi thông tin đăng nhập (cookie) đến Amazon
+・Chỉ khi hiển thị giá Rakuten trên trang sản phẩm Amazon, từ khóa tìm kiếm của sản phẩm đó (mã JAN, ISBN, mã model, tên sản phẩm) mới được gửi đến máy chủ trung chuyển cho API tìm kiếm sản phẩm Rakuten Ichiba do nhà phát triển vận hành. Máy chủ chỉ chuyển từ khóa đến API Rakuten và trả kết quả về; máy chủ không nhận thông tin đăng nhập, lịch sử duyệt web, nội dung mua hàng hay thông tin cá nhân, và không lưu gì ngoài bộ nhớ đệm kết quả (tối đa 1 giờ)
+・Ngoài các từ khóa tìm kiếm trên, không có lịch sử duyệt web, nội dung mua hàng hay thông tin cá nhân nào được gửi đến nhà phát triển hoặc bên thứ ba
+・Cài đặt, lịch sử chiến dịch và danh sách phiếu đã nhận chỉ được lưu trong trình duyệt (chrome.storage)
+・Việc lấy và nhận phiếu giảm giá, lấy đánh giá chỉ diễn ra giữa trình duyệt của bạn và máy chủ Rakuten Ichiba
+
+■ Lưu ý
+・Tiện ích này do cá nhân phát triển và không liên quan đến Rakuten Group, Inc., Amazon.com, Inc. hay các công ty liên kết của họ
+・Nếu Rakuten Ichiba thay đổi cấu trúc trang, một số tính năng có thể ngừng hoạt động. Khi đó hãy tắt tính năng tương ứng trong cài đặt để trở về giao diện gốc

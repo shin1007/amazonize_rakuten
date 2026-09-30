@@ -1,13 +1,39 @@
 /* Amazonize Rakuten - ポップアップ設定 */
 
 // 既定値は content script と同じ settings.js のものを使う（2か所に書くとずれる）
-const { DEFAULTS } = window.AZR;
+const AZR = window.AZR;
+const { DEFAULTS } = AZR;
+  const tr = AZR.t;
+
+// 静的なHTMLの文言を、表示言語に合わせて置き換える（日本語なら何もしない）
+function translateStatic() {
+  if (AZR.isJa) return;
+  document.documentElement.lang = AZR.lang;
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+    const text = n.nodeValue.trim();
+    if (text) n.nodeValue = n.nodeValue.replace(text, tr(text));
+  }
+  for (const el of document.querySelectorAll('[placeholder]')) {
+    el.placeholder = el.placeholder.split('\n').map((line) => tr(line)).join('\n');
+  }
+}
 
 const $ = (sel) => document.querySelector(sel);
 const status = $('#status');
 
 async function init() {
   const s = await chrome.storage.sync.get(DEFAULTS);
+  AZR.setLanguage(s.language);
+  translateStatic();
+
+  const langSelect = $('#language');
+  langSelect.append(new Option(tr('自動（ブラウザの言語）'), 'auto'), ...AZR.LANGUAGES.map(([code, name]) => new Option(name, code)));
+  langSelect.value = AZR.LANGUAGES.some(([code]) => code === s.language) ? s.language : 'auto';
+  langSelect.addEventListener('change', async () => {
+    await chrome.storage.sync.set({ language: langSelect.value });
+    location.reload(); // 静的な文言は日本語の原文から置き直すので、開き直す
+  });
 
   $('#enabled').checked = s.enabled;
   $('#enabled').addEventListener('change', (e) =>
@@ -39,7 +65,7 @@ async function init() {
     if (!items.length) {
       const li = document.createElement('li');
       li.className = 'empty';
-      li.textContent = 'まだありません';
+      li.textContent = tr('まだありません');
       list.append(li);
       return;
     }
@@ -52,19 +78,19 @@ async function init() {
         label.href = c.url;
         label.target = '_blank';
       }
-      label.textContent = c.name || '（名前なし）';
-      label.title = [c.name, c.shop && `ショップ: ${c.shop}`, c.item && `商品: ${c.item}`].filter(Boolean).join('\n');
+      label.textContent = c.name || tr('（名前なし）');
+      label.title = [c.name, c.shop && tr('ショップ: {s}', { s: c.shop }), c.item && tr('商品: {i}', { i: c.item })].filter(Boolean).join('\n');
 
       const state = document.createElement('span');
       state.className = 'campaign-state';
-      state.textContent = `${day(c.at)}${c.auto ? ' 自動' : ''}`;
+      state.textContent = `${day(c.at)}${c.auto ? tr(' 自動') : ''}`;
 
       li.append(label, state);
       list.append(li);
     }
   }
 
-  const day = (ms) => (ms ? new Date(ms).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' }) : '');
+  const day = (ms) => (ms ? new Date(ms).toLocaleDateString(AZR.numberLocale, { month: 'numeric', day: 'numeric' }) : '');
   renderAcquired();
 
   /* キャンペーンの一括スキャン ---------------------------------------------- */
@@ -74,15 +100,15 @@ async function init() {
 
   // 一覧に出す文言。status はキャンペーンページを実際に見て決めたもの。
   const STATUS_LABEL = {
-    entered: 'エントリーした',
-    already: 'エントリー済み',
-    entry: '未エントリー',
-    suspect: '要確認',
-    none: 'エントリー不要',
-    timeout: '時間切れ',
-    error: '失敗',
-    closed: '中断',
-    unknown: '不明'
+    entered: tr('エントリーした'),
+    already: tr('エントリー済み'),
+    entry: tr('未エントリー'),
+    suspect: tr('要確認'),
+    none: tr('エントリー不要'),
+    timeout: tr('時間切れ'),
+    error: tr('失敗'),
+    closed: tr('中断'),
+    unknown: tr('不明')
   };
   const ORDER = ['suspect', 'entered', 'already', 'entry', 'timeout', 'error', 'closed', 'unknown', 'none'];
 
@@ -99,7 +125,7 @@ async function init() {
     if (!items.length) {
       const li = document.createElement('li');
       li.className = 'empty';
-      li.textContent = 'まだ調べていません';
+      li.textContent = tr('まだ調べていません');
       list.append(li);
       return;
     }
@@ -132,11 +158,11 @@ async function init() {
   const runButtons = [scanButton, batchButton];
 
   function describe(res) {
-    if (!res?.ok) return `失敗しました: ${res?.error ?? '不明なエラー'}`;
-    return `${res.checked}件を確認 / 新たに${res.entered}件エントリー / 既にエントリー済み${res.alreadyEntered}件`
-      + (res.suspect ? ` / 要確認${res.suspect}件` : '')
-      + (res.failed ? ` / 判定できず${res.failed}件` : '')
-      + (res.skipped ? ` / 対象外のURL ${res.skipped}件` : '');
+    if (!res?.ok) return tr('失敗しました: {e}', { e: tr(res?.error ?? '不明なエラー') });
+    return tr('{n}件を確認 / 新たに{e}件エントリー / 既にエントリー済み{a}件', { n: res.checked, e: res.entered, a: res.alreadyEntered })
+      + (res.suspect ? tr(' / 要確認{n}件', { n: res.suspect }) : '')
+      + (res.failed ? tr(' / 判定できず{n}件', { n: res.failed }) : '')
+      + (res.skipped ? tr(' / 対象外のURL {n}件', { n: res.skipped }) : '');
   }
 
   async function showLastResult({ withTime }) {
@@ -146,7 +172,7 @@ async function init() {
     } catch { /* session storage 不可 */ }
     if (!res) return;
     const at = withTime && res.finishedAt
-      ? `前回（${new Date(res.finishedAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}）: `
+      ? tr('前回（{time}）: ', { time: new Date(res.finishedAt).toLocaleTimeString(AZR.numberLocale, { hour: '2-digit', minute: '2-digit' }) })
       : '';
     scanStatus.textContent = at + describe(res);
   }
@@ -170,7 +196,7 @@ async function init() {
       await renderCampaignList();
       return;
     }
-    scanStatus.textContent = s.total ? `${s.phase}… ${s.done}/${s.total}` : `${s.phase}…`;
+    scanStatus.textContent = s.total ? `${tr(s.phase)}… ${s.done}/${s.total}` : `${tr(s.phase)}…`;
   }
 
   async function start(message, firstText) {
@@ -189,17 +215,17 @@ async function init() {
 
   scanButton.addEventListener('click', () => {
     const entry = $('input[data-key="campaignScanEntry"]').checked;
-    start({ type: 'azr:scanCampaigns', entry }, 'トップページを読み込み中…');
+    start({ type: 'azr:scanCampaigns', entry }, tr('トップページを読み込み中…'));
   });
 
   batchButton.addEventListener('click', () => {
     const list = urls.value.split('\n').map((v) => v.trim()).filter(Boolean);
     if (!list.length) {
-      status.textContent = 'URLを1行以上入力してください';
+      status.textContent = tr('URLを1行以上入力してください');
       return;
     }
     status.textContent = '';
-    start({ type: 'azr:enterCampaignUrls', urls: list }, 'エントリー中…');
+    start({ type: 'azr:enterCampaignUrls', urls: list }, tr('エントリー中…'));
   });
 
   renderCampaignList();

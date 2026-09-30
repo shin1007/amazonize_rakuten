@@ -19,6 +19,7 @@
     <label><input type="checkbox" data-key="simplifyItem"> 商品ページをAmazon風にする</label>
     <label><input type="checkbox" data-key="simplifySearch"> 検索結果の広告を目立たなくする</label>
     <label><input type="checkbox" data-key="amazonPrice"> 商品ページにAmazonでの価格を出す</label>
+    <label><input type="checkbox" data-key="rakutenLink"> Amazonの商品ページに楽天のリンクと価格を出す</label>
   </section>
 
   <section>
@@ -40,7 +41,8 @@
     <label><input type="checkbox" data-key="campaignEntry"> エントリーパネルを表示</label>
     <label><input type="checkbox" data-key="campaignAutoEntry"> 開いたページで自動エントリー</label>
     <label><input type="checkbox" data-key="campaignScanEntry"> 見つけたらエントリーまでする</label>
-    <label><input type="checkbox" data-key="campaignScanOnTop"> 楽天トップを開いたら自動で探す（12時間おき）</label>
+    <label><input type="checkbox" data-key="campaignScanOnTop"> 楽天のページを開いたら自動で探す（12時間おき）</label>
+    <label class="sub"><input type="checkbox" data-key="campaignTabFallback"> 判定できないページはタブで開き直す（タブが見えます）</label>
     <button id="scanCampaigns" class="primary">トップから探してエントリー</button>
     <p class="status" id="scanStatus"></p>
 
@@ -59,11 +61,14 @@
   </section>
 
   <footer>
+    <label class="lang">言語 <select id="language"></select></label>
     <label class="sub"><input type="checkbox" data-key="debug"> デバッグログ</label>
     <p class="note">設定の変更はページを再読み込みすると反映されます。</p>
   </footer>
 
   <script src="../lib/settings.js"></script>
+  <script src="../lib/i18n-data.js"></script>
+  <script src="../lib/i18n.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

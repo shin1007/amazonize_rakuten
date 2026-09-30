@@ -1,6 +1,7 @@
 /* Amazonize Rakuten - 買い物かごの合計金額パネル */
 (() => {
   const AZR = window.AZR;
+  const tr = AZR.t;
   const { h, yen, onState, waitForState } = AZR;
 
   const PANEL_ID = 'azr-cart-panel';
@@ -23,7 +24,7 @@
       if (!t) continue;
       shops.push({
         id,
-        name: state.shops?.[id]?.shopName || `ショップ${shops.length + 1}`,
+        name: state.shops?.[id]?.shopName || tr('ショップ{n}', { n: shops.length + 1 }),
         url: state.shops?.[id]?.shopUrl || '',
         itemCount: t.itemCount,
         itemTotal: t.itemTotalPrice,
@@ -37,6 +38,9 @@
       });
     }
     if (!shops.length) return null;
+    // かごの下のほうのショップは、スクロールするまで金額が届かない。
+    // 届いていない分は合計に入らないので、そのことを表示に出す。
+    const pending = order.filter((id) => !state.subtotals?.[id]).length;
 
     const sum = (key) => shops.reduce((s, x) => s + (x[key] || 0), 0);
     const payment = sum('payment');
@@ -44,6 +48,7 @@
     const fee = sum('fee');
     return {
       shops,
+      pending,
       itemCount: sum('itemCount'),
       itemTotal: sum('itemTotal'),
       fee,
@@ -60,50 +65,53 @@
   function render(data) {
     const panel = h('div.azr-panel.azr-cart-panel', { id: PANEL_ID },
       h('div.azr-panel-head',
-        h('span.azr-panel-title', { text: 'かご合計' }),
+        h('span.azr-panel-title', { text: tr('かご合計') }),
         h('button.azr-panel-close', {
-          type: 'button', text: '×', title: '閉じる',
+          type: 'button', text: '×', title: tr('閉じる'),
           onclick: () => { closed = true; panel.remove(); }
         })
       ),
       h('div.azr-panel-body',
         h('div.azr-total-row.is-main',
-          h('span', { text: `商品合計（${data.itemCount}点 / ${data.shops.length}ショップ）` }),
+          h('span', { text: tr('商品合計（{items}点 / {shops}ショップ）', { items: data.itemCount, shops: data.shops.length }) }),
           h('strong', { text: yen(data.itemTotal) })
         ),
         data.fee ? h('div.azr-total-row',
-          h('span', { text: '送料' }), h('span', { text: yen(data.fee) })
+          h('span', { text: tr('送料') }), h('span', { text: yen(data.fee) })
         ) : h('div.azr-total-row',
-          h('span', { text: '送料' }),
-          h('span', { text: data.feeUnknown ? '購入手続きで確定' : '無料' })
+          h('span', { text: tr('送料') }),
+          h('span', { text: data.feeUnknown ? tr('購入手続きで確定') : tr('無料') })
         ),
         data.coupon ? h('div.azr-total-row',
-          h('span', { text: 'クーポン割引' }),
+          h('span', { text: tr('クーポン割引') }),
           h('span.azr-discount', { text: `-${yen(data.coupon)}` })
         ) : '',
         h('div.azr-total-row.is-grand',
           h('span',
-            'お支払い予定',
-            data.feeUnknown ? h('small.azr-fee-note', { text: '（送料がある場合は別）' }) : ''
+            tr('お支払い予定'),
+            data.feeUnknown ? h('small.azr-fee-note', { text: tr('（送料がある場合は別）') }) : ''
           ),
           h('strong', { text: yen(data.payment) })
         ),
+        data.pending ? h('div.azr-total-row.is-note',
+          h('small.azr-fee-note', { text: tr('あと{n}ショップは未読み込み。下へスクロールすると合計に入ります', { n: data.pending }) })
+        ) : '',
         data.points ? h('div.azr-total-row.is-point',
-          h('span', { text: '獲得予定ポイント' }),
-          h('span', { text: `${data.points.toLocaleString('ja-JP')}pt` })
+          h('span', { text: tr('獲得予定ポイント') }),
+          h('span', { text: `${data.points.toLocaleString(AZR.numberLocale)}pt` })
         ) : '',
         data.points ? h('div.azr-total-row.is-effective',
-          h('span', { text: 'ポイント差引後' }),
+          h('span', { text: tr('ポイント差引後') }),
           h('strong', { text: yen(data.effective) })
         ) : '',
         data.shops.length > 1 || data.shops[0].itemCount > 1
           ? h('details.azr-breakdown',
-              h('summary', { text: 'ショップ別内訳' }),
+              h('summary', { text: tr('ショップ別内訳') }),
               h('ul', data.shops.map((s) => h('li',
                 h('span.azr-shop-name', { text: s.name, title: s.name }),
                 h('span.azr-shop-amount', {
-                  text: (s.points ? `${yen(s.payment)} / ${s.points.toLocaleString('ja-JP')}pt` : yen(s.payment))
-                    + (s.shippingFree || s.fee ? '' : ' ＋送料')
+                  text: (s.points ? `${yen(s.payment)} / ${s.points.toLocaleString(AZR.numberLocale)}pt` : yen(s.payment))
+                    + (s.shippingFree || s.fee ? '' : tr(' ＋送料'))
                 })
               )))
             )
@@ -119,8 +127,48 @@
   // 閉じるボタンで閉じた。その画面にいる間は出し直さない。
   let closed = false;
 
+  /*
+   * 下のほうのショップは、画面に入るまで金額が届かない。合計に欠けが出るので、
+   * 届いていない間は一瞬だけ最下部へ飛んで元の位置に戻し、読み込みを促す。
+   * 何度やっても届かないもの（消えたショップの残り）で延々と繰り返さない。
+   */
+  const LOAD_TRIES = 4;
+  let loadTries = 0;
+  let lastPending = 0;
+  let loading = false;
+  async function loadLazyShops() {
+    if (loading || loadTries >= LOAD_TRIES) return;
+    loading = true;
+    loadTries++;
+    const y = window.scrollY;
+    try {
+      const root = document.documentElement;
+      // スクロール位置がなめらかに動く設定でも、見えないうちに済ませる
+      root.style.scrollBehavior = 'auto';
+      // 一気に飛ぶと途中のショップが画面に入らず読み込まれない。画面の高さずつ降りる。
+      const step = Math.max(300, window.innerHeight * 0.8);
+      for (let pos = y, i = 0; i < 40; i++) {
+        pos += step;
+        window.scrollTo(0, pos);
+        await new Promise((r) => setTimeout(r, 300));
+        if (pos + window.innerHeight >= document.documentElement.scrollHeight) break;
+      }
+      await new Promise((r) => setTimeout(r, 500));
+    } finally {
+      window.scrollTo(0, y);
+      document.documentElement.style.scrollBehavior = '';
+      loading = false;
+    }
+  }
+
   function paint(state) {
     const data = summarize(state);
+    const pending = data?.pending || 0;
+    // 進んでいるうちは試行を数え直す（届くたびに残りが減る）
+    if (pending < lastPending) loadTries = 0;
+    lastPending = pending;
+    if (pending) loadLazyShops();
+    else loadTries = 0;
     if (!data) {
       // 全部消されたら古い合計を残さない
       document.getElementById(PANEL_ID)?.remove();
@@ -128,7 +176,7 @@
       return false;
     }
     const signature = JSON.stringify([
-      data.itemCount, data.itemTotal, data.fee, data.coupon, data.payment, data.points,
+      data.pending, data.itemCount, data.itemTotal, data.fee, data.coupon, data.payment, data.points,
       data.shops.map((s) => [s.id, s.payment, s.points, s.shippingFree])
     ]);
     const existing = document.getElementById(PANEL_ID);
@@ -150,6 +198,7 @@
     unsubscribe = null;
     closed = false;
     lastSignature = '';
+    loadTries = 0;
 
     const state = await waitForState({ timeout: 10000 });
     if (!state) {

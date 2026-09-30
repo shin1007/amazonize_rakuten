@@ -3,7 +3,7 @@
  *   node tools/pack.mjs
  *
  * 出力は tools/out/amazonize-rakuten-<version>.zip（manifest の version から）。
- * 入れるのは manifest.json / src / icons / LICENSE だけ（tests・tools・store・fixtures は入れない）。
+ * 入れるのは manifest.json / src / icons / _locales / LICENSE だけ（tests・tools・store・fixtures は入れない）。
  * Windows の Compress-Archive は区切りに \ を使ったzipを作るので、ここで自前で書いている。
  */
 import { deflateRawSync } from 'node:zlib';
@@ -12,7 +12,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const INCLUDE = ['manifest.json', 'LICENSE', 'src', 'icons'];
+const INCLUDE = ['manifest.json', 'LICENSE', 'src', 'icons', '_locales'];
 
 /** 入れるファイルを、zipの中での名前（/区切り）で並べる */
 function collect(rel) {
