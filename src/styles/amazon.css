@@ -113,6 +113,7 @@ a.azr-amazon-item:hover .azr-amazon-open { color: #c7511f; text-decoration: unde
 .azr-amazon-diff[data-cheaper="rakuten"] strong { color: #067d62; }
 .azr-amazon-diff[data-cheaper="amazon"] strong { color: #b12704; }
 .azr-amazon-note { color: #8c8c8c; }
+.azr-amazon-pr { margin-top: 6px; font-size: 10px; color: #8c8c8c; }
 
 .azr-amazon[data-state="loading"] { color: #565959; }
 /* 見つからなかった・弾かれたときは、検索への導線だけの細い行にする */

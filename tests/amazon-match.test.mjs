@@ -222,7 +222,8 @@ test('どれも似ていなければ「見つからない」（違う商品の�
   const s = loadServiceWorker({ fetch: stubFetch(SEARCH_HTML) });
   const res = await s.amazonLookup({ title: 'ソニー ワイヤレスイヤホン WF-1000XM5 ブラック' });
   assert.equal(res.status, 'none');
-  assert.ok(res.searchUrl.startsWith('https://www.amazon.co.jp/s?k='));
+  // 表示するリンクは中継ページ経由（タグは中継側で付く）
+  assert.ok(res.searchUrl.startsWith('https://nesage.party/go?q='));
 });
 
 test('弾かれたときは blocked を返す（検索への導線だけ出す）', async () => {
@@ -241,7 +242,7 @@ test('同じ商品を開き直しても読みに行かない（結果は覚え�
   assert.equal(calls.length, 1);
   assert.equal(second.cached, true);
   assert.equal(second.item.asin, first.item.asin);
-  assert.ok(storage.azrAmazon['jan:4580688635054']);
+  assert.ok(storage.azrAmazon['v2:jan:4580688635054']);
 });
 
 const EMPTY_HTML = '<!doctype html><html><body><div class="s-main-slot"></div></body></html>';

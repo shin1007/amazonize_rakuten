@@ -40,6 +40,9 @@
     });
   }
 
+  // Amazonのリンクは開発者のアソシエイトのタグ付き（中継ページ経由）。その旨を小さく添える
+  const disclosure = () => h('div.azr-amazon-pr', { text: tr('※ Amazonアソシエイトのリンクを含みます') });
+
   const note = (text) => h('div.azr-amazon-diff', h('span.azr-amazon-note', { text }));
 
   /**
@@ -127,7 +130,8 @@
           searchLink(res.searchUrl)
         ),
         itemRow(res.item),
-        diffLine(data, res.item.price, sure)
+        diffLine(data, res.item.price, sure),
+        disclosure()
       );
       box.dataset.azrScore = String(res.item.score ?? '');
       return;
@@ -138,7 +142,8 @@
         mark(),
         h('span.azr-amazon-label', { text: (res?.empty ? MESSAGE().empty : MESSAGE()[res?.status]) || MESSAGE().error }),
         searchLink(res?.searchUrl, tr('Amazonで探す'))
-      )
+      ),
+      res?.searchUrl ? disclosure() : ''
     );
   }
 

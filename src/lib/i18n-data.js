@@ -184,7 +184,8 @@
       "この商品は型番・JANが取得できません": "No model no. or JAN found for this item",
       "一致する商品が見つかりませんでした{via}": "No matching item found{via}",
       "商品名": "Item name",
-      "楽天の商品情報を取得中…": "Loading Rakuten item info…"
+      "楽天の商品情報を取得中…": "Loading Rakuten item info…",
+      "※ Amazonアソシエイトのリンクを含みます": "* Includes Amazon Associates links"
     },
     "id": {
       "楽天 ￥{p}{via}": "Rakuten ¥{p}{via}",
@@ -368,7 +369,8 @@
       "この商品は型番・JANが取得できません": "No. model/JAN produk ini tidak ditemukan",
       "一致する商品が見つかりませんでした{via}": "Tidak ada produk yang cocok{via}",
       "商品名": "Nama produk",
-      "楽天の商品情報を取得中…": "Memuat info produk Rakuten…"
+      "楽天の商品情報を取得中…": "Memuat info produk Rakuten…",
+      "※ Amazonアソシエイトのリンクを含みます": "※ Berisi tautan Amazon Associates"
     },
     "ko": {
       "楽天 ￥{p}{via}": "라쿠텐 ¥{p}{via}",
@@ -552,7 +554,8 @@
       "この商品は型番・JANが取得できません": "이 상품의 모델 번호·JAN을 가져올 수 없습니다",
       "一致する商品が見つかりませんでした{via}": "일치하는 상품을 찾지 못했습니다{via}",
       "商品名": "상품명",
-      "楽天の商品情報を取得中…": "라쿠텐 상품 정보를 불러오는 중…"
+      "楽天の商品情報を取得中…": "라쿠텐 상품 정보를 불러오는 중…",
+      "※ Amazonアソシエイトのリンクを含みます": "※ 아마존 어소시에이트 링크를 포함합니다"
     },
     "vi": {
       "楽天 ￥{p}{via}": "Rakuten ¥{p}{via}",
@@ -736,7 +739,8 @@
       "この商品は型番・JANが取得できません": "Không lấy được mã model/JAN của sản phẩm này",
       "一致する商品が見つかりませんでした{via}": "Không tìm thấy sản phẩm phù hợp{via}",
       "商品名": "Tên sản phẩm",
-      "楽天の商品情報を取得中…": "Đang tải thông tin sản phẩm Rakuten…"
+      "楽天の商品情報を取得中…": "Đang tải thông tin sản phẩm Rakuten…",
+      "※ Amazonアソシエイトのリンクを含みます": "※ Có chứa liên kết Amazon Associates"
     },
     "zh_CN": {
       "楽天 ￥{p}{via}": "乐天 ¥{p}{via}",
@@ -920,7 +924,8 @@
       "この商品は型番・JANが取得できません": "无法获取该商品的型号/JAN",
       "一致する商品が見つかりませんでした{via}": "未找到匹配的商品{via}",
       "商品名": "商品名称",
-      "楽天の商品情報を取得中…": "正在获取乐天商品信息…"
+      "楽天の商品情報を取得中…": "正在获取乐天商品信息…",
+      "※ Amazonアソシエイトのリンクを含みます": "※ 含亚马逊联盟链接"
     },
     "zh_TW": {
       "楽天 ￥{p}{via}": "樂天 ¥{p}{via}",
@@ -1104,7 +1109,8 @@
       "この商品は型番・JANが取得できません": "無法取得此商品的型號／JAN",
       "一致する商品が見つかりませんでした{via}": "找不到相符的商品{via}",
       "商品名": "商品名稱",
-      "楽天の商品情報を取得中…": "正在取得樂天商品資訊…"
+      "楽天の商品情報を取得中…": "正在取得樂天商品資訊…",
+      "※ Amazonアソシエイトのリンクを含みます": "※ 含亞馬遜聯盟連結"
     }
   };
 })();

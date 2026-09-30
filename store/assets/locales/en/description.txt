@@ -48,4 +48,5 @@ Each feature can be turned on or off from the toolbar icon.
 
 ■ Notes
 ・This extension is developed by an individual and is not affiliated with Rakuten Group, Inc., Amazon.com, Inc. or their affiliates
+・Links to Amazon.co.jp carry an Amazon Associates tag; the developer is a participant in the Amazon Associates Program and earns from qualifying purchases. Clicking such a link opens a short redirect page (nesage.party) run by the developer and then moves on to Amazon.co.jp automatically. Prices and product information are not affected
 ・If Rakuten Ichiba changes how its pages are built, some features may stop working. Turn the affected feature off in settings to get the original display back

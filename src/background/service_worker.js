@@ -407,7 +407,17 @@ async function amazonFetch(url) {
  */
 const AMAZON_MIN_SCORE = 0.3;
 
-async function amazonLookup({ title, jan }) {
+// 表示するリンクは中継ページ経由にする（アソシエイトのタグは中継側が付ける。Amazonの取得そのものは直接）
+const AMAZON_GO = 'https://nesage.party/go';
+
+async function amazonLookup(args) {
+  const r = await amazonLookupRaw(args);
+  if (r.searchUrl && r.query) r.searchUrl = `${AMAZON_GO}?q=${encodeURIComponent(r.query)}`;
+  if (r.item?.asin) r.item = { ...r.item, url: `${AMAZON_GO}?asin=${r.item.asin}` };
+  return r;
+}
+
+async function amazonLookupRaw({ title, jan }) {
   const useJan = AZR.amazon.isJan(jan);
   const query = useJan ? String(jan) : AZR.amazon.buildQuery(title);
   if (!query) return { status: 'none', query: '', searchUrl: null };
@@ -454,7 +464,8 @@ async function amazonLookup({ title, jan }) {
 
 /** 価格は日単位で動くが、同じ商品ページを開き直すたびに読みに行く必要は無い。 */
 async function amazonPrice({ title, jan }) {
-  const key = AZR.amazon.isJan(jan) ? `jan:${jan}` : `q:${AZR.amazon.buildQuery(title)}`;
+  // v2: リンクを中継ページ経由にした（v1 のキャッシュには、Amazon直リンクが入っている）
+  const key = AZR.amazon.isJan(jan) ? `v2:jan:${jan}` : `v2:q:${AZR.amazon.buildQuery(title)}`;
   const { azrAmazon: cache = {} } = await chrome.storage.local.get('azrAmazon');
   const now = Date.now();
   const hit = cache[key];
