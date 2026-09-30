@@ -181,5 +181,6 @@
   "一致する商品が見つかりませんでした{via}": "No matching item found{via}",
   "商品名": "Item name",
   "楽天の商品情報を取得中…": "Loading Rakuten item info…",
-  "※ Amazonアソシエイトのリンクを含みます": "* Includes Amazon Associates links"
+  "※ Amazonアソシエイトのリンクを含みます": "* Includes Amazon Associates links",
+  "※ 楽天アフィリエイトのリンクを含みます": "* Includes Rakuten Affiliate links"
 }

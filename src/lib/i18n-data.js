@@ -185,7 +185,8 @@
       "一致する商品が見つかりませんでした{via}": "No matching item found{via}",
       "商品名": "Item name",
       "楽天の商品情報を取得中…": "Loading Rakuten item info…",
-      "※ Amazonアソシエイトのリンクを含みます": "* Includes Amazon Associates links"
+      "※ Amazonアソシエイトのリンクを含みます": "* Includes Amazon Associates links",
+      "※ 楽天アフィリエイトのリンクを含みます": "* Includes Rakuten Affiliate links"
     },
     "id": {
       "楽天 ￥{p}{via}": "Rakuten ¥{p}{via}",
@@ -370,7 +371,8 @@
       "一致する商品が見つかりませんでした{via}": "Tidak ada produk yang cocok{via}",
       "商品名": "Nama produk",
       "楽天の商品情報を取得中…": "Memuat info produk Rakuten…",
-      "※ Amazonアソシエイトのリンクを含みます": "※ Berisi tautan Amazon Associates"
+      "※ Amazonアソシエイトのリンクを含みます": "※ Berisi tautan Amazon Associates",
+      "※ 楽天アフィリエイトのリンクを含みます": "※ Berisi tautan afiliasi Rakuten"
     },
     "ko": {
       "楽天 ￥{p}{via}": "라쿠텐 ¥{p}{via}",
@@ -555,7 +557,8 @@
       "一致する商品が見つかりませんでした{via}": "일치하는 상품을 찾지 못했습니다{via}",
       "商品名": "상품명",
       "楽天の商品情報を取得中…": "라쿠텐 상품 정보를 불러오는 중…",
-      "※ Amazonアソシエイトのリンクを含みます": "※ 아마존 어소시에이트 링크를 포함합니다"
+      "※ Amazonアソシエイトのリンクを含みます": "※ 아마존 어소시에이트 링크를 포함합니다",
+      "※ 楽天アフィリエイトのリンクを含みます": "※ 라쿠텐 제휴(어필리에이트) 링크를 포함합니다"
     },
     "vi": {
       "楽天 ￥{p}{via}": "Rakuten ¥{p}{via}",
@@ -740,7 +743,8 @@
       "一致する商品が見つかりませんでした{via}": "Không tìm thấy sản phẩm phù hợp{via}",
       "商品名": "Tên sản phẩm",
       "楽天の商品情報を取得中…": "Đang tải thông tin sản phẩm Rakuten…",
-      "※ Amazonアソシエイトのリンクを含みます": "※ Có chứa liên kết Amazon Associates"
+      "※ Amazonアソシエイトのリンクを含みます": "※ Có chứa liên kết Amazon Associates",
+      "※ 楽天アフィリエイトのリンクを含みます": "※ Có chứa liên kết tiếp thị liên kết Rakuten"
     },
     "zh_CN": {
       "楽天 ￥{p}{via}": "乐天 ¥{p}{via}",
@@ -925,7 +929,8 @@
       "一致する商品が見つかりませんでした{via}": "未找到匹配的商品{via}",
       "商品名": "商品名称",
       "楽天の商品情報を取得中…": "正在获取乐天商品信息…",
-      "※ Amazonアソシエイトのリンクを含みます": "※ 含亚马逊联盟链接"
+      "※ Amazonアソシエイトのリンクを含みます": "※ 含亚马逊联盟链接",
+      "※ 楽天アフィリエイトのリンクを含みます": "※ 含乐天联盟链接"
     },
     "zh_TW": {
       "楽天 ￥{p}{via}": "樂天 ¥{p}{via}",
@@ -1110,7 +1115,8 @@
       "一致する商品が見つかりませんでした{via}": "找不到相符的商品{via}",
       "商品名": "商品名稱",
       "楽天の商品情報を取得中…": "正在取得樂天商品資訊…",
-      "※ Amazonアソシエイトのリンクを含みます": "※ 含亞馬遜聯盟連結"
+      "※ Amazonアソシエイトのリンクを含みます": "※ 含亞馬遜聯盟連結",
+      "※ 楽天アフィリエイトのリンクを含みます": "※ 含樂天聯盟連結"
     }
   };
 })();

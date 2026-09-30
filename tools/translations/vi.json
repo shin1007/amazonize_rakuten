@@ -181,5 +181,6 @@
   "一致する商品が見つかりませんでした{via}": "Không tìm thấy sản phẩm phù hợp{via}",
   "商品名": "Tên sản phẩm",
   "楽天の商品情報を取得中…": "Đang tải thông tin sản phẩm Rakuten…",
-  "※ Amazonアソシエイトのリンクを含みます": "※ Có chứa liên kết Amazon Associates"
+  "※ Amazonアソシエイトのリンクを含みます": "※ Có chứa liên kết Amazon Associates",
+  "※ 楽天アフィリエイトのリンクを含みます": "※ Có chứa liên kết tiếp thị liên kết Rakuten"
 }
