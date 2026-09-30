@@ -28,6 +28,14 @@
         return row;
     };
 
+    // 楽天リンクは開発者のアフィリエイトID付き。その旨の小さな注記（取得中から同じ枠を確保する）
+    const disclosure = () => {
+        const el = document.createElement('div');
+        Object.assign(el.style, { fontSize: '10px', color: '#8c8c8c', marginTop: '2px' });
+        el.textContent = AZR.t('※ 楽天アフィリエイトのリンクを含みます');
+        return el;
+    };
+
     // 価格の下に置く。価格が見つからなければタイトルの後ろ
     const place = (wrap) => {
         const price = findPrice();
@@ -41,5 +49,5 @@
         if (anchor) anchor.insertAdjacentElement('afterend', wrap);
     };
 
-    AZR.slot = { findPrice, rowStyle, pulse, newWrap, loadingRow, place };
+    AZR.slot = { findPrice, rowStyle, pulse, newWrap, loadingRow, disclosure, place };
 })();

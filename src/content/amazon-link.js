@@ -260,10 +260,7 @@
             wrap.appendChild(row);
         }
         // 楽天へのリンクは開発者のアフィリエイトID付き。その旨を小さく添える
-        const pr = document.createElement('div');
-        Object.assign(pr.style, { fontSize: '10px', color: '#8c8c8c', marginTop: '2px' });
-        pr.textContent = tr('※ 楽天アフィリエイトのリンクを含みます');
-        wrap.appendChild(pr);
+        wrap.appendChild(AZR.slot.disclosure());
 
         AZR.slot.place(wrap);
     };
