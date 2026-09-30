@@ -1,8 +1,12 @@
 /* Amazonize Rakuten - Amazonの商品ページに、楽天の同じ商品へのリンクと価格を出す
  * （旧「楽天比較リンク for Amazon」を統合したもの。検索は service worker 経由） */
 (async () => {
-    if (!document.getElementById('productTitle')) return;
     const AZR = (window.AZR = window.AZR || {});
+    // 商品ページのURLなのに商品名が無い = ページの形が変わった（この先の機能はすべて商品名を手がかりにする）
+    if (/\/(?:dp|gp\/product)\/[A-Z0-9]{10}/.test(location.pathname)) {
+        AZR.health.check('amazon.productTitle', document.getElementById('productTitle'), '#productTitle が無い');
+    }
+    if (!document.getElementById('productTitle')) return;
     await AZR.loadSettings();
     if (!AZR.settings.enabled || !AZR.settings.rakutenLink) return;
   const tr = AZR.t;
@@ -65,7 +69,12 @@
     candidates.push({ type: null, value: titleKw });
 
     const { findPrice } = AZR.slot;
-    const amazonPrice = Number((findPrice()?.querySelector('.a-offscreen')?.textContent || '').replace(/[^\d]/g, '')) || 0;
+    // 読み上げ用の .a-offscreen が空の形がある（priceToPay。見えている "￥3,982" の方にだけ入る）ので、無ければ表示の文字から読む
+    const priceEl = findPrice();
+    const priceText = priceEl?.querySelector('.a-offscreen')?.textContent.trim() || priceEl?.innerText || '';
+    const amazonPrice = Number((priceText.match(/[\d,]+/)?.[0] || '').replace(/,/g, '')) || 0;
+    // カートに入れられる（＝売っている）のに価格が読めない
+    if (document.getElementById('add-to-cart-button')) AZR.health.check('amazon.price', amazonPrice, `価格を読めない（"${priceText.slice(0, 30)}"）`);
 
     // 楽天APIで検索（background経由）
     // 検索結果ページ: 中継サーバーが返すアフィリエイト付きURLを優先

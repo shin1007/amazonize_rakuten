@@ -40,6 +40,7 @@
     const place = (wrap) => {
         const price = findPrice();
         const priceRow = price && price.closest('div');
+        if (document.getElementById('add-to-cart-button')) AZR.health?.check('amazon.slotPlace', priceRow, '価格の欄が見つからず、商品名の下に置いた');
         if (priceRow) {
             Object.assign(wrap.style, { margin: '6px 0 0' });
             priceRow.appendChild(wrap);

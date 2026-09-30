@@ -2,6 +2,9 @@
 
 // 商品名の正規化と突き合わせ。商品ページと同じ判断を使いたいので、同じファイルを読む。
 importScripts("/src/lib/amazon-match.js");
+// セルフチェック（開発版だけ）。記録とバッジはこのファイルの末尾
+importScripts("/src/lib/health.js");
+const health = AZR.health;
 
 // content script から chrome.storage.session を読めるようにする
 chrome.runtime.onInstalled.addListener(async () => {
@@ -75,6 +78,8 @@ async function acquireByApi(key) {
   if (res.status === 401) return { ok: false, status: 'login' };
 
   const data = await res.json().catch(() => null);
+  const expected = res.ok || [400, 404, 410].includes(res.status);
+  health.check('rakuten.couponAcquireApi', expected, `HTTP ${res.status}`);
   if (res.ok) return { ok: true, status: data?.is_already_acquired ? 'already' : 'acquired' };
   if ([400, 404, 410].includes(res.status)) {
     return { ok: false, status: 'rejected', reason: typeof data?.reason === 'string' ? data.reason : '' };
@@ -85,8 +90,12 @@ async function acquireByApi(key) {
 /** クーポンの内容。認証不要で、名前・割引・獲得済みかどうかが取れる。 */
 async function couponDetails(key) {
   const res = await fetch(`${COUPON_API}${encodeURIComponent(key)}/details`, { credentials: 'include' });
-  if (!res.ok) return null;
+  if (!res.ok) {
+    health.check('rakuten.couponDetailsApi', false, `HTTP ${res.status}`);
+    return null;
+  }
   const d = await res.json();
+  health.check('rakuten.couponDetailsApi', typeof d?.coupon_name === 'string', '応答に coupon_name が無い');
   return {
     name: d?.coupon_name || '',
     discountType: d?.discount_type ?? null,
@@ -167,8 +176,12 @@ async function floatingCoupons({ itemId, shopId, price, hasSubscription }) {
     u.searchParams.set('otherCondFilters', '[{"typeCode": "RS002","startValue": "1","isExcluded": true}]');
   }
   const data = await fetchJsonp(u.href);
-  if (!data) return null;
+  if (!data) {
+    health.check('rakuten.floatingCouponApi', false, 'JSONPの応答を読めない');
+    return null;
+  }
   if (Number(data.code) === 2) return { login: true, coupons: [] };
+  health.check('rakuten.floatingCouponApi', Array.isArray(data.items), `items が無い（code: ${data.code}）`);
   const list = Array.isArray(data.items) && Array.isArray(data.items[0]?.coupons) ? data.items[0].coupons : [];
   return {
     login: false,
@@ -241,11 +254,15 @@ async function reviewRatings(shopId, itemId) {
     ? `https://review.rakuten.co.jp/item/1/${key}/1.1/`
     : `https://review.rakuten.co.jp/shop/4/${key}/1.1/`;
   const res = await fetch(url, { credentials: 'omit' });
-  if (!res.ok) return null;
+  if (!res.ok) {
+    health.check('rakuten.reviewPage', false, `HTTP ${res.status} ${url}`);
+    return null;
+  }
   const html = await res.text();
   const item = itemId ? parseRating(html, 'itemInfo') : null;
   const shop = parseRating(html, 'shopInfo');
   // どちらも見つからない = ページの形が変わった。覚えずに次も読みに行く。
+  health.check('rakuten.reviewPage', item !== undefined || shop !== undefined, `reviewRatings が見つからない ${url}`);
   if (item === undefined && shop === undefined) return null;
   const ratings = { item: item ?? null, shop: shop ?? null };
 
@@ -425,6 +442,7 @@ async function amazonLookupRaw({ title, jan, model }) {
 
   const searchUrl = amazonSearchUrl(query);
   let got = await amazonFetch(searchUrl);
+  health.check('amazon.searchFetch', got.status === 'ok', got.status);
   if (got.status !== 'ok') return { status: got.status, query, searchUrl };
 
   /*
@@ -441,6 +459,10 @@ async function amazonLookupRaw({ title, jan, model }) {
     if (got.status !== 'ok') return { status: got.status, query, searchUrl };
     items = parseAmazonSearch(got.html);
     if (!items.length && !hasAnyResultFrame(got.html)) return { status: 'none', empty: true, query, searchUrl };
+  }
+  // 「結果」の欄に商品の枠があるのに1件も読めない = 枠の中の形（価格・商品名）が変わった
+  if (items.length || hasAnyResultFrame(mainResults(got.html))) {
+    health.check('amazon.searchParse', items.length > 0, `商品の枠はあるのに読めない（${query}）`);
   }
   if (!items.length) return { status: 'none', query, searchUrl };
 
@@ -801,9 +823,15 @@ const ENTRY_CODE = /^\/[\w./-]{1,120}$/;
 
 async function ouboCall(pathAndQuery) {
   const res = await fetch(OUBO_API + pathAndQuery, { credentials: 'include', cache: 'no-store' });
-  if (!res.ok) return null;
+  if (res.status === 403) return null; // 未ログイン
+  if (!res.ok) {
+    health.check('rakuten.entryApi', false, `HTTP ${res.status}`);
+    return null;
+  }
   const data = await res.json().catch(() => null);
-  return data?.message === 'ok' && Array.isArray(data.results) ? data.results : null;
+  const ok = data?.message === 'ok' && Array.isArray(data.results);
+  health.check('rakuten.entryApi', ok, `想定外の応答: ${JSON.stringify(data)?.slice(0, 120)}`);
+  return ok ? data.results : null;
 }
 
 /** コードごとの状態。1つでも取れなければ null */
@@ -882,6 +910,7 @@ async function eachLimited(list, limit, worker) {
 
 /** 実行中はアイコンに残りの件数を出す。ポップアップを閉じても進み具合が分かるように。 */
 function setBadge(text) {
+  if (!text) return updateHealthBadge(); // 終わったらセルフチェックの件数に戻す
   chrome.action.setBadgeBackgroundColor({ color: '#f08804' }).catch(() => {});
   chrome.action.setBadgeText({ text }).catch(() => {});
 }
@@ -903,8 +932,8 @@ async function runScan(phase, job) {
   }
   // 結果を書いてから running を下ろす。ポップアップは running が下りたのを見て結果を読みに来る。
   await chrome.storage.session.set({ azrScanResult: { ...result, finishedAt: Date.now() } }).catch(() => {});
-  setBadge('');
   scanState = { ...scanState, running: false, phase: '' };
+  setBadge('');
   return result;
 }
 
@@ -983,6 +1012,7 @@ function scanCampaigns({ entry, extraLinks = [] }) {
       const found = campaignTabFallback ? await runInTab(TOP_PAGE, 'links', false) : null;
       rawLinks = Array.isArray(found?.links) ? found.links : [];
     }
+    health.check('rakuten.topCampaignLinks', rawLinks.length > 0, topHtml == null ? 'トップページを取れない' : 'リンクが1件も無い');
     if (!rawLinks.length) return { ok: false, error: 'トップページからリンクを取れませんでした' };
 
     const urls = [];
@@ -1117,7 +1147,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     }
     floatingCoupons({ itemId, shopId, price: Math.round(price), hasSubscription: Boolean(msg.hasSubscription) })
       .then(sendResponse)
-      .catch((e) => { console.warn('[AZR] フローティングクーポンを取れない:', e); sendResponse(null); });
+      .catch((e) => {
+        console.warn('[AZR] フローティングクーポンを取れない:', e);
+        health.check('rakuten.floatingCouponApi', false, e);
+        sendResponse(null);
+      });
     return true; // 非同期応答
   }
 
@@ -1200,13 +1234,14 @@ const RL_PROXY = 'https://amazon-rakuten-link.shin1007.workers.dev/search';
 async function rlSearch(keyword) {
     const r = await fetch(`${RL_PROXY}?keyword=${encodeURIComponent(keyword)}`, { credentials: 'omit' });
     const j = await r.json().catch(() => ({}));
+    health.check('relay.rakutenSearch', r.ok && Array.isArray(j.items), j.error || `HTTP ${r.status}`);
     if (!r.ok) return { error: j.error || `HTTP ${r.status}`, searchUrl: j.searchUrl };
     return { count: j.count ?? 0, items: j.items || [], searchUrl: j.searchUrl };
 }
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg?.type !== 'azr:rakutenSearch' || typeof msg.keyword !== 'string' || msg.keyword.length < 2) return;
-    rlSearch(msg.keyword).then(sendResponse).catch(e => sendResponse({ error: String(e) }));
+    rlSearch(msg.keyword).then(sendResponse).catch(e => { health.check('relay.rakutenSearch', false, e); sendResponse({ error: String(e) }); });
     return true;
 });
 
@@ -1239,3 +1274,61 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         .catch(() => sendResponse({}));
     return true;
 });
+
+/* セルフチェックの記録（開発版だけ。仕組みは src/lib/health.js） ---------------------
+ * chrome.storage.local の azrHealth に、確認ごとの最後の結果と、起きたことの回数を残す。
+ *   checks[id] = { ok, detail, url, at, okAt, failAt, since, fails }   since: 失敗が続いている起点
+ *   events[id] = { detail, url, at, count, unseen }                   unseen: ポップアップで既読にするまでの回数
+ * 失敗中の確認と、未読の出来事がある数をアイコンのバッジに出す（キャンペーンのスキャン中はスキャンの表示を優先）。
+ */
+const HEALTH_EVENTS_MAX = 100;
+const saveHealthSerially = serialized();
+
+function recordHealth(r) {
+  if (!health.dev || !r?.id) return;
+  return saveHealthSerially(async () => {
+    const { azrHealth: h = { checks: {}, events: {} } } = await chrome.storage.local.get('azrHealth');
+    h.checks ||= {};
+    h.events ||= {};
+    const base = { detail: String(r.detail || '').slice(0, 300), url: String(r.url || '').slice(0, 300), at: r.at || Date.now() };
+    if (r.kind === 'check') {
+      const prev = h.checks[r.id] || {};
+      h.checks[r.id] = r.ok
+        ? { ...prev, ok: true, at: base.at, okAt: base.at, since: null }
+        : { ...prev, ...base, ok: false, failAt: base.at, since: prev.ok === false ? prev.since : base.at, fails: (prev.fails || 0) + 1 };
+    } else {
+      const prev = h.events[r.id] || {};
+      h.events[r.id] = { ...base, count: (prev.count || 0) + 1, unseen: (prev.unseen || 0) + 1 };
+      const ids = Object.keys(h.events);
+      if (ids.length > HEALTH_EVENTS_MAX) {
+        for (const id of ids.sort((a, b) => h.events[a].at - h.events[b].at).slice(0, ids.length - HEALTH_EVENTS_MAX)) delete h.events[id];
+      }
+    }
+    await chrome.storage.local.set({ azrHealth: h });
+  });
+}
+health.setSink(recordHealth);
+
+async function updateHealthBadge() {
+  if (scanState?.running) return;
+  let n = 0;
+  if (health.dev) {
+    const { azrHealth: h } = await chrome.storage.local.get('azrHealth');
+    n = Object.values(h?.checks || {}).filter((c) => c.ok === false).length
+      + Object.values(h?.events || {}).filter((e) => e.unseen > 0).length;
+  }
+  chrome.action.setBadgeBackgroundColor({ color: '#d00' }).catch(() => {});
+  chrome.action.setBadgeText({ text: n ? String(n) : '' }).catch(() => {});
+}
+
+if (health.dev) {
+  chrome.runtime.onMessage.addListener((msg, sender) => {
+    if (msg?.type !== 'azr:health' || !msg.report) return;
+    recordHealth({ ...msg.report, url: msg.report.url || sender.tab?.url || '' });
+  });
+  // ポップアップが既読にした・消したときも、記録が増えたときも、ここでバッジを合わせる
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && changes.azrHealth) updateHealthBadge();
+  });
+  updateHealthBadge();
+}

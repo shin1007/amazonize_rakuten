@@ -462,6 +462,7 @@
       { timeout: VIDEO_WAIT_MS }
     );
     if (!slot.isConnected) return; // 待つあいだに元のページへ戻した
+    AZR.health.check('item.video', player, '[class*="item-pc-movie-"] の video が出てこない');
     if (!player) {
       slot.querySelector('.azr-gallery-video-status').textContent = tr('動画を読み込めませんでした');
       document.documentElement.dataset.azrVideo = 'failed'; // 検証用の目印
@@ -489,6 +490,7 @@
       await AZR.domReady;
       buyboxNode = await waitFor(() => pick(document, SEL.buybox), { timeout: BUYBOX_GRACE_MS });
     }
+    AZR.health.check('item.buybox', buyboxNode, `${SEL.buybox.join(', ')} が無い`);
     if (!buyboxNode) {
       AZR.warn('購入エリアが見つからないため、元のページに戻します');
       return revert();
@@ -503,7 +505,9 @@
     if (!AZR.settings.simplifyItem) return;
 
     const app = readAppData();
-    const base = fromAppData(app) || fromDom();
+    const fromJson = fromAppData(app);
+    AZR.health.check('item.appData', fromJson, app ? 'JSONに itemInfoSku が無い（形が変わった）' : '#item-page-app-data が無い');
+    const base = fromJson || fromDom();
     // JSONで欠けた項目はDOMで補う
     if (!base.title || !base.minPrice || !base.images.length) {
       const dom = fromDom();
@@ -525,6 +529,7 @@
     AZR.itemData = data;
     AZR.log('harvested', data);
 
+    AZR.health.check('item.titlePrice', data.title && data.minPrice, { title: Boolean(data.title), price: Boolean(data.minPrice) });
     if (!data.title || !data.minPrice) {
       AZR.warn('商品名か価格を取得できないため、元のページを表示します');
       return AZR.unhide();
@@ -629,6 +634,7 @@
     }
 
     fetchRatings(data).then((r) => {
+      if (data.shop.id) AZR.health.check('item.ratings', r, 'レビューのページから評価を取れない');
       fillItemRating(root.querySelector('.azr-review'), r?.item);
       fillShopRating(root.querySelector('.azr-shop-rating'), r?.shop);
       document.documentElement.dataset.azrRatings = 'settled'; // 検証用の目印

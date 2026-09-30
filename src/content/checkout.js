@@ -274,6 +274,7 @@
     unsubscribe = null;
 
     const state = await waitForState({ timeout: 10000 });
+    AZR.health.check('checkout.state', state, '10秒待っても届かない（state-bridge.js が状態を読めない）');
     if (!state) {
       AZR.warn('注文確認の状態を受け取れなかった');
       return;
@@ -291,6 +292,7 @@
       busy = true;
       try {
         const r = await applyCoupon(coupon, selectedNow);
+        AZR.health.check('checkout.apply', r.ok, r.reason);
         if (!r.ok) AZR.warn('クーポンを適用できなかった:', r.reason);
         else lastSignature = ''; // 結果を反映するため、次の状態で描き直す
         return r;

@@ -33,8 +33,10 @@
       if (!m.kinds.includes(currentKind)) continue;
       try {
         await m.run();
+        AZR.health.check(`module:${m.name}`, true);
       } catch (e) {
         AZR.warn(`module "${m.name}" failed:`, e);
+        AZR.health.check(`module:${m.name}`, false, e);
       }
     }
   }
