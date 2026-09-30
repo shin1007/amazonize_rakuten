@@ -5,6 +5,8 @@
   "楽天API エラー: {e}": "Kesalahan API Rakuten: {e}",
   "型番": "No. model",
   "型番が一致": "Nomor model cocok",
+  "Amazonの商品情報を取得中…": "Mengambil info produk Amazon…",
+  "型番「{q}」で検索した結果": "Hasil pencarian nomor model \"{q}\"",
   "エントリーしました": "Sudah diikuti",
   "未エントリーのキャンペーンがあります": "Ada kampanye yang belum diikuti",
   "エントリー済みです": "Sudah diikuti sebelumnya",

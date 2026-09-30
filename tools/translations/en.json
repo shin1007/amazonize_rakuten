@@ -5,6 +5,8 @@
   "楽天API エラー: {e}": "Rakuten API error: {e}",
   "型番": "Model no.",
   "型番が一致": "Model no. matches",
+  "Amazonの商品情報を取得中…": "Loading Amazon item info…",
+  "型番「{q}」で検索した結果": "Results for model no. \"{q}\"",
   "エントリーしました": "Entered",
   "未エントリーのキャンペーンがあります": "There are campaigns you haven't entered",
   "エントリー済みです": "Already entered",

@@ -5,6 +5,8 @@
   "楽天API エラー: {e}": "Lỗi API Rakuten: {e}",
   "型番": "Mã model",
   "型番が一致": "Khớp số hiệu model",
+  "Amazonの商品情報を取得中…": "Đang lấy thông tin sản phẩm Amazon…",
+  "型番「{q}」で検索した結果": "Kết quả tìm theo số hiệu model \"{q}\"",
   "エントリーしました": "Đã đăng ký",
   "未エントリーのキャンペーンがあります": "Có chiến dịch chưa đăng ký tham gia",
   "エントリー済みです": "Đã đăng ký từ trước",

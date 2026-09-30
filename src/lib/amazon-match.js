@@ -163,17 +163,39 @@
   const SURE_SCORE = 0.6;
 
   /**
+   * 型番。楽天の商品ページには型番の項目が無いことが多いので、説明文の「型番：XXX」か、商品名の中の
+   * 英数字の型番らしい語から拾う。文字と数字の両方を含む語だけを採り、容量（500ml）・年・規格名は除く。
+   * 説明文の「型番」の表記を優先し、無ければ商品名の中でハイフンを含む語、無ければ最初の語を採る。
+   */
+  const MODEL_LABEL = /(?:メーカー型番|製品型番|型番|型式|品番|モデル(?:名|番号)?|Model(?:\s*(?:No\.?|Number))?)\s*[:：]?\s*([A-Za-z0-9][A-Za-z0-9._/-]{2,28})/i;
+  const MODEL_SKIP = /^(?:\d+(?:\.\d+)?(?:ml|l|g|kg|mg|cm|mm|m|個|枚|本|袋|包|錠|回|pcs|inch)|usb-?c?|spf\d+|pa\++|\d+k|\d+hz|\d+gb|\d+tb|\d+mah|\d+w|\d+v|jan\d*)$/i;
+  const isModelLike = (w) => /[A-Za-z]/.test(w) && /\d/.test(w) && w.length >= 4 && w.length <= 24 && !MODEL_SKIP.test(w) && !isJan(w);
+
+  function extractModel(title, descriptions = []) {
+    const text = descriptions.map((h) => toHalf(String(h || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' '))).join(' ');
+    const labeled = text.match(MODEL_LABEL);
+    if (labeled && isModelLike(labeled[1].replace(/[._/]+$/, ''))) return labeled[1].replace(/[._/]+$/, '');
+    const words = (toHalf(stripShout(String(title || ''))).match(/[A-Za-z0-9][A-Za-z0-9-]{2,22}[A-Za-z0-9]/g) || []).filter(isModelLike);
+    return words.find((w) => w.includes('-')) || words[0] || '';
+  }
+
+  /** 商品名に型番がそのまま入っているか（ハイフン・空白・大文字小文字の違いは無視する） */
+  const squash = (s) => toHalf(s).toLowerCase().replace(/[\s-]+/g, '');
+  const titleHasModel = (model, title) => Boolean(model) && squash(title).includes(squash(model));
+
+  /**
    * 商品ページに出す見出し。何を根拠に当てたのかを、そのまま言葉にする。
    *
    * JANで引いたものは「似た商品」ではなく、同じJANコードの商品そのもの。言い切ってよい。
    * 名前で引いたものは当てずっぽうが混じるので、重なりが薄いか、楽天側が選択肢で
    * 値段の変わる商品（どの選択肢と突き合わせたのか決められない）なら「参考」を付ける。
    */
-  function matchLabel({ byJan = false, score = 0, variants = 0 } = {}) {
+  function matchLabel({ byJan = false, byModel = false, score = 0, variants = 0 } = {}) {
+    if (byModel) return { label: 'の同じ商品', badge: '型番一致', sure: true };
     if (byJan) return { label: 'の同じ商品', badge: 'JANコード一致', sure: true };
     if (score >= SURE_SCORE && !variants) return { label: 'での価格', badge: null, sure: true };
     return { label: 'の似た商品', badge: '参考', sure: false };
   }
 
-  AZR.amazon = { normalizeTitle, titleTokens, sizeTokens, buildQuery, scoreMatch, isJan, matchLabel };
+  AZR.amazon = { normalizeTitle, titleTokens, sizeTokens, buildQuery, scoreMatch, isJan, matchLabel, extractModel, titleHasModel };
 })();
