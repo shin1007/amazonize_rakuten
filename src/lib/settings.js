@@ -8,7 +8,8 @@
     cartTotal: true,          // カゴの合計金額パネル
     amazonPrice: true,        // 商品ページにAmazonでの価格を出す
     rakutenLink: true,        // Amazonの商品ページに、楽天の同じ商品へのリンクと価格を出す
-    couponList: true,         // 商品ページにクーポンを並べる（その場で獲得できる）
+    nesagePromo: true,        // Amazonのほしい物リストで、値下げ通知サービス nesage.party への登録を案内する
+    couponList: true,        // 商品ページにクーポンを並べる（その場で獲得できる）
     couponAutoGrab: true,     // 商品ページを開いた時点で、押さずに獲得する
     couponAutoApply: true,    // 購入手続きで最良クーポンを自動適用
     couponAutoApplyConfirm: false, // 自動適用の前に確認する（既定は確認なしで最良に切り替える）

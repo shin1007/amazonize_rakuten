@@ -185,5 +185,12 @@
   "商品名": "Item name",
   "楽天の商品情報を取得中…": "Loading Rakuten item info…",
   "※ Amazonアソシエイトのリンクを含みます": "* Includes Amazon Associates links",
-  "※ 楽天アフィリエイトのリンクを含みます": "* Includes Rakuten Affiliate links"
+  "※ 楽天アフィリエイトのリンクを含みます": "* Includes Rakuten Affiliate links",
+  "Amazonのほしい物リストで値下げ通知（nesage.party）を案内する": "Suggest price-drop alerts (nesage.party) on Amazon wish lists",
+  "ほしい物リストに追加しました": "Added to your wish list",
+  "このリストの値下げをメールで受け取る": "Get price-drop emails for this list",
+  "nesage.party に登録すると、リストの商品が値下げされたときに毎朝メールでお知らせします（無料）。": "Sign up on nesage.party and get a morning email when items on your list drop in price (free, Japanese only).",
+  "nesage.party で値下げ通知を受け取る": "Get price-drop alerts on nesage.party",
+  "リストを「公開」か「共有」にすると登録できます。": "Set the list to \"Public\" or \"Shared\" to sign up.",
+  "今後表示しない": "Don't show again"
 }

@@ -185,5 +185,12 @@
   "商品名": "Nama produk",
   "楽天の商品情報を取得中…": "Memuat info produk Rakuten…",
   "※ Amazonアソシエイトのリンクを含みます": "※ Berisi tautan Amazon Associates",
-  "※ 楽天アフィリエイトのリンクを含みます": "※ Berisi tautan afiliasi Rakuten"
+  "※ 楽天アフィリエイトのリンクを含みます": "※ Berisi tautan afiliasi Rakuten",
+  "Amazonのほしい物リストで値下げ通知（nesage.party）を案内する": "Sarankan notifikasi turun harga (nesage.party) di daftar keinginan Amazon",
+  "ほしい物リストに追加しました": "Ditambahkan ke daftar keinginan",
+  "このリストの値下げをメールで受け取る": "Terima email saat harga di daftar ini turun",
+  "nesage.party に登録すると、リストの商品が値下げされたときに毎朝メールでお知らせします（無料）。": "Daftar di nesage.party untuk menerima email setiap pagi saat harga barang di daftar Anda turun (gratis, hanya bahasa Jepang).",
+  "nesage.party で値下げ通知を受け取る": "Terima notifikasi turun harga di nesage.party",
+  "リストを「公開」か「共有」にすると登録できます。": "Atur daftar menjadi \"Publik\" atau \"Dibagikan\" untuk mendaftar.",
+  "今後表示しない": "Jangan tampilkan lagi"
 }

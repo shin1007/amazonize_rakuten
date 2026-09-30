@@ -185,5 +185,12 @@
   "商品名": "Tên sản phẩm",
   "楽天の商品情報を取得中…": "Đang tải thông tin sản phẩm Rakuten…",
   "※ Amazonアソシエイトのリンクを含みます": "※ Có chứa liên kết Amazon Associates",
-  "※ 楽天アフィリエイトのリンクを含みます": "※ Có chứa liên kết tiếp thị liên kết Rakuten"
+  "※ 楽天アフィリエイトのリンクを含みます": "※ Có chứa liên kết tiếp thị liên kết Rakuten",
+  "Amazonのほしい物リストで値下げ通知（nesage.party）を案内する": "Gợi ý thông báo giảm giá (nesage.party) trên danh sách mong muốn của Amazon",
+  "ほしい物リストに追加しました": "Đã thêm vào danh sách mong muốn",
+  "このリストの値下げをメールで受け取る": "Nhận email khi sản phẩm trong danh sách này giảm giá",
+  "nesage.party に登録すると、リストの商品が値下げされたときに毎朝メールでお知らせします（無料）。": "Đăng ký nesage.party để nhận email mỗi sáng khi sản phẩm trong danh sách giảm giá (miễn phí, chỉ tiếng Nhật).",
+  "nesage.party で値下げ通知を受け取る": "Nhận thông báo giảm giá trên nesage.party",
+  "リストを「公開」か「共有」にすると登録できます。": "Đặt danh sách ở chế độ \"Công khai\" hoặc \"Chia sẻ\" để đăng ký.",
+  "今後表示しない": "Không hiện lại"
 }
