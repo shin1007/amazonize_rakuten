@@ -4,6 +4,9 @@
   "楽天市場で探す{via}": "Cari di Rakuten{via}",
   "楽天API エラー: {e}": "Kesalahan API Rakuten: {e}",
   "型番": "No. model",
+  "型番が一致": "Nomor model cocok",
+  "Amazonの商品情報を取得中…": "Mengambil info produk Amazon…",
+  "型番「{q}」で検索した結果": "Hasil pencarian nomor model \"{q}\"",
   "エントリーしました": "Sudah diikuti",
   "未エントリーのキャンペーンがあります": "Ada kampanye yang belum diikuti",
   "エントリー済みです": "Sudah diikuti sebelumnya",
@@ -181,5 +184,6 @@
   "一致する商品が見つかりませんでした{via}": "Tidak ada produk yang cocok{via}",
   "商品名": "Nama produk",
   "楽天の商品情報を取得中…": "Memuat info produk Rakuten…",
-  "※ Amazonアソシエイトのリンクを含みます": "※ Berisi tautan Amazon Associates"
+  "※ Amazonアソシエイトのリンクを含みます": "※ Berisi tautan Amazon Associates",
+  "※ 楽天アフィリエイトのリンクを含みます": "※ Berisi tautan afiliasi Rakuten"
 }

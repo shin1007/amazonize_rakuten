@@ -4,6 +4,9 @@
   "楽天市場で探す{via}": "Tìm trên Rakuten{via}",
   "楽天API エラー: {e}": "Lỗi API Rakuten: {e}",
   "型番": "Mã model",
+  "型番が一致": "Khớp số hiệu model",
+  "Amazonの商品情報を取得中…": "Đang lấy thông tin sản phẩm Amazon…",
+  "型番「{q}」で検索した結果": "Kết quả tìm theo số hiệu model \"{q}\"",
   "エントリーしました": "Đã đăng ký",
   "未エントリーのキャンペーンがあります": "Có chiến dịch chưa đăng ký tham gia",
   "エントリー済みです": "Đã đăng ký từ trước",
@@ -181,5 +184,6 @@
   "一致する商品が見つかりませんでした{via}": "Không tìm thấy sản phẩm phù hợp{via}",
   "商品名": "Tên sản phẩm",
   "楽天の商品情報を取得中…": "Đang tải thông tin sản phẩm Rakuten…",
-  "※ Amazonアソシエイトのリンクを含みます": "※ Có chứa liên kết Amazon Associates"
+  "※ Amazonアソシエイトのリンクを含みます": "※ Có chứa liên kết Amazon Associates",
+  "※ 楽天アフィリエイトのリンクを含みます": "※ Có chứa liên kết tiếp thị liên kết Rakuten"
 }

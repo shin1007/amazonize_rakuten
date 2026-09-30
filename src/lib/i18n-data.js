@@ -8,6 +8,9 @@
       "楽天市場で探す{via}": "Search on Rakuten{via}",
       "楽天API エラー: {e}": "Rakuten API error: {e}",
       "型番": "Model no.",
+      "型番が一致": "Model no. matches",
+      "Amazonの商品情報を取得中…": "Loading Amazon item info…",
+      "型番「{q}」で検索した結果": "Results for model no. \"{q}\"",
       "エントリーしました": "Entered",
       "未エントリーのキャンペーンがあります": "There are campaigns you haven't entered",
       "エントリー済みです": "Already entered",
@@ -185,7 +188,8 @@
       "一致する商品が見つかりませんでした{via}": "No matching item found{via}",
       "商品名": "Item name",
       "楽天の商品情報を取得中…": "Loading Rakuten item info…",
-      "※ Amazonアソシエイトのリンクを含みます": "* Includes Amazon Associates links"
+      "※ Amazonアソシエイトのリンクを含みます": "* Includes Amazon Associates links",
+      "※ 楽天アフィリエイトのリンクを含みます": "* Includes Rakuten Affiliate links"
     },
     "id": {
       "楽天 ￥{p}{via}": "Rakuten ¥{p}{via}",
@@ -193,6 +197,9 @@
       "楽天市場で探す{via}": "Cari di Rakuten{via}",
       "楽天API エラー: {e}": "Kesalahan API Rakuten: {e}",
       "型番": "No. model",
+      "型番が一致": "Nomor model cocok",
+      "Amazonの商品情報を取得中…": "Mengambil info produk Amazon…",
+      "型番「{q}」で検索した結果": "Hasil pencarian nomor model \"{q}\"",
       "エントリーしました": "Sudah diikuti",
       "未エントリーのキャンペーンがあります": "Ada kampanye yang belum diikuti",
       "エントリー済みです": "Sudah diikuti sebelumnya",
@@ -370,7 +377,8 @@
       "一致する商品が見つかりませんでした{via}": "Tidak ada produk yang cocok{via}",
       "商品名": "Nama produk",
       "楽天の商品情報を取得中…": "Memuat info produk Rakuten…",
-      "※ Amazonアソシエイトのリンクを含みます": "※ Berisi tautan Amazon Associates"
+      "※ Amazonアソシエイトのリンクを含みます": "※ Berisi tautan Amazon Associates",
+      "※ 楽天アフィリエイトのリンクを含みます": "※ Berisi tautan afiliasi Rakuten"
     },
     "ko": {
       "楽天 ￥{p}{via}": "라쿠텐 ¥{p}{via}",
@@ -378,6 +386,9 @@
       "楽天市場で探す{via}": "라쿠텐 이치바에서 찾기{via}",
       "楽天API エラー: {e}": "라쿠텐 API 오류: {e}",
       "型番": "모델 번호",
+      "型番が一致": "모델 번호 일치",
+      "Amazonの商品情報を取得中…": "Amazon 상품 정보를 가져오는 중…",
+      "型番「{q}」で検索した結果": "모델 번호 \"{q}\"(으)로 검색한 결과",
       "エントリーしました": "응모했습니다",
       "未エントリーのキャンペーンがあります": "아직 응모하지 않은 캠페인이 있습니다",
       "エントリー済みです": "이미 응모했습니다",
@@ -555,7 +566,8 @@
       "一致する商品が見つかりませんでした{via}": "일치하는 상품을 찾지 못했습니다{via}",
       "商品名": "상품명",
       "楽天の商品情報を取得中…": "라쿠텐 상품 정보를 불러오는 중…",
-      "※ Amazonアソシエイトのリンクを含みます": "※ 아마존 어소시에이트 링크를 포함합니다"
+      "※ Amazonアソシエイトのリンクを含みます": "※ 아마존 어소시에이트 링크를 포함합니다",
+      "※ 楽天アフィリエイトのリンクを含みます": "※ 라쿠텐 제휴(어필리에이트) 링크를 포함합니다"
     },
     "vi": {
       "楽天 ￥{p}{via}": "Rakuten ¥{p}{via}",
@@ -563,6 +575,9 @@
       "楽天市場で探す{via}": "Tìm trên Rakuten{via}",
       "楽天API エラー: {e}": "Lỗi API Rakuten: {e}",
       "型番": "Mã model",
+      "型番が一致": "Khớp số hiệu model",
+      "Amazonの商品情報を取得中…": "Đang lấy thông tin sản phẩm Amazon…",
+      "型番「{q}」で検索した結果": "Kết quả tìm theo số hiệu model \"{q}\"",
       "エントリーしました": "Đã đăng ký",
       "未エントリーのキャンペーンがあります": "Có chiến dịch chưa đăng ký tham gia",
       "エントリー済みです": "Đã đăng ký từ trước",
@@ -740,7 +755,8 @@
       "一致する商品が見つかりませんでした{via}": "Không tìm thấy sản phẩm phù hợp{via}",
       "商品名": "Tên sản phẩm",
       "楽天の商品情報を取得中…": "Đang tải thông tin sản phẩm Rakuten…",
-      "※ Amazonアソシエイトのリンクを含みます": "※ Có chứa liên kết Amazon Associates"
+      "※ Amazonアソシエイトのリンクを含みます": "※ Có chứa liên kết Amazon Associates",
+      "※ 楽天アフィリエイトのリンクを含みます": "※ Có chứa liên kết tiếp thị liên kết Rakuten"
     },
     "zh_CN": {
       "楽天 ￥{p}{via}": "乐天 ¥{p}{via}",
@@ -748,6 +764,9 @@
       "楽天市場で探す{via}": "在乐天市场搜索{via}",
       "楽天API エラー: {e}": "乐天API错误：{e}",
       "型番": "型号",
+      "型番が一致": "型号一致",
+      "Amazonの商品情報を取得中…": "正在获取 Amazon 商品信息…",
+      "型番「{q}」で検索した結果": "按型号“{q}”搜索的结果",
       "エントリーしました": "已报名",
       "未エントリーのキャンペーンがあります": "还有尚未报名的活动",
       "エントリー済みです": "已报名",
@@ -925,7 +944,8 @@
       "一致する商品が見つかりませんでした{via}": "未找到匹配的商品{via}",
       "商品名": "商品名称",
       "楽天の商品情報を取得中…": "正在获取乐天商品信息…",
-      "※ Amazonアソシエイトのリンクを含みます": "※ 含亚马逊联盟链接"
+      "※ Amazonアソシエイトのリンクを含みます": "※ 含亚马逊联盟链接",
+      "※ 楽天アフィリエイトのリンクを含みます": "※ 含乐天联盟链接"
     },
     "zh_TW": {
       "楽天 ￥{p}{via}": "樂天 ¥{p}{via}",
@@ -933,6 +953,9 @@
       "楽天市場で探す{via}": "在樂天市場搜尋{via}",
       "楽天API エラー: {e}": "樂天API錯誤：{e}",
       "型番": "型號",
+      "型番が一致": "型號一致",
+      "Amazonの商品情報を取得中…": "正在取得 Amazon 商品資訊…",
+      "型番「{q}」で検索した結果": "以型號「{q}」搜尋的結果",
       "エントリーしました": "已報名",
       "未エントリーのキャンペーンがあります": "還有尚未報名的活動",
       "エントリー済みです": "已報名",
@@ -1110,7 +1133,8 @@
       "一致する商品が見つかりませんでした{via}": "找不到相符的商品{via}",
       "商品名": "商品名稱",
       "楽天の商品情報を取得中…": "正在取得樂天商品資訊…",
-      "※ Amazonアソシエイトのリンクを含みます": "※ 含亞馬遜聯盟連結"
+      "※ Amazonアソシエイトのリンクを含みます": "※ 含亞馬遜聯盟連結",
+      "※ 楽天アフィリエイトのリンクを含みます": "※ 含樂天聯盟連結"
     }
   };
 })();

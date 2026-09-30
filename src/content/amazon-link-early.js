@@ -4,14 +4,14 @@
     const AZR = (window.AZR = window.AZR || {});
     await AZR.loadSettings();
     if (!AZR.settings.enabled || !AZR.settings.rakutenLink) return;
-    const { findPrice, newWrap, loadingRow, place } = AZR.slot;
+    const { findPrice, newWrap, loadingRow, disclosure, place } = AZR.slot;
 
     const ready = () => document.getElementById('productTitle') && findPrice();
     const put = () => {
         if (document.getElementById('rakuten-link-btn') || !document.getElementById('productTitle')) return;
         const wrap = newWrap();
         const text = AZR.t('楽天の商品情報を取得中…');
-        wrap.append(loadingRow(text), loadingRow(text));
+        wrap.append(loadingRow(text), loadingRow(text), disclosure());
         place(wrap);
     };
 

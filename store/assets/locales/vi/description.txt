@@ -49,4 +49,5 @@ Bật hoặc tắt từng tính năng từ biểu tượng trên thanh công c�
 ■ Lưu ý
 ・Tiện ích này do cá nhân phát triển và không liên quan đến Rakuten Group, Inc., Amazon.com, Inc. hay các công ty liên kết của họ
 ・Các liên kết tới Amazon.co.jp có gắn thẻ Amazon Associates; nhà phát triển là thành viên của Chương trình Amazon Associates và nhận thu nhập từ các giao dịch mua đủ điều kiện. Khi bấm liên kết, bạn sẽ qua một trang chuyển tiếp do nhà phát triển vận hành (nesage.party) rồi tự động chuyển sang Amazon.co.jp. Giá và thông tin sản phẩm không bị ảnh hưởng
+・Các liên kết tới Rakuten Ichiba hiển thị trên trang sản phẩm Amazon có kèm ID tiếp thị liên kết Rakuten của nhà phát triển. Khi nhấp vào, Rakuten Group có thể đặt cookie để đo lường kết quả. Giá và thông tin sản phẩm không bị ảnh hưởng
 ・Nếu Rakuten Ichiba thay đổi cấu trúc trang, một số tính năng có thể ngừng hoạt động. Khi đó hãy tắt tính năng tương ứng trong cài đặt để trở về giao diện gốc

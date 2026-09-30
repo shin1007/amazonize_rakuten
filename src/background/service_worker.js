@@ -417,9 +417,10 @@ async function amazonLookup(args) {
   return r;
 }
 
-async function amazonLookupRaw({ title, jan }) {
+async function amazonLookupRaw({ title, jan, model }) {
   const useJan = AZR.amazon.isJan(jan);
-  const query = useJan ? String(jan) : AZR.amazon.buildQuery(title);
+  const useModel = !useJan && Boolean(model);
+  const query = useJan ? String(jan) : useModel ? String(model) : AZR.amazon.buildQuery(title);
   if (!query) return { status: 'none', query: '', searchUrl: null };
 
   const searchUrl = amazonSearchUrl(query);
@@ -452,6 +453,17 @@ async function amazonLookupRaw({ title, jan }) {
     };
   }
 
+  if (useModel) {
+    // 型番で引いたときは、商品名に型番がそのまま入っているものだけが同じ商品。無ければ名前の重なりで選ぶ。
+    let hit = null;
+    for (const it of items) {
+      if (!AZR.amazon.titleHasModel(model, it.title)) continue;
+      const score = AZR.amazon.scoreMatch(title, it.title);
+      if (!hit || score > hit.score) hit = { ...it, score };
+    }
+    if (hit) return { status: 'ok', query, searchUrl, byModel: true, item: hit };
+  }
+
   // 名前で引いたときは、商品名がいちばん重なるものを選ぶ（先頭が一番近いとは限らない）
   let best = null;
   for (const it of items) {
@@ -463,15 +475,15 @@ async function amazonLookupRaw({ title, jan }) {
 }
 
 /** 価格は日単位で動くが、同じ商品ページを開き直すたびに読みに行く必要は無い。 */
-async function amazonPrice({ title, jan }) {
+async function amazonPrice({ title, jan, model }) {
   // v2: リンクを中継ページ経由にした（v1 のキャッシュには、Amazon直リンクが入っている）
-  const key = AZR.amazon.isJan(jan) ? `v2:jan:${jan}` : `v2:q:${AZR.amazon.buildQuery(title)}`;
+  const key = AZR.amazon.isJan(jan) ? `v2:jan:${jan}` : model ? `v2:m:${model}:${AZR.amazon.buildQuery(title)}` : `v2:q:${AZR.amazon.buildQuery(title)}`;
   const { azrAmazon: cache = {} } = await chrome.storage.local.get('azrAmazon');
   const now = Date.now();
   const hit = cache[key];
   if (hit && now - hit.at < AMAZON_TTL_MS) return { ...hit.result, cached: true };
 
-  const result = await amazonLookup({ title, jan });
+  const result = await amazonLookup({ title, jan, model });
   // 弾かれた・通信に失敗した・空で返った、は覚えない（次に開いたときは読みに行く）
   if ((result.status === 'ok' || result.status === 'none') && !result.empty) {
     for (const [k, v] of Object.entries(cache)) if (now - v.at >= AMAZON_TTL_MS) delete cache[k];
@@ -1141,12 +1153,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg?.type === 'azr:amazonPrice') {
     const title = String(msg.title || '');
     const jan = msg.jan ? String(msg.jan) : '';
+    const model = msg.model ? String(msg.model) : '';
     if (!title) {
       sendResponse({ status: 'error' });
       return false;
     }
     // 読み直しを挟むと30秒近くかかることがある。その間 service worker を止めさせない。
-    holdAwake(() => amazonPrice({ title, jan }))
+    holdAwake(() => amazonPrice({ title, jan, model }))
       .then(sendResponse)
       .catch((e) => { console.warn('[AZR] Amazonの価格を取れない:', e); sendResponse({ status: 'error' }); });
     return true; // 非同期応答
