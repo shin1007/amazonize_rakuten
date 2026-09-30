@@ -61,6 +61,19 @@
     </details>
   </section>
 
+  <!-- 開発版（ストア以外から読み込んだとき）だけ出す。仕組みは src/lib/health.js -->
+  <section id="health" hidden>
+    <h2>サイト変化チェック（開発版）</h2>
+    <p class="status" id="healthSummary"></p>
+    <ul id="healthList" class="campaign-list"></ul>
+    <details class="campaigns">
+      <summary>問題なし <span id="healthOkCount"></span></summary>
+      <ul id="healthOkList" class="campaign-list"></ul>
+    </details>
+    <button id="healthSeen">警告を既読にする</button>
+    <button id="healthClear">記録を消す</button>
+  </section>
+
   <footer>
     <label class="lang">言語 <select id="language"></select></label>
     <label class="sub"><input type="checkbox" data-key="debug"> デバッグログ</label>
@@ -68,6 +81,7 @@
   </footer>
 
   <script src="../lib/settings.js"></script>
+  <script src="../lib/health.js"></script>
   <script src="../lib/i18n-data.js"></script>
   <script src="../lib/i18n.js"></script>
   <script src="popup.js"></script>

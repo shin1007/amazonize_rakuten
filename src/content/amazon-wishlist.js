@@ -64,6 +64,8 @@
             || listIdOf(document.querySelector('link[rel="canonical"]')?.href || '')
             || document.querySelector('input#listId, input[name="listId"]')?.value?.match(/^[A-Z0-9]{8,20}$/i)?.[0]
             || null;
+        // ログインしていれば、既定のリストでもページ内にIDがある（無ければ入力済みにできない）
+        AZR.health.check('amazon.wishlistId', id, 'URLにもページ内（input#listId）にもリストIDが無い');
         show(id, false);
         // 左の一覧で選んでいるリストが非公開なら、公開の設定が要ることを目立たせる
         if (/非公開|Private/i.test(document.querySelector('.wl-list.selected')?.innerText || '')) {
@@ -76,9 +78,25 @@
     // 商品ページ: ほしい物リストのボタンが押されてから少しの間に、追加完了の表示（リストへのリンク付き）が出たら案内する。
     // ボタンの下に出る「次に追加されました: <リスト>」（#atwl-inline。最初からあって、追加すると a-hidden が外れリンク先が入る）と、
     // リストを選んだときのポップオーバーの両方を見る
+    const ARM_MS = 15000;
+    if (document.getElementById('add-to-cart-button')) {
+        AZR.health.expect('amazon.wishlistButton', () => document.querySelector('[id*="wishlist" i]'), { detail: '[id*="wishlist"] の要素が無い' });
+    }
     let armedUntil = 0;
+    let detectedAt = 0;
+    let verdict;
     document.addEventListener('click', (e) => {
-        if (e.target.closest?.('[id*="wishlist" i], [id^="atwl"], [id^="huc-"]')) armedUntil = Date.now() + 15000;
+        if (!e.target.closest?.('[id*="wishlist" i], [id^="atwl"], [id^="huc-"]')) return;
+        const armedAt = Date.now();
+        armedUntil = armedAt + ARM_MS;
+        // 押してから時間が経っても検出できず、画面には Amazon の「追加されました」が出ている = 検出の手がかりが変わった
+        clearTimeout(verdict);
+        verdict = setTimeout(() => {
+            if (detectedAt >= armedAt) return;
+            if (/追加されました|Added to/i.test(document.body.innerText)) {
+                AZR.health.check('amazon.wishlistAdded', false, '「追加されました」は出ているのに、リストへのリンクを見つけられない');
+            }
+        }, ARM_MS);
     }, true);
     // ポップオーバーのリンクは a#huc-list-link のように自分も id が huc- で始まるので、親から探す
     const DONE = '#atwl-inline, .a-popover, [id^="huc-atwl"], [id^="WLHUC"]';
@@ -89,7 +107,10 @@
             const box = a.parentElement?.closest(DONE);
             if (!box || !box.getClientRects().length || !/追加|added/i.test(box.textContent)) continue;
             const id = listIdOf(a.href);
-            if (!id || id === shownFor) continue;
+            if (!id) continue;
+            detectedAt = Date.now();
+            AZR.health.check('amazon.wishlistAdded', true);
+            if (id === shownFor) continue;
             shownFor = id;
             armedUntil = 0;
             show(id, true);

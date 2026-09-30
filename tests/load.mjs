@@ -29,7 +29,7 @@ export function loadAZR(files) {
  *   const sw = loadServiceWorker({ fetch: async () => ({ ok: true, text: async () => html }) });
  *   sw.parseAmazonSearch(html)
  */
-export function loadServiceWorker({ fetch = async () => { throw new Error("fetch されない前提"); }, storage = {} } = {}) {
+export function loadServiceWorker({ fetch = async () => { throw new Error("fetch されない前提"); }, storage = {}, manifest = { update_url: 'https://clients2.google.com/service/update2/crx' } } = {}) {
   const noop = () => {};
   const listener = { addListener: noop };
   const ctx = vm.createContext({
@@ -42,12 +42,14 @@ export function loadServiceWorker({ fetch = async () => { throw new Error("fetch
     URLSearchParams,
     AbortSignal: { timeout: () => null },
     chrome: {
-      runtime: { onInstalled: listener, onMessage: listener, getPlatformInfo: async () => ({}) },
+      // manifest に update_url が無い = 開発版（セルフチェックが動く）
+      runtime: { onInstalled: listener, onMessage: listener, getPlatformInfo: async () => ({}), getManifest: () => manifest },
       tabs: { onUpdated: listener, onRemoved: listener },
-      action: {},
+      action: { setBadgeText: async () => {}, setBadgeBackgroundColor: async () => {} },
       declarativeNetRequest: { updateSessionRules: async () => {} },
       storage: {
         session: { setAccessLevel: noop },
+        onChanged: listener,
         // chrome.storage.local の代わり。渡した storage をそのまま読み書きする。
         local: {
           get: async (key) => (key in storage ? { [key]: storage[key] } : {}),

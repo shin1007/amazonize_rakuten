@@ -278,6 +278,7 @@
 
     await waitSettled({ quiet: 700, timeout: 9000 });
     const first = await enterPage(false);
+    AZR.health.check('campaign.judge', first.status !== 'suspect', 'エントリーのボタンらしきものはあるのに判定できない（未ログインでも出る）');
 
     document.getElementById('azr-campaign-panel')?.remove();
     document.body.append(render(first));

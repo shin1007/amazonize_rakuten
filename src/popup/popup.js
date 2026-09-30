@@ -93,6 +93,59 @@ async function init() {
   const day = (ms) => (ms ? new Date(ms).toLocaleDateString(AZR.numberLocale, { month: 'numeric', day: 'numeric' }) : '');
   renderAcquired();
 
+  /* サイト変化チェック（開発版だけ） ------------------------------------------
+   * 各機能が報告した結果（service worker が azrHealth に書く）。失敗中の確認と未読の警告を上に出す。 */
+
+  const when = (ms) => (ms ? new Date(ms).toLocaleString(AZR.numberLocale, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '');
+
+  function healthRow({ id, text, url, detail }) {
+    const li = document.createElement('li');
+    li.className = 'campaign';
+    const label = document.createElement(url ? 'a' : 'span');
+    if (url) { label.href = url; label.target = '_blank'; }
+    label.textContent = AZR.health.label(id);
+    label.title = [id, detail, url].filter(Boolean).join('\n');
+    const state = document.createElement('span');
+    state.className = 'campaign-state';
+    state.textContent = text;
+    li.append(label, state);
+    return li;
+  }
+
+  async function renderHealth() {
+    const { azrHealth: h = {} } = await chrome.storage.local.get('azrHealth');
+    const checks = Object.entries(h.checks || {});
+    const events = Object.entries(h.events || {});
+    const failing = checks.filter(([, c]) => c.ok === false).sort(([, a], [, b]) => b.failAt - a.failAt);
+    const unseen = events.filter(([, e]) => e.unseen > 0).sort(([, a], [, b]) => b.at - a.at);
+    const ok = checks.filter(([, c]) => c.ok).sort(([a], [b]) => a.localeCompare(b));
+
+    $('#healthSummary').textContent = failing.length || unseen.length
+      ? `失敗中 ${failing.length}件 / 未読の警告 ${unseen.length}件（項目に載せるとURLと詳細が出ます）`
+      : checks.length ? '問題は見つかっていません' : 'まだ記録がありません（楽天やAmazonのページを開くと記録されます）';
+    $('#healthList').replaceChildren(
+      ...failing.map(([id, c]) => healthRow({ id, url: c.url, detail: c.detail, text: `失敗 ${c.fails}回 ${when(c.since)}〜` })),
+      ...unseen.map(([id, e]) => healthRow({ id, url: e.url, detail: e.detail, text: `${e.unseen}回 ${when(e.at)}` }))
+    );
+    $('#healthOkCount').textContent = `(${ok.length})`;
+    $('#healthOkList').replaceChildren(...ok.map(([id, c]) => healthRow({ id, text: `OK ${when(c.okAt)}` })));
+  }
+
+  if (AZR.health.dev) {
+    $('#health').hidden = false;
+    renderHealth();
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area === 'local' && changes.azrHealth) renderHealth();
+    });
+    $('#healthSeen').addEventListener('click', async () => {
+      const { azrHealth: h } = await chrome.storage.local.get('azrHealth');
+      if (!h?.events) return;
+      for (const e of Object.values(h.events)) e.unseen = 0;
+      await chrome.storage.local.set({ azrHealth: h });
+    });
+    $('#healthClear').addEventListener('click', () => chrome.storage.local.remove('azrHealth'));
+  }
+
   /* キャンペーンの一括スキャン ---------------------------------------------- */
 
   const scanStatus = $('#scanStatus');

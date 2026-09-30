@@ -94,6 +94,7 @@
     }
 
     AZR.log('獲得ページの結果', result);
+    AZR.health.check('coupon.grabResult', result.status !== 'unknown', '獲得ページの結果の文言を読めない');
     try {
       await chrome.runtime.sendMessage({ type: 'azr:couponResult', ...result });
     } catch (e) {

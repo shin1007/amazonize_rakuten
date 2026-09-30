@@ -201,6 +201,7 @@
     loadTries = 0;
 
     const state = await waitForState({ timeout: 10000 });
+    AZR.health.check('cart.state', state, '10秒待っても届かない（state-bridge.js が __INITIAL_STATE__ を読めない）');
     if (!state) {
       AZR.warn('かごの状態を受け取れなかった（__INITIAL_STATE__ が読めない）');
       return;
