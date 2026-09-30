@@ -154,7 +154,8 @@
     if (!data?.title || !anchor) return;
 
     const box = h('section.azr-amazon', { 'data-state': 'loading' },
-      h('div.azr-amazon-head', mark(), h('span.azr-amazon-label', { text: tr('での価格を調べています…') }))
+      h('div.azr-amazon-head', mark(), h('span.azr-amazon-label', { text: tr('での価格を調べています…') })),
+      disclosure()
     );
     anchor.after(box);
 
