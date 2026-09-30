@@ -48,4 +48,5 @@ Setiap fitur dapat diaktifkan atau dimatikan dari ikon di bilah alat.
 
 ■ Catatan
 ・Ekstensi ini dikembangkan oleh individu dan tidak berafiliasi dengan Rakuten Group, Inc., Amazon.com, Inc., maupun perusahaan afiliasinya
+・Tautan ke Amazon.co.jp memuat tag Amazon Associates; pengembang adalah peserta Program Amazon Associates dan memperoleh penghasilan dari pembelian yang memenuhi syarat. Saat tautan diklik, Anda melewati halaman pengalihan singkat milik pengembang (nesage.party) lalu otomatis menuju Amazon.co.jp. Harga dan informasi produk tidak terpengaruh
 ・Jika struktur halaman Rakuten Ichiba berubah, sebagian fitur mungkin berhenti bekerja. Matikan fitur terkait di pengaturan untuk kembali ke tampilan semula

@@ -180,5 +180,6 @@
   "この商品は型番・JANが取得できません": "No. model/JAN produk ini tidak ditemukan",
   "一致する商品が見つかりませんでした{via}": "Tidak ada produk yang cocok{via}",
   "商品名": "Nama produk",
-  "楽天の商品情報を取得中…": "Memuat info produk Rakuten…"
+  "楽天の商品情報を取得中…": "Memuat info produk Rakuten…",
+  "※ Amazonアソシエイトのリンクを含みます": "※ Berisi tautan Amazon Associates"
 }
