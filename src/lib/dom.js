@@ -150,6 +150,7 @@
       if (pathname === '/' || pathname.startsWith('/cart')) return 'cart';
       return 'other'; // 住所・支払い方法の入力途中には手を出さない
     }
+    if (host === 'order.my.rakuten.co.jp') return 'orders';
     // 旧URL。いまは cart.step.rakuten.co.jp/cart へ転送される
     if (/(^|\.)basket\.step\.rakuten\.co\.jp$/.test(host)) return 'cart';
     if (host === 'step.item.rakuten.co.jp' || host === 'order.step.rakuten.co.jp') return 'checkout';

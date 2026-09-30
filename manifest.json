@@ -43,6 +43,7 @@
         "https://basket.step.rakuten.co.jp/*",
         "https://step.item.rakuten.co.jp/*",
         "https://order.step.rakuten.co.jp/*",
+        "https://order.my.rakuten.co.jp/*",
         "https://coupon.rakuten.co.jp/*",
         "https://event.rakuten.co.jp/*"
       ],
@@ -64,6 +65,7 @@
         "src/content/cart.js",
         "src/content/coupon.js",
         "src/content/checkout.js",
+        "src/content/orders.js",
         "src/content/campaign.js"
       ],
       "css": [
