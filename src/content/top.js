@@ -31,9 +31,9 @@
 
   // 自分で開いたトップページのバナー（下へ送って読み込む枠・後から差し込まれる枠）は、
   // HTMLを取り直しても入っていない。自動スキャンにはこのDOMのリンクも渡す（boot.js）。
-  AZR.collectCampaignLinks = async () => {
+  AZR.collectCampaignLinks = async ({ scroll = true } = {}) => {
     await waitSettled({ quiet: 700, timeout: 9000 });
-    await scrollThrough();
+    if (scroll) await scrollThrough();
     return collectLinks();
   };
 
