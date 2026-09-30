@@ -64,9 +64,7 @@
 
     candidates.push({ type: null, value: titleKw });
 
-    const findPrice = () => [...document.querySelectorAll(
-        '#centerCol .priceToPay, #centerCol #apex_desktop .a-price, #centerCol .a-price:not(.a-text-price)'
-    )].find(el => el.offsetParent !== null);
+    const { findPrice } = AZR.slot;
     const amazonPrice = Number((findPrice()?.querySelector('.a-offscreen')?.textContent || '').replace(/[^\d]/g, '')) || 0;
 
     // 楽天APIで検索（background経由）
@@ -142,6 +140,16 @@
             return;
         }
     };
+    // 型番などで一致した商品が別物のことがあるので、商品名検索の上位も必ず並べて出す
+    let titleTop = null;
+    let phase = 'search';   // search: 楽天を検索中 / title: 商品名検索の上位を取得中 / done
+        const resolveTitleTop = async () => {
+        if (!code?.type) { titleTop = ranked[0] || null; return; }
+        const res = await apiSearch(titleKw);
+        if (res?.searchUrl) affiliateSearchUrls.set(titleKw, res.searchUrl);
+        const top = res?.items?.length && rankItems(res.items).filter(r => !r.mismatch && r.sim >= 0.25)[0];
+        titleTop = top ? top.it : null;
+    };
 
     // 閉店・改装中の店舗を除外する（ボタン表示後に上位5店舗をまとめて確認）
     const shopOf = (it) => it.shopCode || (() => {
@@ -166,6 +174,18 @@
         }
     };
 
+    // 商品画像が無い・読めないときの代わり画像（赤地に白: 上は丸にR、下はNo Image）
+    const NO_IMAGE = 'data:image/svg+xml,' + encodeURIComponent(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 104 104"><rect width="104" height="104" fill="#bf0000"/>' +
+        '<circle cx="52" cy="38" r="22" fill="none" stroke="#fff" stroke-width="4"/>' +
+        '<text x="52" y="47" text-anchor="middle" font-family="Arial,sans-serif" font-weight="bold" font-size="28" fill="#fff">R</text>' +
+        '<text x="52" y="86" text-anchor="middle" font-family="Arial,sans-serif" font-weight="bold" font-size="16" fill="#fff">No Image</text></svg>');
+
+    // 表示用に、楽天の商品名に多い宣伝カッコ（【送料無料】[公式] ≪新作≫ など）を中身ごと落とす。
+    // 丸カッコは容量・色などの規格が入るので残す。全部消えてしまうときは元の名前のまま
+    const PROMO_BRACKETS = /【[^】]*】|[\[［][^\]］]*[\]］]|≪[^≫]*≫|《[^》]*》|〔[^〕]*〕|[＜<][^＞>]*[＞>]/g;
+    const displayName = (name) => name.replace(PROMO_BRACKETS, ' ').replace(/\s+/g, ' ').trim() || name;
+
     const createBtn = () => {
         if (document.getElementById('rakuten-link-btn')) return;
 
@@ -182,41 +202,74 @@
             return el;
         };
 
-        const wrap = document.createElement('span');
-        wrap.id = 'rakuten-link-btn';
-        Object.assign(wrap.style, { display: 'inline-flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap', margin: '8px 0' });
+        const wrap = AZR.slot.newWrap();
 
-        const via = code?.type ? ` (${tr(code.type)})` : '';
-        const best = ranked[0];
-        if (best) {
-            const main = link(best.affiliateUrl || best.itemUrl, tr('楽天 ￥{p}{via}', { p: best.itemPrice.toLocaleString(), via }), { background: '#bf0000' });
-            main.title = `${best.itemName}
-${best.shopName}`;
-            wrap.appendChild(main);
-            // 一致商品があっても他の出品と比べられるよう検索結果へのリンクも出す
-            wrap.appendChild(link(searchUrl(keyword), tr('検索結果'), {
-                color: '#bf0000', background: '#fff', border: '1px solid #bf0000', padding: '7px 12px'
-            }));
-        } else {
-            const main = link(searchUrl(keyword), tr('楽天市場で探す{via}', { via }), { background: '#bf0000' });
-            if (apiError) main.title = tr('楽天API エラー: {e}', { e: apiError });
-            wrap.appendChild(main);
+        const { pulse, rowStyle } = AZR.slot;
+        // 型番検索・商品名検索の結果を、画像・価格・タイトル付きの1行ずつで並べる（行の大きさは固定）
+        const rows = [];
+        // 結果が揃ったあとに他の要素が動かないよう、2行は常に確保する（見つからないときも同じ高さの行を出す）
+        const codeCand = candidates.find(c => c.type);
+        rows.push({ label: tr(codeCand?.type || '型番'), it: code?.type ? ranked[0] : null, kw: codeCand?.value, done: phase !== 'search', none: codeCand ? null : tr('この商品は型番・JANが取得できません') });
+        rows.push({ label: tr('商品名'), it: code?.type ? titleTop : ranked[0], kw: titleKw, done: phase === 'done' || (!code?.type && phase !== 'search') });
+        for (const r of rows) {
+            const row = document.createElement('div');
+            Object.assign(row.style, rowStyle);
+            if (!r.done) {
+                Object.assign(row.style, { background: '#eee', color: '#888', fontSize: '12px' });
+                row.textContent = tr('楽天の商品情報を取得中…');
+                pulse(row);
+                wrap.appendChild(row);
+                continue;
+            }
+            const tag = ` (${r.label})`;
+            const it = r.it;
+            const box = document.createElement(it ? 'a' : 'div');
+            Object.assign(box.style, { display: 'flex', gap: '8px', alignItems: 'center', flex: '1', minWidth: '0', color: '#333', textDecoration: 'none', fontSize: '12px' });
+            if (it) { box.href = it.affiliateUrl || it.itemUrl; box.target = '_blank'; box.rel = 'noopener noreferrer'; }
+            const img = document.createElement('div');
+            Object.assign(img.style, { width: '52px', height: '52px', flex: 'none', background: '#f5f5f5' });
+            const im = document.createElement('img');
+            im.src = it?.imageUrl || NO_IMAGE;
+            im.onerror = () => { im.onerror = null; im.src = NO_IMAGE; };
+            Object.assign(im.style, { width: '100%', height: '100%', objectFit: 'contain' });
+            img.replaceChildren(im);
+            box.appendChild(img);
+            const body = document.createElement('div');
+            Object.assign(body.style, { minWidth: '0' });
+            if (it) {
+                const pr = document.createElement('div');
+                Object.assign(pr.style, { color: '#bf0000', fontWeight: 'bold', fontSize: '14px' });
+                pr.textContent = tr('楽天 ￥{p}{via}', { p: it.itemPrice.toLocaleString(), via: tag });
+                const nm = document.createElement('div');
+                Object.assign(nm.style, { display: '-webkit-box', WebkitLineClamp: '2', WebkitBoxOrient: 'vertical', overflow: 'hidden' });
+                nm.textContent = displayName(it.itemName);
+                nm.title = `${it.itemName}\n${it.shopName}`;
+                body.append(pr, nm);
+            } else {
+                body.textContent = r.none || tr('一致する商品が見つかりませんでした{via}', { via: tag });
+                if (apiError) body.title = tr('楽天API エラー: {e}', { e: apiError });
+            }
+            box.appendChild(body);
+            row.appendChild(box);
+            if (r.kw) {
+                row.appendChild(link(searchUrl(r.kw), tr('{t}検索', { t: r.label }), {
+                    color: '#bf0000', background: '#fff', border: '1px solid #bf0000', padding: '6px 10px',
+                    fontSize: '12px', flex: 'none', whiteSpace: 'nowrap'
+                }));
+            }
+            wrap.appendChild(row);
         }
 
-        const price = findPrice();
-        const priceRow = price && price.closest('div');
-        if (priceRow) {
-            Object.assign(wrap.style, { margin: '0 0 0 12px', verticalAlign: 'middle' });
-            priceRow.appendChild(wrap);
-            return;
-        }
-        const anchor = document.getElementById('titleSection') || document.getElementById('productTitle');
-        if (!anchor) return;
-        anchor.insertAdjacentElement('afterend', wrap);
+
+        AZR.slot.place(wrap);
     };
 
+    const rebuild = () => { document.getElementById('rakuten-link-btn')?.remove(); createBtn(); };
+    createBtn();   // 検索中の枠を先に出す
     resolveKeyword().then(() => {
-        createBtn();
+        phase = 'title';
+        rebuild();
+        resolveTitleTop().then(() => { phase = 'done'; rebuild(); });
         verifyBest();
         let timer;
         new MutationObserver(() => {

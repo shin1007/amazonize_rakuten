@@ -175,5 +175,10 @@
   "トップページからリンクを取れませんでした": "Không lấy được liên kết từ trang chủ",
   "対象外のURLです": "URL này không được hỗ trợ",
   "言語": "Ngôn ngữ",
-  "自動（ブラウザの言語）": "Tự động (ngôn ngữ trình duyệt)"
+  "自動（ブラウザの言語）": "Tự động (ngôn ngữ trình duyệt)",
+  "{t}検索": "Tìm theo {t}",
+  "この商品は型番・JANが取得できません": "Không lấy được mã model/JAN của sản phẩm này",
+  "一致する商品が見つかりませんでした{via}": "Không tìm thấy sản phẩm phù hợp{via}",
+  "商品名": "Tên sản phẩm",
+  "楽天の商品情報を取得中…": "Đang tải thông tin sản phẩm Rakuten…"
 }
