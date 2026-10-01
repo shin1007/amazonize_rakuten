@@ -28,7 +28,18 @@
     }
   };
 
+  /** 開けた（押した）折りたたみ */
+  const opened = () => [...document.querySelectorAll('[data-azr-opened]')];
+  const isOpen = (el) => (el.tagName === 'SUMMARY' ? el.parentElement?.open : el.getAttribute('aria-expanded') === 'true');
+
   AZR.register('orders', 'orders-expand-delivery', async () => {
+    if (/\/order-list/.test(location.pathname)) {
+      // 購入履歴の一覧には出荷済みの注文ごとに「配送状況を確認」の折りたたみがある。見つからない = 形か文言が変わった
+      AZR.health.expect('orders.found', () => opened().length || [...document.querySelectorAll(SELECTOR)].some((el) => !el.querySelector(SELECTOR) && (el.textContent || '').includes(LABEL)),
+        { detail: `「${LABEL}」の折りたたみ（${SELECTOR}）が無い` });
+      // 押したのに開かない = 押す場所が変わった
+      AZR.health.expect('orders.expanded', () => opened().some(isOpen), { timeout: 20000, detail: '押しても aria-expanded が true にならない' });
+    }
     sweep();
     // 履歴は後から描画・追加読み込みされるので、少し見張る
     let timer;
