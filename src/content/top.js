@@ -44,7 +44,11 @@
     } catch { /* service worker が落ちている */ }
     // 裏で開かれたタブの仕事は、リンクを集めて返すこと。
     // 自分で開いたトップページでは何もしない（自動スキャンの起こし役は boot.js に移した）。
-    if (task?.task !== 'links') return;
+    if (task?.task !== 'links') {
+      // 自動スキャンはこのページのリンクも使う。1件も拾えない = リンクの形（event / rd.rakuten）が変わった
+      AZR.health.expect('top.campaignLinks', () => collectLinks().length, { detail: 'キャンペーンのリンク（event.rakuten / rd.rakuten）が1件も無い' });
+      return;
+    }
 
     await waitSettled({ quiet: 700, timeout: 9000 });
     await scrollThrough();
