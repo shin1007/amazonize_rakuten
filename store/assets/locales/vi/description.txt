@@ -14,6 +14,7 @@ Tiện ích mở rộng này sắp xếp lại trang sản phẩm của Rakuten 
 ・Đối chiếu lần lượt theo mã JAN, ISBN, mã model, tên sản phẩm và loại bỏ sản phẩm khác quy cách hoặc số lượng
 ・Các cửa hàng đã đóng cửa hoặc đang sửa chữa sẽ bị loại khỏi danh sách gợi ý
 ・Nếu không có sản phẩm khớp, hiển thị liên kết đến kết quả tìm kiếm trên Rakuten Ichiba
+・Trên trang danh sách mong muốn của Amazon và khi bạn thêm sản phẩm vào danh sách, gợi ý nesage.party – dịch vụ email thông báo giảm giá miễn phí do nhà phát triển vận hành (chỉ tiếng Nhật). Trang mở ra với URL danh sách đã được điền sẵn (có thể tắt trong cài đặt)
 
 ■ Tổng giỏ hàng
 ・Gom tổng tiền sản phẩm, phí vận chuyển và điểm dự kiến nhận từ nhiều cửa hàng vào một bảng duy nhất
@@ -39,10 +40,11 @@ Tiện ích mở rộng này sắp xếp lại trang sản phẩm của Rakuten 
 Bật hoặc tắt từng tính năng từ biểu tượng trên thanh công cụ.
 
 ■ Quyền riêng tư
-・Chỉ thay đổi hiển thị của các trang Rakuten Ichiba (rakuten.co.jp) và trang sản phẩm Amazon.co.jp
+・Chỉ thay đổi hiển thị của các trang Rakuten Ichiba (rakuten.co.jp) và trang sản phẩm, trang danh sách mong muốn của Amazon.co.jp
 ・Giá Amazon được hiển thị bằng cách đọc kết quả tìm kiếm của Amazon theo tên sản phẩm hoặc mã JAN. Không gửi thông tin đăng nhập (cookie) đến Amazon
 ・Chỉ khi hiển thị giá Rakuten trên trang sản phẩm Amazon, từ khóa tìm kiếm của sản phẩm đó (mã JAN, ISBN, mã model, tên sản phẩm) mới được gửi đến máy chủ trung chuyển cho API tìm kiếm sản phẩm Rakuten Ichiba do nhà phát triển vận hành. Máy chủ chỉ chuyển từ khóa đến API Rakuten và trả kết quả về; máy chủ không nhận thông tin đăng nhập, lịch sử duyệt web, nội dung mua hàng hay thông tin cá nhân, và không lưu gì ngoài bộ nhớ đệm kết quả (tối đa 1 giờ)
 ・Ngoài các từ khóa tìm kiếm trên, không có lịch sử duyệt web, nội dung mua hàng hay thông tin cá nhân nào được gửi đến nhà phát triển hoặc bên thứ ba
+・Chỉ khi bạn nhấn nút trong gợi ý danh sách mong muốn, nesage.party mới được mở kèm URL của danh sách đó. Tiện ích không tự gửi bất cứ thông tin nào tới nesage.party
 ・Cài đặt, lịch sử chiến dịch và danh sách phiếu đã nhận chỉ được lưu trong trình duyệt (chrome.storage)
 ・Việc lấy và nhận phiếu giảm giá, lấy đánh giá chỉ diễn ra giữa trình duyệt của bạn và máy chủ Rakuten Ichiba
 

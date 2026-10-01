@@ -14,6 +14,7 @@ A browser extension that rebuilds Rakuten Ichiba item pages into a clear, Amazon
 ・Matches by JAN code, ISBN, model number and product name, in that order, and skips items whose specs or quantity differ
 ・Shops that are closed or under renovation are left out of the candidates
 ・If nothing matches, shows a link to the Rakuten search results instead
+・On Amazon wish list pages, and when you add an item to a wish list, suggests nesage.party, a free price-drop email service run by the developer (Japanese only). It opens with your list URL already filled in (can be turned off in the settings)
 
 ■ Cart total
 ・Combines item totals, shipping and points to earn across multiple shops into a single panel
@@ -39,10 +40,11 @@ A browser extension that rebuilds Rakuten Ichiba item pages into a clear, Amazon
 Each feature can be turned on or off from the toolbar icon.
 
 ■ Privacy
-・It changes the display only on Rakuten Ichiba (rakuten.co.jp) pages and Amazon.co.jp item pages
+・It changes the display only on Rakuten Ichiba (rakuten.co.jp) pages and Amazon.co.jp item and wish list pages
 ・The Amazon price is shown by reading Amazon's search results for the item's name or JAN code. No login information (cookies) is sent to Amazon
 ・Only when showing the Rakuten price on an Amazon item page, the search terms for that item (JAN code, ISBN, model number, product name) are sent to a relay server for the Rakuten Ichiba Item Search API, operated by the developer. The relay passes them to the Rakuten API and returns the result; it does not receive login information, browsing history, purchases or personal information, and stores nothing except a cache of the result for up to 1 hour
 ・Apart from those search terms, no browsing history, purchases or personal information is sent to the developer or any third party
+・Only when you press the button in the wish list suggestion, nesage.party opens with that list's URL. The extension never sends anything to nesage.party on its own
 ・Settings, campaign records and the list of coupons you got are stored only in your browser (chrome.storage)
 ・Getting coupons and review ratings is done only between your browser and Rakuten Ichiba's servers
 

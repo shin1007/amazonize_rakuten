@@ -14,6 +14,7 @@ Ekstensi peramban yang menyusun ulang halaman produk Rakuten Ichiba menjadi tata
 ・Mencocokkan berdasarkan kode JAN, ISBN, nomor model, lalu nama produk, dan menyingkirkan produk yang spesifikasi atau jumlahnya berbeda
 ・Toko yang sudah tutup atau sedang direnovasi dikeluarkan dari kandidat
 ・Jika tidak ada yang cocok, ditampilkan tautan ke hasil pencarian Rakuten Ichiba
+・Di halaman daftar keinginan Amazon dan saat Anda menambahkan barang ke daftar, menyarankan nesage.party, layanan email notifikasi turun harga gratis yang dikelola pengembang (hanya bahasa Jepang). Halaman dibuka dengan URL daftar sudah terisi (dapat dimatikan di pengaturan)
 
 ■ Total keranjang
 ・Menggabungkan total barang, ongkos kirim, dan poin yang akan didapat dari beberapa toko dalam satu panel
@@ -39,10 +40,11 @@ Ekstensi peramban yang menyusun ulang halaman produk Rakuten Ichiba menjadi tata
 Setiap fitur dapat diaktifkan atau dimatikan dari ikon di bilah alat.
 
 ■ Privasi
-・Yang diubah tampilannya hanya halaman Rakuten Ichiba (rakuten.co.jp) dan halaman produk Amazon.co.jp
+・Yang diubah tampilannya hanya halaman Rakuten Ichiba (rakuten.co.jp) serta halaman produk dan daftar keinginan Amazon.co.jp
 ・Harga Amazon ditampilkan dengan membaca hasil pencarian Amazon berdasarkan nama produk atau kode JAN. Informasi login (cookie) tidak dikirim ke Amazon
 ・Hanya saat menampilkan harga Rakuten di halaman produk Amazon, kata kunci pencarian produk itu (kode JAN, ISBN, nomor model, nama produk) dikirim ke server perantara untuk API pencarian produk Rakuten Ichiba yang dioperasikan oleh pengembang. Server perantara hanya meneruskannya ke API Rakuten dan mengembalikan hasilnya; server tidak menerima informasi login, riwayat penelusuran, isi pembelian, maupun data pribadi, dan tidak menyimpan apa pun selain cache hasil (maksimal 1 jam)
 ・Selain kata kunci pencarian tersebut, tidak ada riwayat penelusuran, isi pembelian, atau data pribadi yang dikirim ke pengembang maupun pihak ketiga
+・Hanya saat Anda menekan tombol pada saran daftar keinginan, nesage.party dibuka dengan URL daftar tersebut. Ekstensi tidak pernah mengirim apa pun ke nesage.party secara otomatis
 ・Pengaturan, catatan kampanye, dan daftar kupon yang sudah didapat hanya disimpan di dalam peramban (chrome.storage)
 ・Pengambilan kupon dan penilaian hanya dilakukan antara peramban Anda dan server Rakuten Ichiba
 
