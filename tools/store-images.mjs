@@ -329,6 +329,17 @@ const BASE_CSS = `
       radial-gradient(circle at 58px 14px, #28c840 5px, transparent 6px);
   }
   .window img { display: block; width: 100%; }
+  /* どのサイトの画面かを示すバッジ（ウィンドウ右上） */
+  .site-badge { position: absolute; top: 3px; right: 14px; z-index: 2; padding: 2px 14px; border-radius: 999px; font-size: 15px; font-weight: 800; color: #fff; letter-spacing: .02em; }
+  .band.has-site h1 { font-size: 36px; white-space: nowrap; width: max-content; }
+  .band h1 .site { color: #ff9c9c; font-weight: 800; }
+  .site-badge.is-rakuten { background: #bf0000; }
+  .site-badge.is-amazon { background: #ff9900; color: #131921; }
+  /* 拡張が足した部分の強調（画像の位置に対する割合で囲む） */
+  .shot { position: relative; }
+  .added { position: absolute; border: 4px solid #e47911; border-radius: 10px; box-shadow: 0 0 0 6px rgba(254, 189, 105, .55), 0 8px 24px rgba(0, 0, 0, .25); }
+  .added-label { position: absolute; left: -4px; bottom: 100%; margin-bottom: 10px; white-space: nowrap; padding: 5px 14px; border-radius: 8px; background: #e47911; color: #fff; font-size: 19px; font-weight: 800; }
+  .added-label::after { content: ""; position: absolute; left: 28px; top: 100%; border: 8px solid transparent; border-top-color: #e47911; }
   /* 画面全体を見せたいとき（拡大表示）は、切らずに縮めて中央に置く */
   .window.is-fit { left: calc(50% - 460px); right: auto; width: 920px; top: 192px; bottom: auto; border-radius: 12px; }
   .points { list-style: none; margin: 0; padding: 0; display: grid; gap: 22px; }
@@ -349,29 +360,47 @@ const BASE_CSS = `
 
 const PANEL_CSS = css('src/styles/common.css') + css('src/styles/cart.css');
 
+// 1行に収まるまで見出しの文字を縮める
+const FIT = `<script>{const h=document.querySelector('.band h1');let f=36;while(h.scrollWidth>1152&&f>20){f--;h.style.fontSize=f+'px'}}</script>`;
+
 const points = (list) => `<ul class="points">${list.map(([a, b]) => `<li>${a}<small>${b}</small></li>`).join('')}</ul>`;
-const band = ([h1, p]) => `<div class="band"><h1>${h1}</h1><p>${p}</p></div>`;
+const band = ([h1, p], badge = '') => `<div class="band${badge ? " has-site" : ""}"><h1>${badge}${h1}</h1><p>${p}</p>${badge ? FIT : ''}</div>`;
+
+const SITE = {
+  ja: { rakuten: '楽天市場', amazon: 'Amazon.co.jp', added: '✦ この拡張機能が追加' },
+  en: { rakuten: 'Rakuten', amazon: 'Amazon', added: '✦ Added by this extension' },
+  zh_CN: { rakuten: '乐天', amazon: '亚马逊', added: '✦ 此扩展程序新增' },
+  zh_TW: { rakuten: '樂天', amazon: '亞馬遜', added: '✦ 此擴充功能新增' },
+  ko: { rakuten: '라쿠텐', amazon: '아마존', added: '✦ 이 확장 프로그램이 추가' },
+  vi: { rakuten: 'Rakuten', amazon: 'Amazon', added: '✦ Tiện ích này thêm vào' },
+  id: { rakuten: 'Rakuten', amazon: 'Amazon', added: '✦ Ditambahkan ekstensi ini' },
+};
 
 const slides = (lang) => {
   const T = TEXT[lang];
   const raw = (name) => pathToFileURL(join(RAW, lang, name)).href;
   const { cart, co } = T;
+  const rakutenBadge = `<span class="site">${SITE[lang].rakuten}${lang === 'ja' || lang.startsWith('zh') ? '：' : ': '}</span>`;
   return {
     'screenshot-1': `
     <div class="slide">
       ${band(T.s1)}
-      <div class="window"><img src="${raw('item.png')}"></div>
+      <div class="window"><span class="site-badge is-rakuten">${SITE[lang].rakuten}</span><img src="${raw('item.png')}"></div>
     </div>`,
 
     'screenshot-2': `
     <div class="slide">
       ${band(T.s2)}
-      <div class="window"><img src="${raw('amazon.png')}"></div>
+      <div class="window"><span class="site-badge is-amazon">${SITE[lang].amazon}</span>
+        <div class="shot"><img src="${raw('amazon.png')}">
+          <div class="added" style="left:51.2%;top:47.4%;width:29%;height:19.6%"><span class="added-label">${SITE[lang].added}</span></div>
+        </div>
+      </div>
     </div>`,
 
     'screenshot-3': `
     <div class="slide">
-      ${band(T.s3)}
+      ${band(T.s3, rakutenBadge)}
       <div class="split">
         ${points(T.s3p)}
         <div class="panel-stage">
@@ -397,7 +426,7 @@ const slides = (lang) => {
 
     'screenshot-4': `
     <div class="slide">
-      ${band(T.s4)}
+      ${band(T.s4, rakutenBadge)}
       <div class="split">
         ${points(T.s4p)}
         <div class="panel-stage">
@@ -420,7 +449,7 @@ const slides = (lang) => {
 
     'screenshot-5': `
     <div class="slide">
-      ${band(T.s5)}
+      ${band(T.s5, rakutenBadge)}
       <div class="split">
         ${points(T.s5p)}
         <div class="panel-stage"><img class="popup" src="${raw('popup.png')}"></div>
