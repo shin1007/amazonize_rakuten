@@ -427,8 +427,17 @@ const AMAZON_MIN_SCORE = 0.3;
 // 表示するリンクは中継ページ経由にする（アソシエイトのタグは中継側が付ける。Amazonの取得そのものは直接）
 const AMAZON_GO = 'https://nesage.party/go';
 
+// 開発用: アフィリエイト/アソシエイトIDを含めない（ポップアップの設定 noAffiliate）
+async function noAffiliate() {
+  try { return Boolean((await chrome.storage.sync.get({ noAffiliate: false })).noAffiliate); } catch { return false; }
+}
+
 async function amazonLookup(args) {
   const r = await amazonLookupRaw(args);
+  if (await noAffiliate()) {
+    if (r.item?.asin) r.item = { ...r.item, url: `https://www.amazon.co.jp/dp/${r.item.asin}` };
+    return r;
+  }
   if (r.searchUrl && r.query) r.searchUrl = `${AMAZON_GO}?q=${encodeURIComponent(r.query)}`;
   if (r.item?.asin) r.item = { ...r.item, url: `${AMAZON_GO}?asin=${r.item.asin}` };
   return r;
@@ -1236,6 +1245,10 @@ async function rlSearch(keyword) {
     const j = await r.json().catch(() => ({}));
     health.check('relay.rakutenSearch', r.ok && Array.isArray(j.items), j.error || `HTTP ${r.status}`);
     if (!r.ok) return { error: j.error || `HTTP ${r.status}`, searchUrl: j.searchUrl };
+    if (await noAffiliate()) {
+      const plain = `https://search.rakuten.co.jp/search/mall/${encodeURIComponent(keyword)}/`;
+      return { count: j.count ?? 0, items: (j.items || []).map(({ affiliateUrl, ...it }) => it), searchUrl: plain };
+    }
     return { count: j.count ?? 0, items: j.items || [], searchUrl: j.searchUrl };
 }
 

@@ -23,6 +23,7 @@
       'https://event.rakuten.co.jp/campaign/sports/',
       'https://event.rakuten.co.jp/campaign/point-up/everyday/point/'
     ],
+    noAffiliate: false,       // 開発用: アフィリエイト/アソシエイトIDを含めない
     debug: false
   };
 
