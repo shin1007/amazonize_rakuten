@@ -5,7 +5,13 @@
  *    拡大表示（画像を押すと開く画面）: 画面の ‹ › ボタンを押す。Yahoo!の拡大表示は矢印キーに応えない。
  *    Esc でも閉じられるようにする（Yahoo!の拡大表示は Esc で閉じない）。
  * 2. 価格の下に、同じ商品のAmazon・楽天での価格を並べる（楽天の商品ページと同じ欄。描くのは item-amazon.js）
- *    商品データはページに埋め込まれた __NEXT_DATA__ から読む（商品名・価格・JAN）。
+ *    商品データはページに埋め込まれた __NEXT_DATA__ から読む（商品名・価格・JAN・選択肢ごとの価格）。
+ *    - 選択肢（3袋/10袋など）で値段が変わる商品は、Yahoo!が最初に出す価格が最安とは限らない（10袋の6,580円を出し、
+ *      3袋は2,080円）。選択肢ごとの価格から最安〜最高を出し、選んだら、その選択肢の価格で比べ直す。
+ *      選択肢を選んでもURLは変わらず、価格の欄（#prcdsp）の数字だけが変わる。
+ *    - 店の付けた商品名が崩れていることがある（「ANGFA　スカルプDストロングオイリーカエ」）。JANがあれば
+ *      同じJANの他店の商品名を引き、いちばん他と重なる名前で探す。
+ *    別の商品へのリンクは普通のリンクで、ページごと読み直される（ページの中で商品が入れ替わることはない）。
  */
 (async () => {
     const AZR = (window.AZR = window.AZR || {});
@@ -67,34 +73,61 @@
     AZR.health.check('yahoo.itemData', item?.name, '__NEXT_DATA__ の props.pageProps.item.name が無い');
     if (!item?.name) return;
 
+    const clean = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+    // 選択肢ごとの価格（在庫のあるものだけ）。選択肢の無い商品は空
+    const skus = (Array.isArray(item.individualItemList) ? item.individualItemList : [])
+        .filter((s) => s?.stock?.isAvailable !== false && Number(s?.price?.applicablePrice) > 0);
+    const prices = skus.map((s) => Number(s.price.applicablePrice));
+    const jan = item.isJanCodeActive === false ? '' : String(item.janCode || '');
     const data = {
-        title: String(item.name).replace(/\s+/g, ' ').trim(),
-        minPrice: Number(item.applicablePrice) || null,
-        maxPrice: null,
-        jan: item.isJanCodeActive === false ? '' : String(item.janCode || ''),
-        variants: [],
+        title: await betterTitle(clean(item.name), jan),
+        minPrice: prices.length ? Math.min(...prices) : Number(item.applicablePrice) || null,
+        maxPrice: prices.length ? Math.max(...prices) : null,
+        jan,
+        variants: skus.map((s) => (s.optionList || []).map((o) => o.choiceName).join(' ')),
         // 型番を拾う手がかり（item-amazon.js が extractModel に渡す）
         descriptionHtml: [item.caption, item.information].filter((s) => typeof s === 'string' && s)
     };
+
+    /** JANがあれば、同じJANで売っている他店の商品名と比べて、いちばん他と重なる名前を選ぶ（自分の名前も候補に入れる） */
+    async function betterTitle(title, jan) {
+        if (!AZR.amazon.isJan(jan)) return title;
+        let res = null;
+        try { res = await chrome.runtime.sendMessage({ type: 'azr:yahooSearch', jan }); } catch { /* 元の名前で探す */ }
+        const names = [...new Set([title, ...(res?.items || []).map((it) => clean(it.itemName))])].filter(Boolean);
+        if (names.length < 3) return title;
+        const near = (n) => names.reduce((sum, m) => sum + (m === n ? 0 : AZR.amazon.scoreMatch(n, m)), 0);
+        const best = names.reduce((a, b) => (near(b) > near(a) ? b : a));
+        if (best !== title) AZR.log('商品名を置き換えた', title, '→', best);
+        return best;
+    }
 
     const { SITES, HOMES, mount } = AZR.priceCompare;
     const anchor = document.getElementById('prcdsp'); // 中央の列の価格の欄
     AZR.health.check('yahoo.pricePlace', anchor, '#prcdsp（価格の欄）が無い');
     if (!anchor) return;
-    const { boxes, done } = mount(anchor, data, [SITES.amazon, SITES.rakuten], HOMES.yahoo);
+    const { boxes, repaint } = mount(anchor, data, [SITES.amazon, SITES.rakuten], HOMES.yahoo);
 
-    // ページの描き直し（Reactの読み込み直後など）で外れたら、価格の欄の下へ置き直す
+    // 価格の欄に出ている数字（選択肢を選ぶと変わる）
+    const shownPrice = () => Number((document.querySelector('#prcdsp [class*="_price__"]')?.textContent.match(/[\d,]+/)?.[0] || '').replace(/,/g, '')) || 0;
+    const firstShown = shownPrice();
+
+    // ページの描き直し（Reactの読み込み直後など）で外れたら、価格の欄の下へ置き直す。
+    // 選択肢を選んで価格の欄の数字が変わったら、その価格で比べ直す
     let queued = false;
-    const obs = new MutationObserver(() => {
+    let lastShown = firstShown;
+    new MutationObserver(() => {
         if (queued) return;
         queued = true;
         requestAnimationFrame(() => {
             queued = false;
-            if (boxes.every((b) => b.isConnected)) return;
-            document.getElementById('prcdsp')?.after(...boxes);
+            if (!boxes.every((b) => b.isConnected)) document.getElementById('prcdsp')?.after(...boxes);
+            const now = shownPrice();
+            if (!skus.length || !now || now === lastShown) return;
+            lastShown = now;
+            data.minPrice = now;
+            data.maxPrice = null;
+            repaint();
         });
-    });
-    obs.observe(document.body, { childList: true, subtree: true });
-    await done;
-    setTimeout(() => obs.disconnect(), 10000);
+    }).observe(document.body, { childList: true, subtree: true, characterData: true });
 })();
