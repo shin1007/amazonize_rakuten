@@ -132,6 +132,8 @@ async function run(names) {
     // （保存したページには入っていないので、ここだけは実際にAmazonへ通信する）
     await page.waitForFunction(() => document.documentElement.dataset.azrAmazon, null, { timeout: 25000 })
       .catch(() => logs.push('harness: Amazonの価格が返らない'));
+    await page.waitForFunction(() => document.documentElement.dataset.azrYahoo, null, { timeout: 25000 })
+      .catch(() => logs.push('harness: Yahoo!ショッピングの価格が返らない'));
     // 商品動画のプレーヤーは楽天の動画スクリプトが後から描き、それを動画の枠へ移設する
     if (await page.$('.azr-gallery-video')) {
       await page.waitForFunction(() => document.documentElement.dataset.azrVideo, null, { timeout: 20000 })
@@ -191,6 +193,11 @@ async function run(names) {
           state: document.documentElement.dataset.azrAmazon || null,
           text: document.querySelector('.azr-amazon')?.innerText.replace(/\s+/g, ' ').trim() ?? null,
           href: document.querySelector('.azr-amazon-item')?.href ?? null
+        },
+        yahoo: {
+          state: document.documentElement.dataset.azrYahoo || null,
+          text: document.querySelector('.azr-amazon[data-site="yahoo"]')?.innerText.replace(/\s+/g, ' ').trim() ?? null,
+          href: document.querySelector('.azr-amazon[data-site="yahoo"] .azr-amazon-item')?.href ?? null
         },
         shopCard: document.querySelector('.azr-shop-card')?.innerText.replace(/\s+/g, ' ').trim() ?? null
       };

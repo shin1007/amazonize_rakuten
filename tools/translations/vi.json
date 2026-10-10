@@ -192,5 +192,20 @@
   "nesage.party に登録すると、リストの商品が値下げされたときに毎朝メールでお知らせします（無料）。": "Đăng ký nesage.party để nhận email mỗi sáng khi sản phẩm trong danh sách giảm giá (miễn phí, chỉ tiếng Nhật).",
   "nesage.party で値下げ通知を受け取る": "Nhận thông báo giảm giá trên nesage.party",
   "リストを「公開」か「共有」にすると登録できます。": "Đặt danh sách ở chế độ \"Công khai\" hoặc \"Chia sẻ\" để đăng ký.",
-  "今後表示しない": "Không hiện lại"
+  "今後表示しない": "Không hiện lại",
+  "Yahoo!ショッピング": "Yahoo! Shopping",
+  "Yahoo!ショッピングの商品情報を取得中…": "Đang tải thông tin sản phẩm Yahoo! Shopping…",
+  "この検索語でYahoo!ショッピングを検索します（上の商品が上位に出るとは限りません）": "Tìm trên Yahoo! Shopping bằng từ khóa này (sản phẩm trên chưa chắc ở đầu)",
+  "※ バリューコマースのリンクを含みます": "※ Có chứa liên kết liên kết của ValueCommerce",
+  "Yahoo!ショッピングでは見つかりませんでした": "Không tìm thấy trên Yahoo! Shopping",
+  "Yahoo!ショッピングの価格を調べられませんでした": "Không kiểm tra được giá trên Yahoo! Shopping",
+  "Yahoo! ￥{p}{via}": "Yahoo! ¥{p}{via}",
+  "Yahoo!ショッピングAPI エラー: {e}": "Lỗi API Yahoo! Shopping: {e}",
+  "商品ページにYahoo!ショッピングでの価格も出す": "Hiển thị thêm giá Yahoo! Shopping trên trang sản phẩm",
+  "この検索語で楽天市場を検索します（上の商品が上位に出るとは限りません）": "Tìm trên Rakuten Ichiba bằng từ khóa này (sản phẩm trên chưa chắc ở đầu)",
+  "楽天では見つかりませんでした": "Không tìm thấy trên Rakuten",
+  "楽天の価格を調べられませんでした": "Không thể kiểm tra giá Rakuten",
+  "Yahoo!ショッピングと同じ価格": "Cùng giá với Yahoo! Shopping",
+  "（表示価格の比較。ポイント還元は含みません）": "(So sánh giá niêm yết, không tính điểm thưởng)",
+  "Yahoo!ショッピングの商品ページにAmazon・楽天の価格を出す": "Hiển thị giá Amazon và Rakuten trên trang sản phẩm Yahoo! Shopping"
 }

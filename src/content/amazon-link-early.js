@@ -3,21 +3,36 @@
 (async () => {
     const AZR = (window.AZR = window.AZR || {});
     await AZR.loadSettings();
-    if (!AZR.settings.enabled || !AZR.settings.rakutenLink) return;
-    const { findPrice, newWrap, loadingRow, disclosure, place } = AZR.slot;
+    const { rakutenLink, yahooPrice } = AZR.settings;
+    if (!AZR.settings.enabled || !(rakutenLink || yahooPrice)) return;
+    const { findPrice, newWrap, loadingRow, disclosure, yahooDisclosure, place } = AZR.slot;
 
     const ready = () => document.getElementById('productTitle') && findPrice();
     const put = () => {
-        if (document.getElementById('rakuten-link-btn') || !document.getElementById('productTitle')) return;
-        const wrap = newWrap();
-        const text = AZR.t('楽天の商品情報を取得中…');
-        wrap.append(loadingRow(text), loadingRow(text), disclosure());
-        place(wrap);
+        if (document.getElementById('rakuten-link-btn') || document.getElementById('yahoo-link-btn') || !document.getElementById('productTitle')) return;
+        // 楽天 → Yahoo!ショッピング の順に積む（amazon-link.js も同じ順に置き換える）
+        let prev = null;
+        for (const [on, id, text, note] of [
+            [rakutenLink, 'rakuten-link-btn', AZR.t('楽天の商品情報を取得中…'), disclosure],
+            [yahooPrice, 'yahoo-link-btn', AZR.t('Yahoo!ショッピングの商品情報を取得中…'), yahooDisclosure]
+        ]) {
+            if (!on) continue;
+            const wrap = newWrap(id);
+            wrap.append(loadingRow(text), loadingRow(text), note());
+            if (prev) prev.after(wrap); else place(wrap);
+            prev = wrap;
+        }
     };
 
     // 商品名と価格が出たらすぐ置く。価格が出ないページでも、DOMの読み込みが終わったら置く
     if (ready()) return put();
-    const obs = new MutationObserver(() => { if (ready()) { obs.disconnect(); put(); } });
+    // 読み込み中は変化が非常に多く、findPrice はレイアウトの計算を伴うので、描画1回ぶんにまとめて見る
+    let queued = false;
+    const obs = new MutationObserver(() => {
+        if (queued) return;
+        queued = true;
+        requestAnimationFrame(() => { queued = false; if (ready()) { obs.disconnect(); put(); } });
+    });
     obs.observe(document, { childList: true, subtree: true });
     document.addEventListener('DOMContentLoaded', () => { obs.disconnect(); put(); }, { once: true });
 })();

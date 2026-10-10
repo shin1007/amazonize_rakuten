@@ -20,6 +20,8 @@
     <label><input type="checkbox" data-key="simplifySearch"> 検索結果の広告を目立たなくする</label>
     <label><input type="checkbox" data-key="amazonPrice"> 商品ページにAmazonでの価格を出す</label>
     <label><input type="checkbox" data-key="rakutenLink"> Amazonの商品ページに楽天のリンクと価格を出す</label>
+    <label><input type="checkbox" data-key="yahooPrice"> 商品ページにYahoo!ショッピングでの価格も出す</label>
+    <label><input type="checkbox" data-key="yahooItem"> Yahoo!ショッピングの商品ページにAmazon・楽天の価格を出す</label>
     <label><input type="checkbox" data-key="nesagePromo"> Amazonのほしい物リストで値下げ通知（nesage.party）を案内する</label>
   </section>
 
@@ -70,6 +72,8 @@
       <summary>問題なし <span id="healthOkCount"></span></summary>
       <ul id="healthOkList" class="campaign-list"></ul>
     </details>
+    <button id="healthCopy">修正リストをコピー</button>
+    <button id="healthNotify" hidden>通知を受け取る</button>
     <button id="healthSeen">警告を既読にする</button>
     <button id="healthClear">記録を消す</button>
   </section>

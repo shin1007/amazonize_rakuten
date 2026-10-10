@@ -1,0 +1,6 @@
+/* Amazonize Rakuten - Yahoo!ショッピングの検索結果: 広告（PR）の商品を薄くする（楽天の cart.css と同じ見た目） */
+html.azr-search .azr-ad-item {
+  opacity: .45;
+  filter: grayscale(.5);
+}
+html.azr-search .azr-ad-item:hover { opacity: 1; filter: none; }

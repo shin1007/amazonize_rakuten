@@ -8,6 +8,7 @@ Ekstensi peramban yang menyusun ulang halaman produk Rakuten Ichiba menjadi tata
 ・Menampilkan penilaian produk dan toko di bawah nama produk
 ・Menampilkan harga produk yang sama di Amazon tepat di bawah harga Rakuten (lengkap dengan nama produk, penilaian di Amazon, dan tautan ke hasil pencarian)
 ・Produk yang cocok berdasarkan kode JAN diberi label "Kode JAN cocok", produk yang dicari lewat nama diberi label "Referensi"
+・Juga menampilkan harga Yahoo! Shopping untuk produk yang sama di halaman produk Rakuten dan Amazon (dapat dimatikan di pengaturan)
 
 ■ Harga dan tautan Rakuten di halaman produk Amazon
 ・Menampilkan tautan dan harga produk yang sama di Rakuten Ichiba pada halaman produk Amazon.co.jp
@@ -15,6 +16,11 @@ Ekstensi peramban yang menyusun ulang halaman produk Rakuten Ichiba menjadi tata
 ・Toko yang sudah tutup atau sedang direnovasi dikeluarkan dari kandidat
 ・Jika tidak ada yang cocok, ditampilkan tautan ke hasil pencarian Rakuten Ichiba
 ・Di halaman daftar keinginan Amazon dan saat Anda menambahkan barang ke daftar, menyarankan nesage.party, layanan email notifikasi turun harga gratis yang dikelola pengembang (hanya bahasa Jepang). Halaman dibuka dengan URL daftar sudah terisi (dapat dimatikan di pengaturan)
+
+■ Juga di Yahoo! Shopping
+・Gunakan ←→ untuk berpindah gambar produk (juga di tampilan besar; Esc untuk menutup)
+・Menampilkan harga produk yang sama di Amazon dan Rakuten tepat di bawah harga (dapat dimatikan di pengaturan)
+・Memudarkan produk iklan (PR) di hasil pencarian
 
 ■ Total keranjang
 ・Menggabungkan total barang, ongkos kirim, dan poin yang akan didapat dari beberapa toko dalam satu panel
@@ -40,16 +46,21 @@ Ekstensi peramban yang menyusun ulang halaman produk Rakuten Ichiba menjadi tata
 Setiap fitur dapat diaktifkan atau dimatikan dari ikon di bilah alat.
 
 ■ Privasi
-・Yang diubah tampilannya hanya halaman Rakuten Ichiba (rakuten.co.jp) serta halaman produk dan daftar keinginan Amazon.co.jp
+・Yang diubah tampilannya hanya halaman Rakuten Ichiba (rakuten.co.jp) serta halaman produk dan daftar keinginan Amazon.co.jp, serta halaman produk dan pencarian Yahoo! Shopping
 ・Harga Amazon ditampilkan dengan membaca hasil pencarian Amazon berdasarkan nama produk atau kode JAN. Informasi login (cookie) tidak dikirim ke Amazon
 ・Hanya saat menampilkan harga Rakuten di halaman produk Amazon, kata kunci pencarian produk itu (kode JAN, ISBN, nomor model, nama produk) dikirim ke server perantara untuk API pencarian produk Rakuten Ichiba yang dioperasikan oleh pengembang. Server perantara hanya meneruskannya ke API Rakuten dan mengembalikan hasilnya; server tidak menerima informasi login, riwayat penelusuran, isi pembelian, maupun data pribadi, dan tidak menyimpan apa pun selain cache hasil (maksimal 1 jam)
 ・Selain kata kunci pencarian tersebut, tidak ada riwayat penelusuran, isi pembelian, atau data pribadi yang dikirim ke pengembang maupun pihak ketiga
 ・Hanya saat Anda menekan tombol pada saran daftar keinginan, nesage.party dibuka dengan URL daftar tersebut. Ekstensi tidak pernah mengirim apa pun ke nesage.party secara otomatis
 ・Pengaturan, catatan kampanye, dan daftar kupon yang sudah didapat hanya disimpan di dalam peramban (chrome.storage)
 ・Pengambilan kupon dan penilaian hanya dilakukan antara peramban Anda dan server Rakuten Ichiba
+・Untuk menampilkan harga Yahoo! Shopping, kata pencarian produk (kode JAN, nomor model, nama) dikirim ke server perantara yang sama, yang menanyakan Yahoo! Shopping Item Search API
+・Untuk menampilkan harga Rakuten di halaman produk Yahoo! Shopping, kata pencarian produk (kode JAN, nomor model, nama) juga dikirim ke server perantara yang sama
 
 ■ Catatan
 ・Ekstensi ini dikembangkan oleh individu dan tidak berafiliasi dengan Rakuten Group, Inc., Amazon.com, Inc., maupun perusahaan afiliasinya
 ・Tautan ke Amazon.co.jp memuat tag Amazon Associates; pengembang adalah peserta Program Amazon Associates dan memperoleh penghasilan dari pembelian yang memenuhi syarat. Saat tautan diklik, Anda melewati halaman pengalihan singkat milik pengembang (nesage.party) lalu otomatis menuju Amazon.co.jp. Harga dan informasi produk tidak terpengaruh
 ・Tautan ke Rakuten Ichiba yang ditampilkan di halaman produk Amazon memuat ID Afiliasi Rakuten milik pengembang. Saat diklik, Rakuten Group dapat menetapkan cookie untuk pengukuran hasil. Harga dan informasi produk tidak terpengaruh
 ・Jika struktur halaman Rakuten Ichiba berubah, sebagian fitur mungkin berhenti bekerja. Matikan fitur terkait di pengaturan untuk kembali ke tampilan semula
+・Tautan ke Yahoo! Shopping adalah tautan afiliasi ValueCommerce. Mengkliknya dapat menyetel cookie untuk pelacakan konversi. Harga dan informasi produk tidak berubah
+
+Web Services by Yahoo! JAPAN (https://developer.yahoo.co.jp/sitemap/)

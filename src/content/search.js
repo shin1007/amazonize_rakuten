@@ -28,7 +28,12 @@
 
     markAds();
     // 無限スクロールで追加された分にも適用する
-    const obs = new MutationObserver(() => markAds());
+    let queued = false;
+    const obs = new MutationObserver(() => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(() => { queued = false; markAds(); });
+    });
     obs.observe(document.body, { childList: true, subtree: true });
   });
 })();

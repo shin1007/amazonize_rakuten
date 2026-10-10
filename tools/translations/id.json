@@ -192,5 +192,20 @@
   "nesage.party に登録すると、リストの商品が値下げされたときに毎朝メールでお知らせします（無料）。": "Daftar di nesage.party untuk menerima email setiap pagi saat harga barang di daftar Anda turun (gratis, hanya bahasa Jepang).",
   "nesage.party で値下げ通知を受け取る": "Terima notifikasi turun harga di nesage.party",
   "リストを「公開」か「共有」にすると登録できます。": "Atur daftar menjadi \"Publik\" atau \"Dibagikan\" untuk mendaftar.",
-  "今後表示しない": "Jangan tampilkan lagi"
+  "今後表示しない": "Jangan tampilkan lagi",
+  "Yahoo!ショッピング": "Yahoo! Shopping",
+  "Yahoo!ショッピングの商品情報を取得中…": "Memuat info produk Yahoo! Shopping…",
+  "この検索語でYahoo!ショッピングを検索します（上の商品が上位に出るとは限りません）": "Cari di Yahoo! Shopping dengan kata ini (produk di atas belum tentu muncul teratas)",
+  "※ バリューコマースのリンクを含みます": "* Berisi tautan afiliasi ValueCommerce",
+  "Yahoo!ショッピングでは見つかりませんでした": "Tidak ditemukan di Yahoo! Shopping",
+  "Yahoo!ショッピングの価格を調べられませんでした": "Tidak dapat memeriksa harga Yahoo! Shopping",
+  "Yahoo! ￥{p}{via}": "Yahoo! ¥{p}{via}",
+  "Yahoo!ショッピングAPI エラー: {e}": "Kesalahan API Yahoo! Shopping: {e}",
+  "商品ページにYahoo!ショッピングでの価格も出す": "Tampilkan juga harga Yahoo! Shopping di halaman produk",
+  "この検索語で楽天市場を検索します（上の商品が上位に出るとは限りません）": "Cari di Rakuten Ichiba dengan kata ini (produk di atas belum tentu muncul teratas)",
+  "楽天では見つかりませんでした": "Tidak ditemukan di Rakuten",
+  "楽天の価格を調べられませんでした": "Tidak dapat memeriksa harga Rakuten",
+  "Yahoo!ショッピングと同じ価格": "Harga sama dengan Yahoo! Shopping",
+  "（表示価格の比較。ポイント還元は含みません）": "(Perbandingan harga tertera, tidak termasuk poin)",
+  "Yahoo!ショッピングの商品ページにAmazon・楽天の価格を出す": "Tampilkan harga Amazon dan Rakuten di halaman produk Yahoo! Shopping"
 }

@@ -60,3 +60,17 @@
 .azr-amazon-diff[data-cheaper="amazon"] strong { color: #b12704; }
 .azr-amazon-note { color: #8c8c8c; }
 .azr-amazon-pr { margin-top: 6px; font-size: 10px; color: #8c8c8c; }
+
+/* Yahoo!ショッピングの欄（item-amazon.js が同じ形で並べる）。色だけ Yahoo! の赤にする */
+.azr-amazon[data-site="yahoo"] .azr-amz-price { color: #ff0033; }
+.azr-amazon[data-site="yahoo"] .azr-amz-search { border-color: #ff0033; color: #ff0033; }
+.azr-amazon-diff[data-cheaper="yahoo"] strong { color: #ff0033; }
+/* クレジット表示（Webサービス by Yahoo! JAPAN）。規約で極端に小さくしたり色を変えたりしないことになっているので、既定のリンクの見た目のまま */
+.azr-yahoo-credit { font-size: 12px; }
+
+/* Yahoo!ショッピングの商品ページ（yahoo-item.js）: 楽天の欄と、Yahoo!が安いときの色 */
+.azr-amazon[data-site="rakuten"] .azr-amz-price { color: #bf0000; }
+.azr-amazon[data-site="rakuten"] .azr-amz-search { border-color: #bf0000; color: #bf0000; }
+.azr-amazon[data-home="yahoo"] { margin: 8px 0; }
+.azr-amazon[data-home="yahoo"] .azr-amazon-diff[data-cheaper="yahoo"] strong { color: #067d62; }
+.azr-amazon[data-home="yahoo"] .azr-amazon-diff[data-cheaper="rakuten"] strong { color: #bf0000; }
