@@ -1258,6 +1258,134 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
 });
 
+// ---- Yahoo!ショッピング（中継Worker経由。Client ID は拡張機能に含めない） ----
+// 結果は楽天検索と同じ形（itemName / itemPrice / itemUrl / affiliateUrl / imageUrl / shopName）。
+// リンクはバリューコマースのMyLink（vc_url に元のURLが入っている）。
+const YS_PROXY = 'https://amazon-rakuten-link.shin1007.workers.dev/yahoo';
+function unwrapVc(u) {
+    try { return new URL(u).searchParams.get('vc_url') || u; } catch { return u; }
+}
+
+async function ysSearch({ keyword = '', jan = '' }) {
+    const q = jan ? `jan=${encodeURIComponent(jan)}` : `keyword=${encodeURIComponent(keyword)}`;
+    const r = await fetch(`${YS_PROXY}?${q}`, { credentials: 'omit' });
+    const j = await r.json().catch(() => ({}));
+    health.check('relay.yahooSearch', r.ok && Array.isArray(j.items), j.error || `HTTP ${r.status}`);
+    if (!r.ok) return { error: j.error || `HTTP ${r.status}` };
+    if (await noAffiliate()) {
+        return { count: j.count ?? 0, items: (j.items || []).map(({ affiliateUrl, ...it }) => it), searchUrl: unwrapVc(j.searchUrl) };
+    }
+    return { count: j.count ?? 0, items: j.items || [], searchUrl: j.searchUrl };
+}
+
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    if (msg?.type !== 'azr:yahooSearch') return;
+    const jan = AZR.amazon.isJan(msg.jan) ? String(msg.jan) : '';
+    const keyword = typeof msg.keyword === 'string' ? msg.keyword : '';
+    if (!jan && keyword.length < 2) return;
+    ysSearch({ keyword, jan }).then(sendResponse).catch(e => { health.check('relay.yahooSearch', false, e); sendResponse({ error: String(e) }); });
+    return true;
+});
+
+/**
+ * 楽天の商品ページ用: Yahoo!ショッピングでの価格。返す形は amazonPrice と同じ（item-amazon.js がそのまま描く）。
+ * 引き方も同じで、JAN → 型番 → 商品名の重なり。JANで引くと安い順に返るので、先頭が同じ商品の最安。
+ */
+async function yahooPrice({ title, jan, model }) {
+    const useJan = AZR.amazon.isJan(jan);
+    const useModel = !useJan && Boolean(model);
+    const query = useJan ? String(jan) : useModel ? String(model) : AZR.amazon.buildQuery(title);
+    if (!query) return { status: 'none', query: '', searchUrl: null };
+    let res = await ysSearch(useJan ? { jan: query } : { keyword: query });
+    if (res.error) return { status: 'error', query, searchUrl: res.searchUrl || null };
+    /*
+     * Yahoo!ショッピングは語をすべて含む商品しか返さないので、Amazon向けの長い検索語（8語まで）では
+     * 何も当たらないことが多い（「スカルプD 薬用スカルプシャンプー 350ml 頭皮タイプ別3種 ニオイ かゆみ」は0件、
+     * 先頭3語なら57件）。商品名で引いて0件なら、先頭の3語で引き直す。
+     */
+    const SHORT_WORDS = 3;
+    if (!useJan && !useModel && !res.items?.length && query.split(' ').length > SHORT_WORDS) {
+        const short = await ysSearch({ keyword: query.split(' ').slice(0, SHORT_WORDS).join(' ') });
+        if (!short.error) res = short;
+    }
+    const searchUrl = res.searchUrl;
+    const items = (res.items || []).filter((it) => it.itemPrice > 0).map((it) => ({
+        title: it.itemName, price: it.itemPrice, url: it.affiliateUrl || it.itemUrl, image: it.imageUrl,
+        rating: it.rating || 0, count: it.reviewCount || 0, score: AZR.amazon.scoreMatch(title, it.itemName)
+    }));
+    if (!items.length) return { status: 'none', query, searchUrl };
+    if (useJan) return { status: 'ok', query, searchUrl, byJan: true, item: items[0] };
+    const best = (list) => list.reduce((a, b) => (!a || b.score > a.score ? b : a), null);
+    if (useModel) {
+        const hit = best(items.filter((it) => AZR.amazon.titleHasModel(model, it.title)));
+        if (hit) return { status: 'ok', query, searchUrl, byModel: true, item: hit };
+    }
+    const top = best(items);
+    if (!top || top.score < AMAZON_MIN_SCORE) return { status: 'none', query, searchUrl };
+    return { status: 'ok', query, searchUrl, byJan: false, item: top };
+}
+
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    if (msg?.type !== 'azr:yahooPrice' || !msg.title) return;
+    yahooPrice({ title: String(msg.title), jan: msg.jan ? String(msg.jan) : '', model: msg.model ? String(msg.model) : '' })
+        .then(sendResponse)
+        .catch((e) => { console.warn('[AZR] Yahoo!ショッピングの価格を取れない:', e); sendResponse({ status: 'error' }); });
+    return true;
+});
+
+/**
+ * Yahoo!ショッピングの商品ページ用: 楽天での価格。返す形は amazonPrice・yahooPrice と同じ（item-amazon.js がそのまま描く）。
+ * 楽天の検索にはJANの欄が無いので、JANも語として引く（商品名・説明にJANを書く店が多い）。JANで当たった中では最安を選ぶ
+ * （同じJANのまとめ売りは高い方に来る）。閉店・改装中の店舗の商品は選ばない。
+ * Amazonと違い、価格は覚えておかない（中継Workerが1時間キャッシュしている）。
+ */
+async function rakutenPrice({ title, jan, model }) {
+    const useJan = AZR.amazon.isJan(jan);
+    const useModel = !useJan && Boolean(model);
+    const query = useJan ? String(jan) : useModel ? String(model) : AZR.amazon.buildQuery(title);
+    if (!query) return { status: 'none', query: '', searchUrl: null };
+    let res = await rlSearch(query);
+    if (res.error) return { status: 'error', query, searchUrl: res.searchUrl || null };
+    // 楽天も語をすべて含む商品しか返さない。商品名で引いて0件なら、先頭の3語で引き直す（yahooPrice と同じ）
+    const SHORT_WORDS = 3;
+    if (!useJan && !useModel && !res.items?.length && query.split(' ').length > SHORT_WORDS) {
+        const short = await rlSearch(query.split(' ').slice(0, SHORT_WORDS).join(' '));
+        if (!short.error) res = short;
+    }
+    const searchUrl = res.searchUrl;
+    const items = (res.items || []).filter((it) => it.itemPrice > 0).map((it) => ({
+        title: it.itemName, price: it.itemPrice, url: it.affiliateUrl || it.itemUrl, image: it.imageUrl,
+        shop: it.shopCode || '', score: AZR.amazon.scoreMatch(title, it.itemName)
+    }));
+    // JANは語として引くので、説明に別の商品のJANまで並べた店の商品も当たる。名前の重なりが極端に低いものは外す
+    const topScore = Math.max(0, ...items.map((it) => it.score));
+    const ranked = useJan ? items.filter((it) => it.score >= topScore / 2).sort((a, b) => a.price - b.price)
+        : useModel ? items.filter((it) => AZR.amazon.titleHasModel(model, it.title)).sort((a, b) => b.score - a.score)
+        : [];
+    const byName = items.filter((it) => it.score >= AMAZON_MIN_SCORE).sort((a, b) => b.score - a.score);
+    // 上から順に、店が開いているものを選ぶ（判定できないときは開いているとみなす）
+    const firstOpen = async (list) => {
+        for (const it of list.slice(0, 5)) {
+            if (!it.shop || (await rlIsShopOpen(it.shop)) !== false) return it;
+        }
+        return null;
+    };
+    const strip = ({ shop, ...it }) => it;
+    const hit = await firstOpen(ranked);
+    if (hit) return { status: 'ok', query, searchUrl, byJan: useJan, byModel: useModel, item: strip(hit) };
+    const top = await firstOpen(byName);
+    if (!top) return { status: 'none', query, searchUrl };
+    return { status: 'ok', query, searchUrl, byJan: false, item: strip(top) };
+}
+
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    if (msg?.type !== 'azr:rakutenPrice' || !msg.title) return;
+    rakutenPrice({ title: String(msg.title), jan: msg.jan ? String(msg.jan) : '', model: msg.model ? String(msg.model) : '' })
+        .then(sendResponse)
+        .catch((e) => { console.warn('[AZR] 楽天の価格を取れない:', e); sendResponse({ status: 'error' }); });
+    return true;
+});
+
 // 閉店・休止店舗の判定。改装中の店舗はトップ https://www.rakuten.co.jp/<店舗>/ が kaiso.html へリダイレクトされる
 // （商品ページより応答が速いのでトップを見る）。結果は24時間キャッシュ
 const RL_SHOP_TTL = 24 * 60 * 60 * 1000;
@@ -1318,9 +1446,64 @@ function recordHealth(r) {
       }
     }
     await chrome.storage.local.set({ azrHealth: h });
+    // 新しく壊れたとき（成功→失敗、初めての失敗、既読後の警告）だけ通知する。失敗が続いても毎回は鳴らさない
+    const fresh = r.kind === 'check' ? !r.ok && h.checks[r.id].since === base.at : h.events[r.id].unseen === 1;
+    if (fresh) notifyHealthSoon();
   });
 }
 health.setSink(recordHealth);
+
+/*
+ * 修正すべき箇所の通知（開発版だけ）。通知の権限は任意の権限で、ポップアップの「通知を受け取る」で許可する
+ * （ストア版の利用者に権限の確認を出さないため）。ページを開くと確認がまとめて届くので、少し待ってから1回にまとめる。
+ * 通知を押すとポップアップ（一覧と「修正リストをコピー」）を開く。
+ */
+const HEALTH_NOTIFY_ID = 'azr-health';
+let healthNotifyTimer = null;
+
+function notifyHealthSoon() {
+  clearTimeout(healthNotifyTimer);
+  healthNotifyTimer = setTimeout(notifyHealth, 5000);
+}
+
+async function notifyHealth() {
+  if (!chrome.notifications) return; // まだ許可されていない
+  const { azrHealth: h } = await chrome.storage.local.get('azrHealth');
+  const items = [
+    ...Object.entries(h?.checks || {}).filter(([, c]) => c.ok === false),
+    ...Object.entries(h?.events || {}).filter(([, e]) => e.unseen > 0)
+  ].sort(([, a], [, b]) => (b.failAt || b.at) - (a.failAt || a.at));
+  if (!items.length) return chrome.notifications.clear(HEALTH_NOTIFY_ID);
+  const lines = items.slice(0, 4).map(([id, c]) => `・${health.label(id)}${c.detail ? `（${c.detail.slice(0, 60)}）` : ''}`);
+  if (items.length > 4) lines.push(`ほか ${items.length - 4}件`);
+  chrome.notifications.create(HEALTH_NOTIFY_ID, {
+    type: 'basic',
+    iconUrl: '/icons/icon-128.png',
+    title: `Amazonize Rakuten: 修正が必要な箇所 ${items.length}件`,
+    message: lines.join('\n'),
+    contextMessage: 'サイトの形が変わった可能性があります。押すと一覧を開きます',
+    priority: 1
+  }).catch?.(() => {});
+}
+
+function openHealthList() {
+  chrome.action.openPopup().catch(() => chrome.tabs.create({ url: '/src/popup/popup.html' }));
+}
+
+if (health.dev) {
+  const listen = () => chrome.notifications?.onClicked.addListener((id) => {
+    if (id !== HEALTH_NOTIFY_ID) return;
+    chrome.notifications.clear(id);
+    openHealthList();
+  });
+  listen();
+  // ポップアップで許可されたら、そこから通知を使えるようにする
+  chrome.permissions?.onAdded.addListener((p) => {
+    if (!p.permissions?.includes('notifications')) return;
+    listen();
+    notifyHealth();
+  });
+}
 
 async function updateHealthBadge() {
   if (scanState?.running) return;

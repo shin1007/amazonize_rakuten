@@ -50,7 +50,17 @@
     'amazon.wishlistButton': 'Amazon 商品ページ: ほしい物リストのボタンを見つけられた',
     'amazon.wishlistAdded': 'Amazon 商品ページ: ほしい物リストへの追加を検出できた',
     'amazon.wishlistId': 'Amazon ほしい物リスト: リストのIDを取れた',
-    'relay.rakutenSearch': '楽天検索の中継サーバーが答えた'
+    'amazon.galleryThumbs': 'Amazon 商品ページ: 商品画像のサムネイル列（#altImages）を見つけられた',
+    'amazon.galleryStep': 'Amazon 商品ページ: 左右キーで商品画像を切り替えられた',
+    'amazon.reviewMediaNav': 'Amazon レビューの写真・動画: 左右キーで前後へ送れた',
+    'amazon.reviewSearchMove': 'Amazon 商品ページ: レビュー検索・ルーファスの欄をレビューの左ペインへ移せた',
+    'relay.rakutenSearch': '楽天検索の中継サーバーが答えた',
+    'relay.yahooSearch': 'Yahoo!ショッピング検索の中継サーバーが答えた',
+    'yahoo.itemData': 'Yahoo!ショッピング 商品ページ: 商品データ（__NEXT_DATA__）を読めた',
+    'yahoo.pricePlace': 'Yahoo!ショッピング 商品ページ: 価格の欄（#prcdsp）を見つけられた',
+    'yahoo.galleryThumbs': 'Yahoo!ショッピング 商品ページ: 商品画像のサムネイル列を見つけられた',
+    'yahoo.galleryStep': 'Yahoo!ショッピング 商品ページ: 左右キーで商品画像を切り替えられた',
+    'yahoo.searchItems': 'Yahoo!ショッピング 検索結果: 商品の枠を見つけられた'
   };
   const label = (id) => LABELS[id]
     || (id.startsWith('module:') ? `楽天 機能「${id.slice(7)}」が例外なく終わった`

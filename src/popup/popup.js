@@ -144,6 +144,36 @@ async function init() {
       await chrome.storage.local.set({ azrHealth: h });
     });
     $('#healthClear').addEventListener('click', () => chrome.storage.local.remove('azrHealth'));
+    $('#healthCopy').addEventListener('click', copyHealthReport);
+    // 通知の権限は任意の権限（ストア版の利用者には確認を出さない）。許可はポップアップのボタンを押したときにしか求められない
+    const notifyBtn = $('#healthNotify');
+    chrome.permissions.contains({ permissions: ['notifications'] }).then((on) => { notifyBtn.hidden = on; });
+    notifyBtn.addEventListener('click', async () => {
+      if (await chrome.permissions.request({ permissions: ['notifications'] })) notifyBtn.hidden = true;
+    });
+  }
+
+  /** 修正すべき箇所を、そのまま修正の依頼に貼れる形（Markdown）でクリップボードへ。id はソースを検索する手がかり */
+  async function copyHealthReport() {
+    const { azrHealth: h = {} } = await chrome.storage.local.get('azrHealth');
+    const failing = Object.entries(h.checks || {}).filter(([, c]) => c.ok === false);
+    const unseen = Object.entries(h.events || {}).filter(([, e]) => e.unseen > 0);
+    const row = (id, c, state) => [
+      `- [ ] **${AZR.health.label(id)}** — ${state}`,
+      `  - id: \`${id}\``,
+      c.detail && `  - 詳細: ${c.detail}`,
+      c.url && `  - URL: ${c.url}`
+    ].filter(Boolean).join('\n');
+    const text = [
+      `# 修正が必要な箇所（${new Date().toLocaleString('ja-JP')}、v${chrome.runtime.getManifest().version}）`,
+      '',
+      ...failing.map(([id, c]) => row(id, c, `失敗 ${c.fails}回（${when(c.since)}〜）`)),
+      ...unseen.map(([id, e]) => row(id, e, `${e.unseen}回（最後 ${when(e.at)}）`))
+    ].join('\n');
+    await navigator.clipboard.writeText(failing.length || unseen.length ? text : '修正が必要な箇所はありません');
+    const btn = $('#healthCopy');
+    btn.textContent = 'コピーしました';
+    setTimeout(() => { btn.textContent = '修正リストをコピー'; }, 1500);
   }
 
   /* キャンペーンの一括スキャン ---------------------------------------------- */

@@ -11,6 +11,7 @@
     "128": "icons/icon-128.png"
   },
   "permissions": ["storage", "declarativeNetRequestWithHostAccess"],
+  "optional_permissions": ["notifications"],
   "host_permissions": [
     "https://*.rakuten.co.jp/*",
     "https://www.amazon.co.jp/*",
@@ -35,7 +36,19 @@
     },
     {
       "matches": ["https://www.amazon.co.jp/*"],
-      "js": ["src/lib/settings.js", "src/lib/health.js", "src/lib/i18n-data.js", "src/lib/i18n.js", "src/lib/amazon-slot.js", "src/content/amazon-link.js", "src/content/amazon-wishlist.js"],
+      "js": ["src/content/amazon-link.js", "src/content/amazon-wishlist.js", "src/content/amazon-product.js"],
+      "run_at": "document_end"
+    },
+    {
+      "matches": ["https://store.shopping.yahoo.co.jp/*"],
+      "js": ["src/lib/settings.js", "src/lib/health.js", "src/lib/i18n-data.js", "src/lib/i18n.js", "src/lib/dom.js", "src/lib/amazon-match.js", "src/content/item-amazon.js", "src/content/yahoo-item.js"],
+      "css": ["src/styles/amazon.css"],
+      "run_at": "document_end"
+    },
+    {
+      "matches": ["https://shopping.yahoo.co.jp/search*"],
+      "js": ["src/lib/settings.js", "src/lib/health.js", "src/content/yahoo-search.js"],
+      "css": ["src/styles/yahoo.css"],
       "run_at": "document_end"
     },
     {

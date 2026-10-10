@@ -8,6 +8,7 @@ A browser extension that rebuilds Rakuten Ichiba item pages into a clear, Amazon
 ・Shows item and shop review ratings under the product name
 ・Shows the Amazon price for the same item right under the Rakuten price (with the Amazon product name, rating and a link to the search results)
 ・Items matched by JAN code are marked "JAN match"; items found by name are marked "Reference"
+・Also shows the Yahoo! Shopping price of the same item on Rakuten and Amazon item pages (can be turned off in settings)
 
 ■ Rakuten price and link on Amazon item pages
 ・Shows a link and price for the same item on Rakuten Ichiba on Amazon.co.jp item pages
@@ -15,6 +16,11 @@ A browser extension that rebuilds Rakuten Ichiba item pages into a clear, Amazon
 ・Shops that are closed or under renovation are left out of the candidates
 ・If nothing matches, shows a link to the Rakuten search results instead
 ・On Amazon wish list pages, and when you add an item to a wish list, suggests nesage.party, a free price-drop email service run by the developer (Japanese only). It opens with your list URL already filled in (can be turned off in the settings)
+
+■ On Yahoo! Shopping too
+・Use ←→ to flip through item images (also in the enlarged view; Esc closes it)
+・Shows what the same item costs on Amazon and Rakuten, right below the price (can be turned off in settings)
+・Fades sponsored (PR) items in search results
 
 ■ Cart total
 ・Combines item totals, shipping and points to earn across multiple shops into a single panel
@@ -40,16 +46,21 @@ A browser extension that rebuilds Rakuten Ichiba item pages into a clear, Amazon
 Each feature can be turned on or off from the toolbar icon.
 
 ■ Privacy
-・It changes the display only on Rakuten Ichiba (rakuten.co.jp) pages and Amazon.co.jp item and wish list pages
+・It changes the display only on Rakuten Ichiba (rakuten.co.jp) pages and Amazon.co.jp item and wish list pages, and Yahoo! Shopping item and search pages
 ・The Amazon price is shown by reading Amazon's search results for the item's name or JAN code. No login information (cookies) is sent to Amazon
 ・Only when showing the Rakuten price on an Amazon item page, the search terms for that item (JAN code, ISBN, model number, product name) are sent to a relay server for the Rakuten Ichiba Item Search API, operated by the developer. The relay passes them to the Rakuten API and returns the result; it does not receive login information, browsing history, purchases or personal information, and stores nothing except a cache of the result for up to 1 hour
 ・Apart from those search terms, no browsing history, purchases or personal information is sent to the developer or any third party
 ・Only when you press the button in the wish list suggestion, nesage.party opens with that list's URL. The extension never sends anything to nesage.party on its own
 ・Settings, campaign records and the list of coupons you got are stored only in your browser (chrome.storage)
 ・Getting coupons and review ratings is done only between your browser and Rakuten Ichiba's servers
+・To show Yahoo! Shopping prices, the item's search term (JAN code, model number or name) is sent to the same relay server, which queries the Yahoo! Shopping Item Search API
+・To show Rakuten prices on Yahoo! Shopping item pages, the item's search term (JAN code, model number or name) is also sent to the same relay server
 
 ■ Notes
 ・This extension is developed by an individual and is not affiliated with Rakuten Group, Inc., Amazon.com, Inc. or their affiliates
 ・Links to Amazon.co.jp carry an Amazon Associates tag; the developer is a participant in the Amazon Associates Program and earns from qualifying purchases. Clicking such a link opens a short redirect page (nesage.party) run by the developer and then moves on to Amazon.co.jp automatically. Prices and product information are not affected
 ・Links to Rakuten Ichiba shown on Amazon item pages carry the developer's Rakuten Affiliate ID. Clicking one may set a cookie by Rakuten Group for conversion tracking. Prices and product information are not affected
 ・If Rakuten Ichiba changes how its pages are built, some features may stop working. Turn the affected feature off in settings to get the original display back
+・Links to Yahoo! Shopping are ValueCommerce affiliate links. Clicking one may set a cookie for conversion tracking. Prices and product information are not affected
+
+Web Services by Yahoo! JAPAN (https://developer.yahoo.co.jp/sitemap/)

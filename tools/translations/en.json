@@ -192,5 +192,20 @@
   "nesage.party に登録すると、リストの商品が値下げされたときに毎朝メールでお知らせします（無料）。": "Sign up on nesage.party and get a morning email when items on your list drop in price (free, Japanese only).",
   "nesage.party で値下げ通知を受け取る": "Get price-drop alerts on nesage.party",
   "リストを「公開」か「共有」にすると登録できます。": "Set the list to \"Public\" or \"Shared\" to sign up.",
-  "今後表示しない": "Don't show again"
+  "今後表示しない": "Don't show again",
+  "Yahoo!ショッピング": "Yahoo! Shopping",
+  "Yahoo!ショッピングの商品情報を取得中…": "Loading Yahoo! Shopping item info…",
+  "この検索語でYahoo!ショッピングを検索します（上の商品が上位に出るとは限りません）": "Search Yahoo! Shopping with this term (the item above may not rank first)",
+  "※ バリューコマースのリンクを含みます": "* Contains ValueCommerce affiliate links",
+  "Yahoo!ショッピングでは見つかりませんでした": "Not found on Yahoo! Shopping",
+  "Yahoo!ショッピングの価格を調べられませんでした": "Couldn't check the Yahoo! Shopping price",
+  "Yahoo! ￥{p}{via}": "Yahoo! ¥{p}{via}",
+  "Yahoo!ショッピングAPI エラー: {e}": "Yahoo! Shopping API error: {e}",
+  "商品ページにYahoo!ショッピングでの価格も出す": "Also show Yahoo! Shopping prices on item pages",
+  "この検索語で楽天市場を検索します（上の商品が上位に出るとは限りません）": "Search Rakuten Ichiba with this term (the item above may not rank first)",
+  "楽天では見つかりませんでした": "Not found on Rakuten",
+  "楽天の価格を調べられませんでした": "Couldn't check the Rakuten price",
+  "Yahoo!ショッピングと同じ価格": "Same price as Yahoo! Shopping",
+  "（表示価格の比較。ポイント還元は含みません）": "(Listed prices compared; points not included)",
+  "Yahoo!ショッピングの商品ページにAmazon・楽天の価格を出す": "Show Amazon and Rakuten prices on Yahoo! Shopping item pages"
 }

@@ -43,18 +43,75 @@ function searchPageUrl(keyword, env) {
     return `https://hb.afl.rakuten.co.jp/hgc/${env.RAKUTEN_AFFILIATE_ID}/?pc=${enc}&m=${enc}`;
 }
 
+// ---- Yahoo!ショッピング商品検索API v3 の中継（Client ID は Worker の Secret: YAHOO_APP_ID） ----
+// 楽天APIの結果と同じ形（itemName / itemPrice / itemUrl / affiliateUrl / shopName / imageUrl）で返すので、
+// 拡張側は楽天の候補と同じ並べ替え・表示を使い回せる。
+const YAHOO_API = 'https://shopping.yahooapis.jp/ShoppingWebService/V3/itemSearch';
+
+// バリューコマースのMyLink（sid/pid があるときだけ。Yahoo!ショッピングのどのURLでも包める）
+function vcLink(target, env) {
+    if (!env.YAHOO_VC_SID || !env.YAHOO_VC_PID) return null;
+    return `https://ck.jp.ap.valuecommerce.com/servlet/referral?sid=${env.YAHOO_VC_SID}&pid=${env.YAHOO_VC_PID}&vc_url=${encodeURIComponent(target)}`;
+}
+
+async function callYahoo({ keyword, jan }, env) {
+    // JANで引くときは安い順（同じ商品の最安の出品が先頭）。商品名で引くときは関連度順
+    const params = new URLSearchParams({ appid: env.YAHOO_APP_ID, results: '30', in_stock: 'true', condition: 'new', sort: jan ? '+price' : '-score' });
+    if (jan) params.set('jan_code', jan); else params.set('query', keyword);
+    for (let i = 0; i < 2; i++) {
+        const r = await fetch(`${YAHOO_API}?${params}`);
+        if (r.status === 429) { await new Promise(res => setTimeout(res, 1000)); continue; }
+        if (!r.ok) {
+            const body = await r.json().catch(() => ({}));
+            return { error: `upstream ${r.status}`, detail: body.Error?.Message || null };
+        }
+        const j = await r.json();
+        return {
+            count: j.totalResultsAvailable ?? 0,
+            items: (j.hits || []).map(({ name, price, url, seller, image, review, janCode }) => ({
+                itemName: name, itemPrice: price, itemUrl: url, affiliateUrl: vcLink(url, env) || undefined,
+                shopName: seller?.name || '', imageUrl: image?.medium || image?.small || '',
+                rating: review?.rate || 0, reviewCount: review?.count || 0, janCode: janCode || ''
+            }))
+        };
+    }
+    return { error: 'too_many_requests' };
+}
+
+const yahooSearchPage = (q) => `https://shopping.yahoo.co.jp/search?p=${encodeURIComponent(q)}`;
+
+async function handleYahoo(url, env, ctx) {
+    if (!env.YAHOO_APP_ID) return json({ error: 'not_configured' }, 503);
+    const jan = (url.searchParams.get('jan') || '').replace(/\D/g, '');
+    const keyword = (url.searchParams.get('keyword') || '').replace(/\s+/g, ' ').trim();
+    if (jan ? !/^(\d{8}|\d{13})$/.test(jan) : (keyword.length < 2 || keyword.length > 128)) return json({ error: 'bad_keyword' }, 400);
+
+    const cacheKey = new Request(`${url.origin}/yahoo?v=1&${jan ? `jan=${jan}` : `keyword=${encodeURIComponent(keyword)}`}`);
+    const cached = await caches.default.match(cacheKey);
+    if (cached) return cached;
+
+    const result = await callYahoo({ keyword, jan }, env);
+    const page = yahooSearchPage(jan || keyword);
+    result.searchUrl = vcLink(page, env) || page;
+    if (result.error) return json(result, 502);
+    const res = json(result, 200, { 'cache-control': `public, max-age=${CACHE_TTL}` });
+    ctx.waitUntil(caches.default.put(cacheKey, res.clone()));
+    return res;
+}
+
 export default {
     async fetch(request, env, ctx) {
         const url = new URL(request.url);
         if (request.method === 'GET' && url.pathname === '/privacy') {
             return new Response(privacyHtml, { headers: { 'content-type': 'text/html; charset=utf-8' } });
         }
-        if (request.method !== 'GET' || url.pathname !== '/search') return json({ error: 'not_found' }, 404);
+        if (request.method !== 'GET' || (url.pathname !== '/search' && url.pathname !== '/yahoo')) return json({ error: 'not_found' }, 404);
 
         if (env.LIMITER) {
             const { success } = await env.LIMITER.limit({ key: request.headers.get('cf-connecting-ip') || 'unknown' });
             if (!success) return json({ error: 'rate_limited' }, 429);
         }
+        if (url.pathname === '/yahoo') return handleYahoo(url, env, ctx);
 
         const keyword = (url.searchParams.get('keyword') || '').replace(/\s+/g, ' ').trim();
         if (keyword.length < 2 || keyword.length > 128) return json({ error: 'bad_keyword' }, 400);

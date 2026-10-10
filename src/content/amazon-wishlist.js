@@ -89,6 +89,7 @@
         if (!e.target.closest?.('[id*="wishlist" i], [id^="atwl"], [id^="huc-"]')) return;
         const armedAt = Date.now();
         armedUntil = armedAt + ARM_MS;
+        watch();
         // 押してから時間が経っても検出できず、画面には Amazon の「追加されました」が出ている = 検出の手がかりが変わった
         clearTimeout(verdict);
         verdict = setTimeout(() => {
@@ -101,7 +102,16 @@
     // ポップオーバーのリンクは a#huc-list-link のように自分も id が huc- で始まるので、親から探す
     const DONE = '#atwl-inline, .a-popover, [id^="huc-atwl"], [id^="WLHUC"]';
     let shownFor = null;
-    new MutationObserver(() => {
+    // ページ全体の属性まで見張るので重い。ボタンを押してから ARM_MS の間だけ見張る
+    let watching = false;
+    let unwatch;
+    const watch = () => {
+        if (!watching) obs.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'href', 'style'] });
+        watching = true;
+        clearTimeout(unwatch);
+        unwatch = setTimeout(() => { obs.disconnect(); watching = false; }, ARM_MS);
+    };
+    const obs = new MutationObserver(() => {
         if (Date.now() > armedUntil) return;
         for (const a of document.querySelectorAll('a[href*="wishlist"]')) {
             const box = a.parentElement?.closest(DONE);
@@ -116,5 +126,5 @@
             show(id, true);
             return;
         }
-    }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'href', 'style'] });
+    });
 })();

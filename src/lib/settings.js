@@ -8,6 +8,8 @@
     cartTotal: true,          // カゴの合計金額パネル
     amazonPrice: true,        // 商品ページにAmazonでの価格を出す
     rakutenLink: true,        // Amazonの商品ページに、楽天の同じ商品へのリンクと価格を出す
+    yahooPrice: true,         // 楽天・Amazonの商品ページに、Yahoo!ショッピングでの価格も出す
+    yahooItem: true,          // Yahoo!ショッピングの商品ページに、Amazon・楽天での価格を出す
     nesagePromo: true,        // Amazonのほしい物リストで、値下げ通知サービス nesage.party への登録を案内する
     couponList: true,        // 商品ページにクーポンを並べる（その場で獲得できる）
     couponAutoGrab: true,     // 商品ページを開いた時点で、押さずに獲得する
@@ -31,15 +33,20 @@
   AZR.DEFAULTS = DEFAULTS;
   AZR.settings = { ...DEFAULTS };
 
-  AZR.loadSettings = async function loadSettings() {
-    try {
-      const stored = await chrome.storage.sync.get(DEFAULTS);
-      AZR.settings = { ...DEFAULTS, ...stored };
-      AZR.setLanguage?.(AZR.settings.language);
-    } catch {
-      AZR.settings = { ...DEFAULTS };
-    }
-    return AZR.settings;
+  // 同じページの複数のスクリプトが呼ぶ（Amazonでは4つ）。storage を読むのは最初の1回だけにする。
+  // その後の変更は onSettingsChanged が AZR.settings に反映する
+  let loading = null;
+  AZR.loadSettings = function loadSettings() {
+    loading ||= (async () => {
+      try {
+        const stored = await chrome.storage.sync.get(DEFAULTS);
+        AZR.settings = { ...DEFAULTS, ...stored };
+        AZR.setLanguage?.(AZR.settings.language);
+      } catch {
+        AZR.settings = { ...DEFAULTS };
+      }
+    })();
+    return loading.then(() => AZR.settings);
   };
 
   AZR.onSettingsChanged = function onSettingsChanged(cb) {

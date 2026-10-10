@@ -12,9 +12,10 @@
 
     const pulse = (el) => { try { el.animate([{ opacity: 1 }, { opacity: 0.4 }, { opacity: 1 }], { duration: 1200, iterations: Infinity }); } catch {} };
 
-    const newWrap = () => {
+    // 楽天の欄は rakuten-link-btn、Yahoo!ショッピングの欄は yahoo-link-btn
+    const newWrap = (id = 'rakuten-link-btn') => {
         const wrap = document.createElement('span');
-        wrap.id = 'rakuten-link-btn';
+        wrap.id = id;
         Object.assign(wrap.style, { display: 'flex', flexDirection: 'column', gap: '6px', margin: '8px 0' });
         return wrap;
     };
@@ -36,6 +37,21 @@
         return el;
     };
 
+    // Yahoo!ショッピングのリンクはバリューコマースのリンク。Yahoo!のAPIを使う欄には、規約どおりクレジットを出す
+    // （クレジットの文言・リンク先は Yahoo! JAPAN の指定どおり。小さくしたり色を変えたりしない）
+    const yahooDisclosure = () => {
+        const el = disclosure();
+        el.textContent = AZR.t('※ バリューコマースのリンクを含みます') + ' ';
+        const credit = document.createElement('a');
+        credit.href = 'https://developer.yahoo.co.jp/sitemap/';
+        credit.target = '_blank';
+        credit.rel = 'noopener noreferrer';
+        credit.textContent = 'Webサービス by Yahoo! JAPAN';
+        credit.style.fontSize = '12px';
+        el.appendChild(credit);
+        return el;
+    };
+
     // 価格の下に置く。価格が見つからなければタイトルの後ろ
     const place = (wrap) => {
         const price = findPrice();
@@ -50,5 +66,5 @@
         if (anchor) anchor.insertAdjacentElement('afterend', wrap);
     };
 
-    AZR.slot = { findPrice, rowStyle, pulse, newWrap, loadingRow, disclosure, place };
+    AZR.slot = { findPrice, rowStyle, pulse, newWrap, loadingRow, disclosure, yahooDisclosure, place };
 })();
