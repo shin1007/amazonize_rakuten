@@ -111,6 +111,8 @@ node tools/harness.mjs run                                            # 全部�
 
 `tools/out/` にスクリーンショットと結果のJSONが出る。商品ページでは「ギャラリーへ移した / 重複で消した / 説明に残した（理由つき）」画像が一覧で出る。
 
+Yahoo!ショッピングの商品ページ（`store.shopping.yahoo.co.jp/<ストア>/<商品>.html`）と検索結果（`shopping.yahoo.co.jp/search?p=…`）も同じ手順で保存・実行できる。商品ページでは左右キー・拡大表示（送り・Escで閉じる）・Amazon・楽天の欄、検索結果ではPRを薄くした件数を出す。
+
 - playwright はリポジトリに入れていない。`PLAYWRIGHT_DIR`（既定は `~/.claude/tools/browser`）から読む。
 - `fixtures/` と `tools/out/` は `.gitignore` 済み。画像込みで1ページ30〜45MBある。
 - **ログインした状態では record しない。** HARにはクッキーやページの中身がそのまま入る。かご・注文確認は対象外。

@@ -11,6 +11,8 @@
  *   icon.png                                ストア用アイコン（96pxの絵に16pxの余白）
  * 英語版は、ブラウザの表示言語を英語にして撮る（拡張の文言が英語になる）。
  * Amazon側の画面は fixtures/amazon_careme.har（harness.mjs record）。楽天の検索は中継Workerの応答を差し替える。
+ * Yahoo!ショッピング側の画面は fixtures/yahoo_kojima_scalpd.har。こちらはAmazon・楽天とも実際に引く（差し替えの前に撮る）。
+ * スクリーンショットは5枚まで（ストアの上限）なので、かご合計とクーポンは1枚にまとめている。
  *
  * - 商品ページは fixtures/ に保存したページ（harness.mjs record）に拡張を当てて撮る。
  *   STORE_ITEM で使うページを変えられる（既定は hoyuhaircare_cm-shtr-set）。
@@ -34,6 +36,7 @@ const ASSETS = join(ROOT, 'store/assets');
 const RAW = join(ROOT, 'store/raw');
 const ITEM = process.env.STORE_ITEM || 'hoyuhaircare_cm-shtr-set';
 const AMAZON_ITEM = process.env.STORE_AMAZON_ITEM || 'amazon_careme';
+const YAHOO_ITEM = process.env.STORE_YAHOO_ITEM || 'yahoo_kojima_scalpd';
 const LANGS = process.env.STORE_LANG ? [process.env.STORE_LANG] : ['ja', 'en', 'zh_CN', 'zh_TW', 'ko', 'vi', 'id'];
 const BCP47 = { ja: 'ja-JP', en: 'en-US', zh_CN: 'zh-CN', zh_TW: 'zh-TW', ko: 'ko-KR', vi: 'vi-VN', id: 'id-ID' };
 // 見出しのフォント（Google Fonts）。日本語の字形では中国語・韓国語に見えないので言語ごとに変える
@@ -109,7 +112,7 @@ const RAKUTEN_STUB = {
 };
 
 async function shoot(lang) {
-  for (const name of [ITEM, AMAZON_ITEM]) {
+  for (const name of [ITEM, AMAZON_ITEM, YAHOO_ITEM]) {
     if (!existsSync(join(FIXTURES, `${name}.har`))) {
       throw new Error(`fixtures/${name}.har が無い。先に node tools/harness.mjs record <URL> ${name}`);
     }
@@ -122,6 +125,33 @@ async function shoot(lang) {
     const [sw] = ctx.serviceWorkers().length ? ctx.serviceWorkers() : [await ctx.waitForEvent('serviceworker')];
     const extId = new URL(sw.url()).host;
     await sw.evaluate((data) => chrome.storage.local.set({ azrCampaigns: data }), SAMPLE_CAMPAIGNS);
+
+    // Yahoo!ショッピングの商品ページ（Amazon・楽天の価格）。楽天の検索を差し替える前に撮る
+    const yahoo = await openItem(ctx, YAHOO_ITEM);
+    // Amazonは続けて引くと空の検索結果を返すことがある。両方の欄が当たるまで2回まで読み直す
+    for (let i = 0; i < 3; i++) {
+      await yahoo.waitForFunction(() => document.documentElement.dataset.azrAmazon && document.documentElement.dataset.azrRakuten, null, { timeout: 40000 })
+        .catch(() => console.warn('  Amazon・楽天の価格が出ない'));
+      const ok = await yahoo.evaluate(() => document.documentElement.dataset.azrAmazon === 'ok' && document.documentElement.dataset.azrRakuten === 'ok');
+      if (ok || i === 2) break;
+      await yahoo.waitForTimeout(3000);
+      await yahoo.reload({ waitUntil: 'domcontentloaded' });
+    }
+    await yahoo.evaluate(() => window.scrollTo(0, document.getElementById('prcdsp').getBoundingClientRect().top + window.scrollY - 110));
+    await yahoo.waitForTimeout(800);
+    // 拡張が足した欄の位置（画面に対する割合）。組版で囲む
+    const added = await yahoo.evaluate(() => {
+      const rs = [...document.querySelectorAll('.azr-amazon')].map((b) => b.getBoundingClientRect());
+      const left = Math.min(...rs.map((r) => r.left)) - 8, top = Math.min(...rs.map((r) => r.top)) - 8;
+      const right = Math.max(...rs.map((r) => r.right)) + 8, bottom = Math.min(Math.max(...rs.map((r) => r.bottom)) + 8, innerHeight - 4);
+      const pct = (v, all) => +(v / all * 100).toFixed(1);
+      return { left: pct(left, innerWidth), top: pct(top, innerHeight), width: pct(right - left, innerWidth), height: pct(bottom - top, innerHeight) };
+    });
+    writeFileSync(join(rawDir, 'yahoo.json'), JSON.stringify(added));
+    await yahoo.screenshot({ path: join(rawDir, 'yahoo.png') });
+    console.log(`raw/${lang}/yahoo.png`);
+    await yahoo.close();
+
     // Amazon側の楽天候補は、公開中のWorkerに問い合わせず見本の応答を返す
     await sw.evaluate((stub) => {
       const real = globalThis.fetch;
@@ -187,13 +217,11 @@ const TEXT = {
   ja: {
     scanStatus: '77件を確認 / 新たに1件エントリー / 既にエントリー済み5件',
     tag: '楽天市場を、見やすく・お得に',
-    chips: ['3カラムの商品ページ', 'Amazon⇄楽天の価格比較', 'かご合計', 'クーポン自動適用', '一括エントリー'],
+    chips: ['3カラムの商品ページ', 'Amazon⇄楽天の価格比較', 'かご合計', 'クーポン自動適用', '一括エントリー', 'Yahoo!ショッピング対応'],
     s1: ['楽天の商品ページを、<em>見やすい3カラム</em>に', '画像・商品情報・購入エリアを1画面に。Amazonでの価格も、楽天の価格のすぐ下に'],
     s2: ['<em>Amazon</em>の商品ページに、楽天のリンクと価格', 'JAN・ISBN・型番で同じ商品を探し、楽天の価格へワンクリックで'],
-    s3: ['かごの<em>合計金額</em>と、ポイント差引後の実質価格', 'ショップごとにバラバラな小計・送料・ポイントを、ひとつのパネルに'],
-    s3p: [['複数ショップの合計がひと目で', '「結局いくら払うのか」を楽天のかご画面の上に表示'], ['ポイント差引後の実質価格', '獲得予定ポイントを引いた金額も一緒に'], ['数量を変えるとすぐ追従', 'ショップ別の内訳もその場で確認できます']],
-    s4: ['いちばん得な<em>クーポン</em>に自動で切り替え', '注文確認画面で、使えるクーポンの割引額を比べて最良のものを適用'],
-    s4p: [['割引率ではなく「割引額」で比較', '21%OFFと300円OFF、この注文でどちらが得かを計算'], ['商品ページのクーポンもその場で獲得', 'クーポンページへ移動せずに「獲得する」を押すだけ'], ['注文の確定はしません', '確定ボタンは必ずご自身で。適用前に確認する設定も']],
+    s6: ['<em>Yahoo!ショッピング</em>でも、Amazon・楽天の価格を', '商品ページの価格の下に同じ商品のAmazon・楽天の価格。←→キーで画像送り、検索結果のPRは薄く'],
+    s34: ['かごの<em>合計</em>と、いちばん得な<em>クーポン</em>', 'ショップをまたいだ合計とポイント差引後の金額。注文確認では割引額が最大のクーポンに自動で切り替え'],
     s5: ['キャンペーンを探して<em>一括エントリー</em>', 'ボタンひとつで、楽天トップに出ているキャンペーンを調べてエントリー'],
     s5p: [['エントリー漏れを防ぐ', 'キャンペーンページを1つずつ開いて押す手間を省きます'], ['エントリー済み一覧', '楽天には無い「どれにエントリーしたか」の記録を残せます'], ['押せたことを確かめてから記録', '表示が「エントリー済み」に変わったものだけを数えます']],
     cart: { title: 'かご合計', items: '商品合計（4点 / 3ショップ）', v1: '7,604円', ship: '送料', v2: '230円', pay: 'お支払い予定', v3: '7,834円', pts: '獲得予定ポイント', after: 'ポイント差引後', v4: '6,297円', by: 'ショップ別内訳', shops: ['ショップA', 'ショップB', 'ショップC'], amounts: ['3,980円 / 812pt', '2,090円 / 418pt', '1,764円 / 307pt'] },
@@ -202,13 +230,11 @@ const TEXT = {
   en: {
     scanStatus: '77 checked / 1 newly entered / 5 already entered',
     tag: 'Shop Rakuten smarter',
-    chips: ['3-column item page', 'Amazon ⇄ Rakuten prices', 'Cart total', 'Best coupon, applied', 'Bulk entry'],
+    chips: ['3-column item page', 'Amazon ⇄ Rakuten prices', 'Cart total', 'Best coupon, applied', 'Bulk entry', 'Works on Yahoo! Shopping'],
     s1: ['Rakuten item pages in a <em>clear 3-column layout</em>', 'Images, details and buy box on one screen — with the Amazon price right under the Rakuten price'],
     s2: ['Rakuten links and prices, right on <em>Amazon</em>', 'Finds the same item by JAN, ISBN or model number — one click to the Rakuten price'],
-    s3: ['Your cart <em>total</em>, and the real price after points', 'Subtotals, shipping and points scattered across shops — in one panel'],
-    s3p: [['All shops added up at a glance', 'Shown on top of the Rakuten cart: how much you actually pay'], ['The real price after points', 'Includes the points you are about to earn'], ['Follows quantity changes instantly', 'Per-shop breakdown right there']],
-    s4: ['Automatically switch to the <em>best coupon</em>', 'On the order page, compares the discount each coupon gives and applies the best one'],
-    s4p: [['Compares the amount, not the percentage', '21% OFF or ¥300 OFF — it works out which saves more on this order'], ['Get item-page coupons in place', 'Just press "Get" — no trip to the coupon page'], ['Never places your order', 'You always press the final button yourself. Optional confirmation before applying']],
+    s6: ['Amazon and Rakuten prices on <em>Yahoo! Shopping</em>', 'Right under the Yahoo! price — plus ←→ to flip images and faded PR items in search'],
+    s34: ['<em>Cart total</em> and the best <em>coupon</em>, automatically', 'Totals across shops and the price after points. At checkout, switches to the coupon with the biggest discount'],
     s5: ['Find campaigns and <em>enter them all</em>', 'One button checks the campaigns on the Rakuten top page and enters them'],
     s5p: [['Never miss an entry', 'No more opening campaign pages one by one'], ['A list of what you entered', 'A record Rakuten does not give you'], ['Recorded only after it worked', 'Counts only what switched to "Entered"']],
     cart: { title: 'Cart total', items: 'Items (4 / 3 shops)', v1: '¥7,604', ship: 'Shipping', v2: '¥230', pay: 'Amount to pay', v3: '¥7,834', pts: 'Points to earn', after: 'After points', v4: '¥6,297', by: 'By shop', shops: ['Shop A', 'Shop B', 'Shop C'], amounts: ['¥3,980 / 812pt', '¥2,090 / 418pt', '¥1,764 / 307pt'] },
@@ -217,13 +243,11 @@ const TEXT = {
   zh_CN: {
     scanStatus: '已检查77项 / 新报名1项 / 已报名过5项',
     tag: '让乐天购物更清晰、更划算',
-    chips: ['三栏商品页', '亚马逊 ⇄ 乐天比价', '购物车合计', '自动使用优惠券', '一键报名'],
+    chips: ['三栏商品页', '亚马逊 ⇄ 乐天比价', '购物车合计', '自动使用优惠券', '一键报名', '支持Yahoo!购物'],
     s1: ['把乐天商品页变成<em>清晰的三栏布局</em>', '图片、商品信息、购买区一屏搞定。亚马逊价格就在乐天价格正下方'],
     s2: ['在<em>亚马逊</em>商品页直接看到乐天的链接和价格', '按 JAN 码、ISBN、型号找到同一商品，一键前往乐天价格'],
-    s3: ['购物车<em>合计金额</em>，以及扣除积分后的实际价格', '把各店铺分散的小计、运费和积分汇总到一个面板'],
-    s3p: [['多家店铺的合计一目了然', '在乐天购物车页面上方显示“最终要付多少”'], ['扣除积分后的实际价格', '同时显示减去预计获得积分后的金额'], ['修改数量立即更新', '各店铺的明细也能当场查看']],
-    s4: ['自动切换为最划算的<em>优惠券</em>', '在订单确认页比较可用优惠券的折扣金额，使用最优的一张'],
-    s4p: [['比较“折扣金额”而不是折扣率', '21% OFF 还是 300 日元 OFF，算出这笔订单哪个更划算'], ['商品页的优惠券当场领取', '无需跳转到优惠券页面，点一下“领取”即可'], ['绝不替您确认下单', '确认按钮必须由您本人点击。也可设置为使用前先确认']],
+    s6: ['在<em>Yahoo!购物</em>也能看到亚马逊和乐天的价格', '商品页价格下方显示同一商品的亚马逊、乐天价格。←→键切换图片，搜索结果中的PR商品淡化'],
+    s34: ['购物车<em>合计</em>与最划算的<em>优惠券</em>', '跨店铺合计与扣除积分后的金额。订单确认页自动切换为折扣金额最大的优惠券'],
     s5: ['查找活动并<em>一键报名</em>', '一个按钮检查乐天首页上的活动并完成报名'],
     s5p: [['不再漏报名', '省去逐个打开活动页面点击的麻烦'], ['已报名列表', '可以留下乐天没有提供的“报名了哪些”记录'], ['确认成功后才记录', '只统计显示已变为“已报名”的活动']],
     cart: { title: '购物车合计', items: '商品合计（4件 / 3家店铺）', v1: '¥7,604', ship: '运费', v2: '¥230', pay: '应付金额', v3: '¥7,834', pts: '预计获得积分', after: '扣除积分后', v4: '¥6,297', by: '各店铺明细', shops: ['店铺A', '店铺B', '店铺C'], amounts: ['¥3,980 / 812pt', '¥2,090 / 418pt', '¥1,764 / 307pt'] },
@@ -232,13 +256,11 @@ const TEXT = {
   zh_TW: {
     scanStatus: '已檢查77項 / 新報名1項 / 已報名過5項',
     tag: '讓樂天購物更清晰、更划算',
-    chips: ['三欄商品頁', '亞馬遜 ⇄ 樂天比價', '購物車合計', '自動套用優惠券', '一鍵報名'],
+    chips: ['三欄商品頁', '亞馬遜 ⇄ 樂天比價', '購物車合計', '自動套用優惠券', '一鍵報名', '支援Yahoo!購物'],
     s1: ['把樂天商品頁變成<em>清晰的三欄版面</em>', '圖片、商品資訊、購買區一個畫面搞定。亞馬遜價格就在樂天價格正下方'],
     s2: ['在<em>亞馬遜</em>商品頁直接看到樂天的連結與價格', '以 JAN 碼、ISBN、型號找到同一商品，一鍵前往樂天價格'],
-    s3: ['購物車<em>合計金額</em>，以及扣除點數後的實際價格', '把各店鋪分散的小計、運費與點數彙整到同一個面板'],
-    s3p: [['多家店鋪的合計一目了然', '在樂天購物車頁面上方顯示「最後要付多少」'], ['扣除點數後的實際價格', '同時顯示減去預計獲得點數後的金額'], ['修改數量立即更新', '各店鋪的明細也能當場查看']],
-    s4: ['自動切換為最划算的<em>優惠券</em>', '在訂單確認頁比較可用優惠券的折抵金額，套用最優的一張'],
-    s4p: [['比較「折抵金額」而不是折扣率', '21% OFF 還是 300 日圓 OFF，算出這筆訂單哪個更划算'], ['商品頁的優惠券當場領取', '不必跳轉到優惠券頁面，按一下「領取」即可'], ['絕不替您確認下單', '確認按鈕一定由您本人按下。也可設定為套用前先確認']],
+    s6: ['在<em>Yahoo!購物</em>也能看到亞馬遜與樂天的價格', '商品頁價格下方顯示同一商品的亞馬遜、樂天價格。←→鍵切換圖片，搜尋結果中的PR商品淡化'],
+    s34: ['購物車<em>合計</em>與最划算的<em>優惠券</em>', '跨店鋪合計與扣除點數後的金額。訂單確認頁自動切換為折抵金額最大的優惠券'],
     s5: ['尋找活動並<em>一鍵報名</em>', '一個按鈕檢查樂天首頁上的活動並完成報名'],
     s5p: [['不再漏報名', '省去逐一開啟活動頁面點擊的麻煩'], ['已報名清單', '可以留下樂天沒有提供的「報名了哪些」記錄'], ['確認成功後才記錄', '只統計顯示已變為「已報名」的活動']],
     cart: { title: '購物車合計', items: '商品合計（4件 / 3家店鋪）', v1: '¥7,604', ship: '運費', v2: '¥230', pay: '應付金額', v3: '¥7,834', pts: '預計獲得點數', after: '扣除點數後', v4: '¥6,297', by: '各店鋪明細', shops: ['店鋪A', '店鋪B', '店鋪C'], amounts: ['¥3,980 / 812pt', '¥2,090 / 418pt', '¥1,764 / 307pt'] },
@@ -247,13 +269,11 @@ const TEXT = {
   ko: {
     scanStatus: '77건 확인 / 신규 응모 1건 / 이미 응모 5건',
     tag: '라쿠텐 쇼핑을 더 보기 쉽고 알뜰하게',
-    chips: ['3단 상품 페이지', '아마존 ⇄ 라쿠텐 가격 비교', '장바구니 합계', '쿠폰 자동 적용', '일괄 응모'],
+    chips: ['3단 상품 페이지', '아마존 ⇄ 라쿠텐 가격 비교', '장바구니 합계', '쿠폰 자동 적용', '일괄 응모', 'Yahoo! 쇼핑 지원'],
     s1: ['라쿠텐 상품 페이지를 <em>보기 쉬운 3단 구성</em>으로', '이미지·상품 정보·구매 영역을 한 화면에. 아마존 가격도 라쿠텐 가격 바로 아래에'],
     s2: ['<em>아마존</em> 상품 페이지에서 바로 라쿠텐 링크와 가격을', 'JAN 코드·ISBN·모델 번호로 같은 상품을 찾아 한 번에 라쿠텐 가격으로'],
-    s3: ['장바구니 <em>합계 금액</em>과 포인트 차감 후 실질 가격', '상점마다 흩어진 소계·배송비·포인트를 하나의 패널로'],
-    s3p: [['여러 상점의 합계를 한눈에', '"결국 얼마를 내는지"를 라쿠텐 장바구니 화면 위에 표시'], ['포인트 차감 후 실질 가격', '적립 예정 포인트를 뺀 금액도 함께'], ['수량을 바꾸면 바로 반영', '상점별 내역도 그 자리에서 확인']],
-    s4: ['가장 유리한 <em>쿠폰</em>으로 자동 전환', '주문 확인 화면에서 사용 가능한 쿠폰의 할인액을 비교해 최적의 쿠폰을 적용'],
-    s4p: [['할인율이 아닌 "할인액"으로 비교', '21% OFF와 300엔 OFF 중 이 주문에 어느 쪽이 유리한지 계산'], ['상품 페이지의 쿠폰도 그 자리에서 받기', '쿠폰 페이지로 이동하지 않고 "받기"만 누르면 끝'], ['주문 확정은 하지 않습니다', '확정 버튼은 반드시 직접 누르세요. 적용 전 확인 설정도 가능']],
+    s6: ['<em>Yahoo! 쇼핑</em>에서도 아마존·라쿠텐 가격을', '상품 페이지 가격 아래에 같은 상품의 아마존·라쿠텐 가격. ←→ 키로 이미지 넘기기, 검색 결과의 PR은 흐리게'],
+    s34: ['장바구니 <em>합계</em>와 가장 유리한 <em>쿠폰</em>', '상점을 넘나든 합계와 포인트 차감 후 금액. 주문 확인에서는 할인액이 가장 큰 쿠폰으로 자동 전환'],
     s5: ['캠페인을 찾아 <em>일괄 응모</em>', '버튼 하나로 라쿠텐 첫 페이지의 캠페인을 조사해 응모'],
     s5p: [['응모 누락 방지', '캠페인 페이지를 하나씩 열어 누르는 수고를 덜어 줍니다'], ['응모 완료 목록', '라쿠텐에는 없는 "어디에 응모했는지" 기록을 남길 수 있습니다'], ['응모된 것을 확인한 뒤 기록', '표시가 "응모 완료"로 바뀐 것만 셉니다']],
     cart: { title: '장바구니 합계', items: '상품 합계(4점 / 3개 상점)', v1: '¥7,604', ship: '배송비', v2: '¥230', pay: '결제 예정 금액', v3: '¥7,834', pts: '적립 예정 포인트', after: '포인트 차감 후', v4: '¥6,297', by: '상점별 내역', shops: ['상점A', '상점B', '상점C'], amounts: ['¥3,980 / 812pt', '¥2,090 / 418pt', '¥1,764 / 307pt'] },
@@ -262,13 +282,11 @@ const TEXT = {
   vi: {
     scanStatus: 'Đã kiểm tra 77 / đăng ký mới 1 / đã đăng ký từ trước 5',
     tag: 'Mua sắm Rakuten rõ ràng và tiết kiệm hơn',
-    chips: ['Trang sản phẩm 3 cột', 'So giá Amazon ⇄ Rakuten', 'Tổng giỏ hàng', 'Tự áp dụng phiếu giảm giá', 'Đăng ký hàng loạt'],
+    chips: ['Trang sản phẩm 3 cột', 'So giá Amazon ⇄ Rakuten', 'Tổng giỏ hàng', 'Tự áp dụng phiếu giảm giá', 'Đăng ký hàng loạt', 'Hỗ trợ Yahoo! Shopping'],
     s1: ['Trang sản phẩm Rakuten theo <em>bố cục 3 cột dễ nhìn</em>', 'Hình ảnh, thông tin và khu vực mua hàng trên một màn hình — giá Amazon ngay dưới giá Rakuten'],
     s2: ['Liên kết và giá Rakuten ngay trên trang <em>Amazon</em>', 'Tìm cùng sản phẩm theo mã JAN, ISBN, mã model — một cú nhấp để đến giá Rakuten'],
-    s3: ['<em>Tổng giỏ hàng</em> và giá thực tế sau khi trừ điểm', 'Gom tiền tạm tính, phí vận chuyển và điểm rải rác ở nhiều cửa hàng vào một bảng'],
-    s3p: [['Tổng của nhiều cửa hàng trong một cái nhìn', 'Hiển thị "rốt cuộc phải trả bao nhiêu" ngay trên trang giỏ hàng Rakuten'], ['Giá thực tế sau khi trừ điểm', 'Có cả số tiền sau khi trừ điểm dự kiến nhận'], ['Đổi số lượng là cập nhật ngay', 'Xem chi tiết theo từng cửa hàng tại chỗ']],
-    s4: ['Tự động chuyển sang <em>phiếu giảm giá</em> có lợi nhất', 'Ở màn hình xác nhận đơn, so sánh số tiền giảm của các phiếu dùng được và áp dụng phiếu tốt nhất'],
-    s4p: [['So sánh theo "số tiền giảm", không theo phần trăm', 'Giảm 21% hay giảm 300 yên — tính xem đơn này cái nào lợi hơn'], ['Nhận phiếu trên trang sản phẩm ngay tại chỗ', 'Không cần sang trang phiếu giảm giá, chỉ bấm "Nhận"'], ['Không tự đặt hàng thay bạn', 'Nút xác nhận luôn do bạn tự bấm. Có thể đặt xác nhận trước khi áp dụng']],
+    s6: ['Giá Amazon, Rakuten trên <em>Yahoo! Shopping</em>', 'Ngay dưới giá Yahoo! — thêm phím ←→ để chuyển ảnh, làm mờ sản phẩm PR trong kết quả tìm kiếm'],
+    s34: ['<em>Tổng giỏ hàng</em> và <em>phiếu giảm giá</em> tốt nhất', 'Tổng qua nhiều cửa hàng và giá sau khi trừ điểm. Khi xác nhận đơn, tự chuyển sang phiếu giảm nhiều nhất'],
     s5: ['Tìm chiến dịch và <em>đăng ký hàng loạt</em>', 'Một nút để kiểm tra các chiến dịch trên trang chủ Rakuten và đăng ký'],
     s5p: [['Không bỏ sót chiến dịch nào', 'Bớt công mở từng trang chiến dịch rồi bấm'], ['Danh sách đã đăng ký', 'Lưu lại "đã đăng ký chiến dịch nào" — thứ Rakuten không có'], ['Chỉ ghi lại sau khi xác nhận thành công', 'Chỉ tính những chiến dịch đã chuyển sang "Đã đăng ký"']],
     cart: { title: 'Tổng giỏ hàng', items: 'Tổng sản phẩm (4 món / 3 cửa hàng)', v1: '¥7,604', ship: 'Phí vận chuyển', v2: '¥230', pay: 'Số tiền phải trả', v3: '¥7,834', pts: 'Điểm dự kiến nhận', after: 'Sau khi trừ điểm', v4: '¥6,297', by: 'Chi tiết theo cửa hàng', shops: ['Cửa hàng A', 'Cửa hàng B', 'Cửa hàng C'], amounts: ['¥3,980 / 812pt', '¥2,090 / 418pt', '¥1,764 / 307pt'] },
@@ -277,13 +295,11 @@ const TEXT = {
   id: {
     scanStatus: '77 diperiksa / 1 baru diikuti / 5 sudah diikuti sebelumnya',
     tag: 'Belanja Rakuten lebih jelas dan hemat',
-    chips: ['Halaman produk 3 kolom', 'Bandingkan harga Amazon ⇄ Rakuten', 'Total keranjang', 'Kupon otomatis', 'Ikut sekaligus'],
+    chips: ['Halaman produk 3 kolom', 'Bandingkan harga Amazon ⇄ Rakuten', 'Total keranjang', 'Kupon otomatis', 'Ikut sekaligus', 'Mendukung Yahoo! Shopping'],
     s1: ['Halaman produk Rakuten dalam <em>tata letak 3 kolom yang jelas</em>', 'Gambar, detail, dan area pembelian dalam satu layar — harga Amazon tepat di bawah harga Rakuten'],
     s2: ['Tautan dan harga Rakuten langsung di halaman <em>Amazon</em>', 'Temukan produk yang sama lewat kode JAN, ISBN, atau nomor model — satu klik ke harga Rakuten'],
-    s3: ['<em>Total keranjang</em> dan harga sebenarnya setelah dikurangi poin', 'Subtotal, ongkos kirim, dan poin yang tersebar di banyak toko dalam satu panel'],
-    s3p: [['Total beberapa toko dalam sekali lihat', 'Menampilkan "akhirnya bayar berapa" di atas halaman keranjang Rakuten'], ['Harga sebenarnya setelah poin', 'Termasuk jumlah setelah dikurangi poin yang akan didapat'], ['Langsung berubah saat jumlah diganti', 'Rincian per toko bisa dilihat di tempat']],
-    s4: ['Otomatis beralih ke <em>kupon</em> terhemat', 'Di halaman konfirmasi pesanan, membandingkan potongan tiap kupon dan menerapkan yang terbaik'],
-    s4p: [['Membandingkan "jumlah potongan", bukan persentase', 'Diskon 21% atau 300 yen — dihitung mana yang lebih hemat untuk pesanan ini'], ['Kupon di halaman produk diambil di tempat', 'Tanpa pindah ke halaman kupon, cukup tekan "Ambil"'], ['Tidak pernah memesan atas nama Anda', 'Tombol konfirmasi selalu Anda tekan sendiri. Bisa diatur meminta konfirmasi dulu']],
+    s6: ['Harga Amazon dan Rakuten di <em>Yahoo! Shopping</em>', 'Tepat di bawah harga Yahoo! — plus ←→ untuk ganti gambar dan produk PR dipudarkan di hasil pencarian'],
+    s34: ['<em>Total keranjang</em> dan <em>kupon</em> terbaik', 'Total lintas toko dan harga setelah poin. Saat checkout, otomatis beralih ke kupon dengan potongan terbesar'],
     s5: ['Temukan kampanye dan <em>ikuti sekaligus</em>', 'Satu tombol memeriksa kampanye di halaman utama Rakuten lalu mengikutinya'],
     s5p: [['Tak ada kampanye terlewat', 'Tidak perlu lagi membuka halaman kampanye satu per satu'], ['Daftar yang sudah diikuti', 'Catatan "kampanye apa yang sudah diikuti" yang tidak disediakan Rakuten'], ['Dicatat setelah dipastikan berhasil', 'Hanya menghitung yang statusnya berubah menjadi "Sudah diikuti"']],
     cart: { title: 'Total keranjang', items: 'Total barang (4 item / 3 toko)', v1: '¥7,604', ship: 'Ongkos kirim', v2: '¥230', pay: 'Jumlah yang dibayar', v3: '¥7,834', pts: 'Poin yang akan didapat', after: 'Setelah dikurangi poin', v4: '¥6,297', by: 'Rincian per toko', shops: ['Toko A', 'Toko B', 'Toko C'], amounts: ['¥3,980 / 812pt', '¥2,090 / 418pt', '¥1,764 / 307pt'] },
@@ -335,6 +351,10 @@ const BASE_CSS = `
   .band h1 .site { color: #ff9c9c; font-weight: 800; }
   .site-badge.is-rakuten { background: #bf0000; }
   .site-badge.is-amazon { background: #ff9900; color: #131921; }
+  .site-badge.is-yahoo { background: #ff0033; }
+  /* かご合計とクーポンを1枚に並べる */
+  .split.is-pair { justify-content: center; }
+  .split.is-pair .panel-stage { width: auto; }
   /* 拡張が足した部分の強調（画像の位置に対する割合で囲む） */
   .shot { position: relative; }
   .added { position: absolute; border: 4px solid #e47911; border-radius: 10px; box-shadow: 0 0 0 6px rgba(254, 189, 105, .55), 0 8px 24px rgba(0, 0, 0, .25); }
@@ -367,19 +387,22 @@ const points = (list) => `<ul class="points">${list.map(([a, b]) => `<li>${a}<sm
 const band = ([h1, p], badge = '') => `<div class="band${badge ? " has-site" : ""}"><h1>${badge}${h1}</h1><p>${p}</p>${badge ? FIT : ''}</div>`;
 
 const SITE = {
-  ja: { rakuten: '楽天市場', amazon: 'Amazon.co.jp', added: '✦ この拡張機能が追加' },
-  en: { rakuten: 'Rakuten', amazon: 'Amazon', added: '✦ Added by this extension' },
-  zh_CN: { rakuten: '乐天', amazon: '亚马逊', added: '✦ 此扩展程序新增' },
-  zh_TW: { rakuten: '樂天', amazon: '亞馬遜', added: '✦ 此擴充功能新增' },
-  ko: { rakuten: '라쿠텐', amazon: '아마존', added: '✦ 이 확장 프로그램이 추가' },
-  vi: { rakuten: 'Rakuten', amazon: 'Amazon', added: '✦ Tiện ích này thêm vào' },
-  id: { rakuten: 'Rakuten', amazon: 'Amazon', added: '✦ Ditambahkan ekstensi ini' },
+  ja: { rakuten: '楽天市場', amazon: 'Amazon.co.jp', yahoo: 'Yahoo!ショッピング', added: '✦ この拡張機能が追加' },
+  en: { rakuten: 'Rakuten', amazon: 'Amazon', yahoo: 'Yahoo! Shopping', added: '✦ Added by this extension' },
+  zh_CN: { rakuten: '乐天', amazon: '亚马逊', yahoo: 'Yahoo!购物', added: '✦ 此扩展程序新增' },
+  zh_TW: { rakuten: '樂天', amazon: '亞馬遜', yahoo: 'Yahoo!購物', added: '✦ 此擴充功能新增' },
+  ko: { rakuten: '라쿠텐', amazon: '아마존', yahoo: 'Yahoo! 쇼핑', added: '✦ 이 확장 프로그램이 추가' },
+  vi: { rakuten: 'Rakuten', amazon: 'Amazon', yahoo: 'Yahoo! Shopping', added: '✦ Tiện ích này thêm vào' },
+  id: { rakuten: 'Rakuten', amazon: 'Amazon', yahoo: 'Yahoo! Shopping', added: '✦ Ditambahkan ekstensi ini' },
 };
 
 const slides = (lang) => {
   const T = TEXT[lang];
   const raw = (name) => pathToFileURL(join(RAW, lang, name)).href;
   const { cart, co } = T;
+  const yahooAdded = (() => {
+    try { return JSON.parse(readFileSync(join(RAW, lang, 'yahoo.json'), 'utf8')); } catch { return { left: 0, top: 0, width: 0, height: 0 }; }
+  })();
   const rakutenBadge = `<span class="site">${SITE[lang].rakuten}${lang === 'ja' || lang.startsWith('zh') ? '：' : ': '}</span>`;
   return {
     'screenshot-1': `
@@ -400,9 +423,18 @@ const slides = (lang) => {
 
     'screenshot-3': `
     <div class="slide">
-      ${band(T.s3, rakutenBadge)}
-      <div class="split">
-        ${points(T.s3p)}
+      ${band(T.s6)}
+      <div class="window"><span class="site-badge is-yahoo">${SITE[lang].yahoo}</span>
+        <div class="shot"><img src="${raw('yahoo.png')}">
+          <div class="added" style="left:${yahooAdded.left}%;top:${yahooAdded.top}%;width:${yahooAdded.width}%;height:${yahooAdded.height}%"><span class="added-label">${SITE[lang].added}</span></div>
+        </div>
+      </div>
+    </div>`,
+
+    'screenshot-4': `
+    <div class="slide">
+      ${band(T.s34, rakutenBadge)}
+      <div class="split is-pair">
         <div class="panel-stage">
           <div class="azr-panel azr-cart-panel">
             <div class="azr-panel-head"><span class="azr-panel-title">${cart.title}</span><button class="azr-panel-close">×</button></div>
@@ -421,14 +453,6 @@ const slides = (lang) => {
             </div>
           </div>
         </div>
-      </div>
-    </div>`,
-
-    'screenshot-4': `
-    <div class="slide">
-      ${band(T.s4, rakutenBadge)}
-      <div class="split">
-        ${points(T.s4p)}
         <div class="panel-stage">
           <div class="azr-panel azr-checkout-panel">
             <div class="azr-panel-head"><span class="azr-panel-title">${co.title}</span><button class="azr-panel-close">×</button></div>

@@ -3,6 +3,8 @@
  *   node tools/harness.mjs record <URL> [名前]   実ページを開き、通信ごと fixtures/<名前>.har に保存
  *   node tools/harness.mjs run [名前...]          保存したページに拡張を当て、スクショと結果を出す
  *
+ * Yahoo!ショッピングの商品ページ・検索結果も保存・検証できる（runYahoo。URLのホストで振り分ける）。
+ *
  * 楽天のページは毎回取りに行くと遅く、中身も日々変わる。一度保存しておけば、
  * 同じHTML・同じJSで何度でも試せる（ページ側のReactも保存したJSがそのまま動く）。
  *
@@ -61,7 +63,8 @@ async function record(url, name) {
   const page = await ctx.newPage();
   await page.goto(url, { waitUntil: 'load', timeout: 60000 });
   // 購入エリアはReactが後から描く。描かれるまで待ってから閉じる。
-  await page.waitForSelector('#rakutenLimitedId_aroundCart', { timeout: 20000 }).catch(() => {});
+  if (isYahoo(url)) await page.waitForSelector('#prcdsp, [class*="imageIcon--pr"]', { timeout: 20000 }).catch(() => {});
+  else await page.waitForSelector('#rakutenLimitedId_aroundCart', { timeout: 20000 }).catch(() => {});
   await page.waitForTimeout(2000);
   writeFileSync(join(FIXTURES, `${name}.url`), url);
   await ctx.close();
@@ -118,6 +121,11 @@ async function run(names) {
     page.on('pageerror', (e) => logs.push(`pageerror: ${e.message}`));
 
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    if (isYahoo(url)) {
+      await runYahoo(page, name, url, logs);
+      await page.close();
+      continue;
+    }
     await page.waitForSelector('#azr-item-root', { timeout: 20000 }).catch(() => logs.push('harness: azr-item-root が出ない'));
     // レイアウトは先に出て、購入エリアはReactが描いてから移設される
     await page.waitForFunction(() => document.documentElement.dataset.azrBuybox === 'mounted', null, { timeout: 20000 })
@@ -232,6 +240,59 @@ async function run(names) {
   await ctx.close();
   cleanup();
   console.log(`\n結果: ${OUT}`);
+}
+
+const isYahoo = (url) => /(^|\.)shopping\.yahoo\.co\.jp$/.test(new URL(url).host);
+
+/**
+ * Yahoo!ショッピング: 商品ページは価格の欄（Amazon・楽天）と左右キー・Esc、検索結果はPRの薄表示を確かめる。
+ * Amazon・楽天の価格は保存したページに入っていないので、ここだけは実際に通信する。
+ */
+async function runYahoo(page, name, url, logs) {
+  const report = { url };
+  if (new URL(url).pathname.startsWith('/search')) {
+    await page.waitForSelector('.azr-ad-item', { timeout: 15000 }).catch(() => logs.push('harness: PRの商品が薄くならない'));
+    Object.assign(report, await page.evaluate(() => ({
+      pr: document.querySelectorAll('[class*="imageIcon--pr"]').length,
+      dimmed: document.querySelectorAll('.azr-ad-item').length
+    })));
+    console.log(`
+== ${name}  ${url}
+  PR ${report.pr}件 / 薄くした ${report.dimmed}件`);
+  } else {
+    await page.waitForFunction(() => document.documentElement.dataset.azrAmazon && document.documentElement.dataset.azrRakuten, null, { timeout: 40000 })
+      .catch(() => logs.push('harness: Amazon・楽天の価格が返らない'));
+    const current = () => page.evaluate(() => [...document.querySelectorAll('button[class*="thumbnailButton"]')].findIndex((b) => /isCurrent/.test(b.className)));
+    const before = await current();
+    await page.mouse.move(1390, 5); // サムネイルの上にマウスがあると、そちらに切り替わる
+    await page.keyboard.press('ArrowRight');
+    await page.waitForTimeout(400);
+    report.arrowKey = { before, after: await current() };
+    await page.locator('.splide__slide.is-active button').first().click().catch(() => {});
+    await page.waitForTimeout(800);
+    const modalOpen = () => page.evaluate(() => Boolean(document.querySelector('.ModalView--open')));
+    const modalImg = () => page.evaluate(() => document.querySelector('.ModalView--open [class*="selectedImage"] img')?.src || null);
+    const imgBefore = await modalImg();
+    await page.keyboard.press('ArrowRight');
+    await page.waitForTimeout(500);
+    report.modal = { opened: await modalOpen(), stepped: imgBefore !== null && imgBefore !== (await modalImg()) };
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(800);
+    report.modal.closedByEsc = !(await modalOpen());
+    Object.assign(report, await page.evaluate(() => ({
+      boxes: [...document.querySelectorAll('.azr-amazon')].map((b) => ({
+        site: b.dataset.site, state: b.dataset.state, text: b.innerText.replace(/\s+/g, ' ').trim()
+      }))
+    })));
+    await page.locator('#prcdsp').scrollIntoViewIfNeeded().catch(() => {});
+    console.log(`
+== ${name}  ${url}`);
+    console.log(`  左右キー ${report.arrowKey.before}→${report.arrowKey.after} / 拡大表示 ${report.modal.opened ? '開いた' : '開かない'}・${report.modal.stepped ? '送れた' : '送れない'}・Esc ${report.modal.closedByEsc ? 'で閉じた' : 'で閉じない'}`);
+    for (const b of report.boxes) console.log(`  ${b.site} ${b.state}  ${b.text.slice(0, 200)}`);
+  }
+  await page.screenshot({ path: join(OUT, `${name}.png`) });
+  writeFileSync(join(OUT, `${name}.json`), JSON.stringify({ url, report, logs }, null, 2));
+  for (const l of logs) if (/^harness:|\[AZR\]|pageerror/.test(l)) console.log('  ' + l.slice(0, 300));
 }
 
 const [cmd, ...rest] = process.argv.slice(2);

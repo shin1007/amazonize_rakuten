@@ -73,12 +73,14 @@
       key: 'rakuten', name: '楽天',
       pricing: () => AZR.itemPricing?.value || null,
       same: (applied) => tr('{applied}楽天と同じ価格', { applied }),
+      range: (applied, lo, hi) => tr('{applied}楽天は選択によって {lo}〜{hi}', { applied, lo, hi }),
       note: () => tr('（表示価格の比較。楽天のポイント還元は含みません）')
     },
     yahoo: {
       key: 'yahoo', name: 'Yahoo!ショッピング',
       pricing: () => null,
       same: () => tr('Yahoo!ショッピングと同じ価格'),
+      range: (applied, lo, hi) => tr('Yahoo!ショッピングは選択によって {lo}〜{hi}', { lo, hi }),
       note: () => tr('（表示価格の比較。ポイント還元は含みません）')
     }
   };
@@ -103,7 +105,7 @@
     const high = pricing ? pricing.max : (data.maxPrice > data.minPrice ? data.maxPrice : null);
     const applied = pricing ? tr('クーポン適用後、') : '';
     if (!(rakuten > 0) || !(amazon > 0)) return '';
-    if (high > rakuten) return note(tr('{applied}楽天は選択によって {lo}〜{hi}', { applied, lo: yen(rakuten), hi: yen(high) }));
+    if (high > rakuten) return note(home.range(applied, yen(rakuten), yen(high)));
     if (!sure) return note(tr('同じ商品とは限らないので、値段は比べていません'));
     const d = Math.abs(rakuten - amazon);
     if (d === 0) return h('div.azr-amazon-diff.same', { text: home.same(applied) });
@@ -195,7 +197,8 @@ ${how}` },
 
   /**
    * anchor の下に、店ごとの欄を sites の順に積む。data は { title, minPrice, maxPrice, jan, variants, descriptionHtml }。
-   * 返すのは置いた欄（ページに描き直されて外れたら、呼んだ側が置き直す）。結果がそろうと解決する。
+   * 返すのは置いた欄（ページに描き直されて外れたら、呼んだ側が置き直す）と、結果がそろうと解決する done、
+   * data の価格を書き換えたあとに値差を出し直す repaint。
    */
   function mount(anchor, data, sites, home) {
     // 引く手がかり: JANがあればJAN、無ければ商品名や説明から拾った型番
@@ -205,14 +208,16 @@ ${how}` },
     // 店ごとに欄を1つ。価格の下に sites の順で積む
     const boxes = sites.map((site) => h('section.azr-amazon', { 'data-state': 'loading', 'data-site': site.key, 'data-home': home.key }));
     anchor.after(...boxes);
-    const done = Promise.all(sites.map((site, i) => lookup(site, boxes[i], data, code, model, home)));
-    return { boxes, done };
+    const repaints = [];
+    const done = Promise.all(sites.map((site, i) => lookup(site, boxes[i], data, code, model, home, repaints)));
+    return { boxes, done, repaint: () => repaints.forEach((f) => f()) };
   }
   AZR.priceCompare = { SITES, HOMES, mount };
 
-  async function lookup(site, box, data, code, model, home) {
+  async function lookup(site, box, data, code, model, home, repaints = []) {
     const results = { code: code.type ? undefined : null, title: undefined };
     paint(site, box, results, data, code, home);
+    repaints.push(() => paint(site, box, results, data, code, home));
 
     const ask = async (msg) => {
       try {

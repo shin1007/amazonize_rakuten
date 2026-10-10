@@ -211,7 +211,8 @@
       "楽天の価格を調べられませんでした": "Couldn't check the Rakuten price",
       "Yahoo!ショッピングと同じ価格": "Same price as Yahoo! Shopping",
       "（表示価格の比較。ポイント還元は含みません）": "(Listed prices compared; points not included)",
-      "Yahoo!ショッピングの商品ページにAmazon・楽天の価格を出す": "Show Amazon and Rakuten prices on Yahoo! Shopping item pages"
+      "Yahoo!ショッピングの商品ページにAmazon・楽天の価格を出す": "Show Amazon and Rakuten prices on Yahoo! Shopping item pages",
+      "Yahoo!ショッピングは選択によって {lo}〜{hi}": "Yahoo! Shopping: {lo}–{hi} depending on the option"
     },
     "id": {
       "楽天 ￥{p}{via}": "Rakuten ¥{p}{via}",
@@ -422,7 +423,8 @@
       "楽天の価格を調べられませんでした": "Tidak dapat memeriksa harga Rakuten",
       "Yahoo!ショッピングと同じ価格": "Harga sama dengan Yahoo! Shopping",
       "（表示価格の比較。ポイント還元は含みません）": "(Perbandingan harga tertera, tidak termasuk poin)",
-      "Yahoo!ショッピングの商品ページにAmazon・楽天の価格を出す": "Tampilkan harga Amazon dan Rakuten di halaman produk Yahoo! Shopping"
+      "Yahoo!ショッピングの商品ページにAmazon・楽天の価格を出す": "Tampilkan harga Amazon dan Rakuten di halaman produk Yahoo! Shopping",
+      "Yahoo!ショッピングは選択によって {lo}〜{hi}": "Yahoo! Shopping: {lo}–{hi} tergantung pilihan"
     },
     "ko": {
       "楽天 ￥{p}{via}": "라쿠텐 ¥{p}{via}",
@@ -633,7 +635,8 @@
       "楽天の価格を調べられませんでした": "라쿠텐 가격을 확인하지 못했습니다",
       "Yahoo!ショッピングと同じ価格": "Yahoo! 쇼핑과 같은 가격",
       "（表示価格の比較。ポイント還元は含みません）": "(표시 가격 비교. 포인트 적립은 포함하지 않습니다)",
-      "Yahoo!ショッピングの商品ページにAmazon・楽天の価格を出す": "Yahoo! 쇼핑 상품 페이지에 Amazon・라쿠텐 가격 표시"
+      "Yahoo!ショッピングの商品ページにAmazon・楽天の価格を出す": "Yahoo! 쇼핑 상품 페이지에 Amazon・라쿠텐 가격 표시",
+      "Yahoo!ショッピングは選択によって {lo}〜{hi}": "Yahoo! 쇼핑은 선택에 따라 {lo}~{hi}"
     },
     "vi": {
       "楽天 ￥{p}{via}": "Rakuten ¥{p}{via}",
@@ -844,7 +847,8 @@
       "楽天の価格を調べられませんでした": "Không thể kiểm tra giá Rakuten",
       "Yahoo!ショッピングと同じ価格": "Cùng giá với Yahoo! Shopping",
       "（表示価格の比較。ポイント還元は含みません）": "(So sánh giá niêm yết, không tính điểm thưởng)",
-      "Yahoo!ショッピングの商品ページにAmazon・楽天の価格を出す": "Hiển thị giá Amazon và Rakuten trên trang sản phẩm Yahoo! Shopping"
+      "Yahoo!ショッピングの商品ページにAmazon・楽天の価格を出す": "Hiển thị giá Amazon và Rakuten trên trang sản phẩm Yahoo! Shopping",
+      "Yahoo!ショッピングは選択によって {lo}〜{hi}": "Yahoo! Shopping: {lo}–{hi} tùy lựa chọn"
     },
     "zh_CN": {
       "楽天 ￥{p}{via}": "乐天 ¥{p}{via}",
@@ -1055,7 +1059,8 @@
       "楽天の価格を調べられませんでした": "无法查询乐天的价格",
       "Yahoo!ショッピングと同じ価格": "与 Yahoo! 购物价格相同",
       "（表示価格の比較。ポイント還元は含みません）": "（比较的是标价，不含积分返还）",
-      "Yahoo!ショッピングの商品ページにAmazon・楽天の価格を出す": "在 Yahoo! 购物的商品页显示亚马逊和乐天的价格"
+      "Yahoo!ショッピングの商品ページにAmazon・楽天の価格を出す": "在 Yahoo! 购物的商品页显示亚马逊和乐天的价格",
+      "Yahoo!ショッピングは選択によって {lo}〜{hi}": "Yahoo!购物 根据所选规格为 {lo}〜{hi}"
     },
     "zh_TW": {
       "楽天 ￥{p}{via}": "樂天 ¥{p}{via}",
@@ -1266,7 +1271,8 @@
       "楽天の価格を調べられませんでした": "無法查詢樂天的價格",
       "Yahoo!ショッピングと同じ価格": "與 Yahoo! 購物價格相同",
       "（表示価格の比較。ポイント還元は含みません）": "（比較的是標價，不含點數回饋）",
-      "Yahoo!ショッピングの商品ページにAmazon・楽天の価格を出す": "在 Yahoo! 購物的商品頁顯示亞馬遜與樂天的價格"
+      "Yahoo!ショッピングの商品ページにAmazon・楽天の価格を出す": "在 Yahoo! 購物的商品頁顯示亞馬遜與樂天的價格",
+      "Yahoo!ショッピングは選択によって {lo}〜{hi}": "Yahoo!購物 依所選規格為 {lo}〜{hi}"
     }
   };
 })();
