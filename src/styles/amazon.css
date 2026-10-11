@@ -30,18 +30,23 @@
   gap: 8px;
   align-items: center;
   flex: 1;
-  min-width: 0;
+  min-width: min-content; /* 価格だけは切らない（狭いときは右の検索ボタンを2行に折る） */
   color: #333;
   font-size: 12px;
   text-decoration: none;
 }
 .azr-amz-thumb { width: 52px; height: 52px; flex: none; object-fit: contain; background: #f5f5f5; }
-.azr-amz-body { min-width: 0; display: flex; flex-direction: column; }
-.azr-amz-price { color: #b12704; font-weight: bold; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.azr-amz-name { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.azr-amz-body { min-width: min-content; flex: 1; display: flex; flex-direction: column; overflow: hidden; line-height: 1.3; }
+.azr-amz-price { color: #b12704; font-weight: bold; font-size: 14px; display: flex; white-space: pre; }
+.azr-amz-amount { flex: none; }
+.azr-amz-via { flex: 1 1 auto; width: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; } /* 幅0から伸ばす（見出しの長さで価格の最小幅が広がらないように） */
+.azr-amz-row > span.azr-amz-main { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.3; }
+.azr-amz-name { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
 .azr-amz-search {
-  flex: none;
-  white-space: nowrap;
+  flex: 0 1 auto;
+  min-width: calc(3em + 20px); /* 狭いときも2行まで（1文字ずつの縦書きにしない） */
+  line-height: 1.3;
+  text-align: center;
   padding: 6px 10px;
   border: 1px solid #b12704;
   border-radius: 8px;

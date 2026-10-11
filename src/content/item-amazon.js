@@ -149,7 +149,10 @@
 ${how}` },
           r.item.image ? h('img.azr-amz-thumb', { src: r.item.image, alt: '', loading: 'lazy' }) : h('span.azr-amz-thumb'),
           h('span.azr-amz-body',
-            h('span.azr-amz-price', { text: `${site.label} ${r.item.price ? yen(r.item.price) : tr('価格不明')} (${tag})${meta ? '  ' + meta : ''}` }),
+            // 欄が狭いときは、価格は残して後ろの見出し・評価を…で切る
+            h('span.azr-amz-price',
+              h('span.azr-amz-amount', { text: `${site.label} ${r.item.price ? yen(r.item.price) : tr('価格不明')}` }),
+              h('span.azr-amz-via', { text: ` (${tag})${meta ? '  ' + meta : ''}` })),
             h('span.azr-amz-name', { text: r.item.title })
           )
         ),

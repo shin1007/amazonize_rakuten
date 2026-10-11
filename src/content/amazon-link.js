@@ -268,7 +268,7 @@
                 const tag = ` (${r.it && r.hit || r.label})`;
                 const it = r.it;
                 const box = document.createElement(it ? 'a' : 'div');
-                Object.assign(box.style, { display: 'flex', gap: '8px', alignItems: 'center', flex: '1', minWidth: '0', color: '#333', textDecoration: 'none', fontSize: '12px' });
+                Object.assign(box.style, { display: 'flex', gap: '8px', alignItems: 'center', flex: '1', minWidth: 'min-content', color: '#333', textDecoration: 'none', fontSize: '12px' });
                 if (it) { box.href = it.affiliateUrl || it.itemUrl; box.target = '_blank'; box.rel = 'noopener noreferrer'; }
                 const img = document.createElement('div');
                 Object.assign(img.style, { width: '52px', height: '52px', flex: 'none', background: '#f5f5f5' });
@@ -279,18 +279,29 @@
                 img.replaceChildren(im);
                 box.appendChild(img);
                 const body = document.createElement('div');
-                Object.assign(body.style, { minWidth: '0' });
+                // 行の高さは固定なので、価格は1行、商品名は2行までにして、枠からはみ出させない。
+                // 価格（楽天 ￥1,900）だけは切らない幅を確保し、狭いときは右の検索ボタンの方を2行に折る
+                Object.assign(body.style, { minWidth: 'min-content', flex: '1', overflow: 'hidden', lineHeight: '1.3' });
                 if (it) {
                     const pr = document.createElement('div');
-                    Object.assign(pr.style, { color: site.color, fontWeight: 'bold', fontSize: '14px' });
-                    pr.textContent = site.price(it.itemPrice.toLocaleString(), tag);
+                    // 欄が狭いときは、価格は残して後ろの見出し（型番が一致 など）を…で切る
+                    Object.assign(pr.style, { color: site.color, fontWeight: 'bold', fontSize: '14px', display: 'flex', whiteSpace: 'nowrap' });
+                    const amount = document.createElement('span');
+                    amount.style.flex = 'none';
+                    amount.textContent = site.price(it.itemPrice.toLocaleString(), '');
+                    const via = document.createElement('span');
+                    // 幅0から伸ばす（見出しの長さで、価格に要る最小幅が広がらないように）
+                    Object.assign(via.style, { flex: '1 1 auto', width: '0', minWidth: '0', overflow: 'hidden', textOverflow: 'ellipsis' });
+                    via.textContent = tag;
+                    pr.append(amount, via);
                     const nm = document.createElement('div');
-                    Object.assign(nm.style, { display: '-webkit-box', WebkitLineClamp: '2', WebkitBoxOrient: 'vertical', overflow: 'hidden' });
+                    Object.assign(nm.style, { display: '-webkit-box', WebkitLineClamp: '2', WebkitBoxOrient: 'vertical', overflow: 'hidden', overflowWrap: 'anywhere' });
                     nm.textContent = displayName(it.itemName);
                     nm.title = `${it.itemName}\n${it.shopName}`;
                     body.append(pr, nm);
                 } else {
                     body.textContent = r.none || tr('一致する商品が見つかりませんでした{via}', { via: tag });
+                    Object.assign(body.style, { display: '-webkit-box', WebkitLineClamp: '2', WebkitBoxOrient: 'vertical' });
                     if (apiError) body.title = site.apiError(apiError);
                 }
                 box.appendChild(body);
@@ -298,7 +309,7 @@
                 if (r.kw) {
                     row.appendChild(link(searchUrl(r.kw), tr('{t}検索', { t: r.label }), {
                         color: site.color, background: '#fff', border: `1px solid ${site.color}`, padding: '6px 10px',
-                        fontSize: '12px', flex: 'none', whiteSpace: 'nowrap'
+                        fontSize: '12px', flex: '0 1 auto', minWidth: 'calc(3em + 20px)', lineHeight: '1.3', textAlign: 'center'
                     }));
                 }
                 wrap.appendChild(row);
